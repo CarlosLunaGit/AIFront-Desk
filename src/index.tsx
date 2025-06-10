@@ -6,16 +6,31 @@ import reportWebVitals from './reportWebVitals';
 
 // Initialize MSW
 async function enableMocking() {
-  if (process.env.NODE_ENV !== 'development') {
+  // Check if mocking is enabled via environment variable
+  const shouldMock = import.meta.env?.VITE_ENABLE_MOCK_API === 'true' || process.env.NODE_ENV === 'development';
+  
+  if (!shouldMock) {
+    console.log('Mock API is disabled. Using real API endpoints.');
     return;
   }
 
-  const { worker } = await import('./mocks/browser');
-  return worker.start({
-    onUnhandledRequest: 'bypass', // Don't warn about unhandled requests
-  });
+  if (process.env.NODE_ENV !== 'development') {
+    console.log('Mock API is only available in development mode.');
+    return;
+  }
+
+  try {
+    const { worker } = await import('./mocks/browser');
+    await worker.start({
+      onUnhandledRequest: 'bypass', // Don't warn about unhandled requests
+    });
+    console.log('Mock API is enabled. Using mock endpoints.');
+  } catch (error) {
+    console.error('Failed to start mock service worker:', error);
+  }
 }
 
+// Start the app
 enableMocking().then(() => {
   const root = ReactDOM.createRoot(
     document.getElementById('root') as HTMLElement

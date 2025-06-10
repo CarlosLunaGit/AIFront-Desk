@@ -13,6 +13,11 @@ import {
   Toolbar,
   Typography,
   useTheme,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  SelectChangeEvent,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -22,7 +27,22 @@ import {
   CreditCard as CreditCardIcon,
   Settings as SettingsIcon,
   BarChart as BarChartIcon,
+  Business as BusinessIcon,
 } from '@mui/icons-material';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { hotelConfigService } from '../../services/hotelConfigService';
+import type { HotelConfiguration } from '../../types/hotel';
+
+// Create a context for the selected hotel configuration
+export const HotelConfigContext = React.createContext<{
+  selectedConfigId: string;
+  setSelectedConfigId: (id: string) => void;
+  currentConfig: HotelConfiguration | undefined;
+}>({
+  selectedConfigId: 'current',
+  setSelectedConfigId: () => {},
+  currentConfig: undefined,
+});
 
 const drawerWidth = 240;
 
@@ -34,6 +54,7 @@ const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
   { text: 'Communications', icon: <MessageIcon />, path: '/communications' },
   { text: 'Room Management', icon: <HotelIcon />, path: '/rooms' },
+  { text: 'Hotel Configuration', icon: <BusinessIcon />, path: '/hotel-config' },
   { text: 'Subscriptions', icon: <CreditCardIcon />, path: '/subscriptions' },
   { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
   { text: 'Analytics', icon: <BarChartIcon />, path: '/analytics' },
@@ -44,9 +65,38 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
+  const [selectedConfigId, setSelectedConfigId] = useState<string>('current');
+
+  // Fetch all hotel configurations
+  const { data: hotelConfigs, isLoading: configsLoading } = useQuery<HotelConfiguration[]>({
+    queryKey: ['hotelConfigs'],
+    queryFn: () => hotelConfigService.getAllConfigs(),
+  });
+
+  // Fetch current hotel configuration
+  const { data: currentConfig, isLoading: currentConfigLoading } = useQuery<HotelConfiguration>({
+    queryKey: ['hotelConfig', selectedConfigId],
+    queryFn: () => hotelConfigService.getCurrentConfig(),
+    enabled: !!selectedConfigId,
+  });
+
+  // Set current configuration mutation
+  const setCurrentConfigMutation = useMutation({
+    mutationFn: (configId: string) => hotelConfigService.setCurrentConfig(configId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hotelConfig'] });
+    },
+  });
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const handleConfigChange = (event: SelectChangeEvent) => {
+    const newConfigId = event.target.value;
+    setSelectedConfigId(newConfigId);
+    setCurrentConfigMutation.mutate(newConfigId);
   };
 
   const drawer = (
@@ -90,79 +140,99 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   );
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      <CssBaseline />
-      <AppBar
-        position="fixed"
-        sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
-        }}
-      >
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
+    <HotelConfigContext.Provider value={{ selectedConfigId, setSelectedConfigId, currentConfig }}>
+      <Box sx={{ display: 'flex' }}>
+        <CssBaseline />
+        <AppBar
+          position="fixed"
+          sx={{
+            width: { sm: `calc(100% - ${drawerWidth}px)` },
+            ml: { sm: `${drawerWidth}px` },
+          }}
+        >
+          <Toolbar>
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 2, display: { sm: 'none' } }}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+              Hotel AI
+            </Typography>
+            {!configsLoading && !currentConfigLoading && hotelConfigs && hotelConfigs.length > 0 && (
+              <FormControl sx={{ minWidth: 200, ml: 2 }}>
+                <InputLabel>Hotel Configuration</InputLabel>
+                <Select<string>
+                  value={selectedConfigId}
+                  onChange={handleConfigChange}
+                  label="Hotel Configuration"
+                  size="small"
+                >
+                  <MenuItem value="current">Current Configuration</MenuItem>
+                  {hotelConfigs.map((config) => (
+                    <MenuItem key={config.id} value={config.id}>
+                      {config.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+          </Toolbar>
+        </AppBar>
+        <Box
+          component="nav"
+          sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+        >
+          <Drawer
+            variant="temporary"
+            open={mobileOpen}
+            onClose={handleDrawerToggle}
+            ModalProps={{
+              keepMounted: true, // Better open performance on mobile.
+            }}
+            sx={{
+              display: { xs: 'block', sm: 'none' },
+              '& .MuiDrawer-paper': {
+                boxSizing: 'border-box',
+                width: drawerWidth,
+              },
+            }}
           >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" noWrap component="div">
-            {menuItems.find((item) => item.path === location.pathname)?.text || 'Hotel AI'}
-          </Typography>
-        </Toolbar>
-      </AppBar>
-      <Box
-        component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-      >
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true, // Better open performance on mobile.
-          }}
+            {drawer}
+          </Drawer>
+          <Drawer
+            variant="permanent"
+            sx={{
+              display: { xs: 'none', sm: 'block' },
+              '& .MuiDrawer-paper': {
+                boxSizing: 'border-box',
+                width: drawerWidth,
+              },
+            }}
+            open
+          >
+            {drawer}
+          </Drawer>
+        </Box>
+        <Box
+          component="main"
           sx={{
-            display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-            },
+            flexGrow: 1,
+            p: 3,
+            width: { sm: `calc(100% - ${drawerWidth}px)` },
+            minHeight: '100vh',
+            backgroundColor: theme.palette.background.default,
           }}
         >
-          {drawer}
-        </Drawer>
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-            },
-          }}
-          open
-        >
-          {drawer}
-        </Drawer>
+          <Toolbar />
+          {children}
+        </Box>
       </Box>
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          minHeight: '100vh',
-          backgroundColor: theme.palette.background.default,
-        }}
-      >
-        <Toolbar />
-        {children}
-      </Box>
-    </Box>
+    </HotelConfigContext.Provider>
   );
 };
 

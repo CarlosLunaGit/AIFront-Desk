@@ -1,14 +1,15 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import Box from '@mui/material/Box';
-
-// Components
-import Dashboard from './components/Dashboard/Dashboard';
-import CommunicationInterface from './components/Communications/CommunicationInterface';
 import Layout from './components/Layout/Layout';
+import Dashboard from './components/Dashboard/Dashboard';
+import HotelConfigWizard from './components/HotelConfig/HotelConfigWizard';
+import Login from './components/Auth/Login';
+import CommunicationInterface from './components/Communications/CommunicationInterface';
+import RoomManagement from './components/Rooms/RoomManagement';
+import { AuthProvider } from './contexts/AuthContext';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -26,26 +27,97 @@ const theme = createTheme({
   },
 });
 
+// Create router with future flags enabled
+const router = createBrowserRouter(
+  [
+    {
+      path: '/login',
+      element: <Login />,
+    },
+    {
+      path: '/',
+      element: (
+        <Layout>
+          <Dashboard />
+        </Layout>
+      ),
+    },
+    {
+      path: '/dashboard',
+      element: (
+        <Layout>
+          <Dashboard />
+        </Layout>
+      ),
+    },
+    {
+      path: '/communications',
+      element: (
+        <Layout>
+          <CommunicationInterface />
+        </Layout>
+      ),
+    },
+    {
+      path: '/hotel-config',
+      element: (
+        <Layout>
+          <HotelConfigWizard />
+        </Layout>
+      ),
+    },
+    {
+      path: '/rooms',
+      element: (
+        <Layout>
+          <RoomManagement />
+        </Layout>
+      ),
+    },
+    {
+      path: '/subscriptions',
+      element: (
+        <Layout>
+          <div>Subscriptions (Coming Soon)</div>
+        </Layout>
+      ),
+    },
+    {
+      path: '/settings',
+      element: (
+        <Layout>
+          <div>Settings (Coming Soon)</div>
+        </Layout>
+      ),
+    },
+    {
+      path: '/analytics',
+      element: (
+        <Layout>
+          <div>Analytics (Coming Soon)</div>
+        </Layout>
+      ),
+    },
+    {
+      path: '*',
+      element: <Navigate to="/dashboard" replace />,
+    },
+  ],
+  {
+    future: {
+      v7_relativeSplatPath: true,
+    },
+  }
+);
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <Router>
-          <Layout>
-            <Box sx={{ flexGrow: 1, p: 3 }}>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/communications" element={<CommunicationInterface />} />
-                <Route path="/rooms" element={<div>Room Management (Coming Soon)</div>} />
-                <Route path="/subscriptions" element={<div>Subscriptions (Coming Soon)</div>} />
-                <Route path="/settings" element={<div>Settings (Coming Soon)</div>} />
-                <Route path="/analytics" element={<div>Analytics (Coming Soon)</div>} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Box>
-          </Layout>
-        </Router>
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
