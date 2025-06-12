@@ -9,6 +9,7 @@ import HotelConfigWizard from './components/HotelConfig/HotelConfigWizard';
 import Login from './components/Auth/Login';
 import CommunicationInterface from './components/Communications/CommunicationInterface';
 import RoomManagement from './components/Rooms/RoomManagement';
+import GuestManagement from './components/GuestManagement';
 import { AuthProvider } from './contexts/AuthContext';
 
 // Create a client
@@ -71,6 +72,14 @@ const router = createBrowserRouter(
       element: (
         <Layout>
           <RoomManagement />
+        </Layout>
+      ),
+    },
+    {
+      path: '/guests',
+      element: (
+        <Layout>
+          <GuestManagement />
         </Layout>
       ),
     },

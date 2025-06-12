@@ -419,6 +419,43 @@ const mockHotelConfigs: HotelConfigDocument[] = [
 // Track the current configuration
 let currentConfigId = 'mock-hotel-1';
 
+// Mock guest data
+const mockGuests = [
+  {
+    id: 'guest-1',
+    name: 'Alice Johnson',
+    email: 'alice.johnson@example.com',
+    phone: '+1 (555) 111-2222',
+    status: 'checked-in',
+    roomId: 'room-101',
+    checkIn: '2024-06-01',
+    checkOut: '2024-06-05',
+    hotelConfigId: 'mock-hotel-1',
+  },
+  {
+    id: 'guest-2',
+    name: 'Bob Smith',
+    email: 'bob.smith@example.com',
+    phone: '+1 (555) 333-4444',
+    status: 'checked-out',
+    roomId: 'room-102',
+    checkIn: '2024-05-28',
+    checkOut: '2024-06-02',
+    hotelConfigId: 'mock-hotel-1',
+  },
+  {
+    id: 'guest-3',
+    name: 'Carla Rivera',
+    email: 'carla.rivera@example.com',
+    phone: '+1 (555) 555-6666',
+    status: 'checked-in',
+    roomId: 'room-301',
+    checkIn: '2024-06-03',
+    checkOut: '2024-06-10',
+    hotelConfigId: 'mock-hotel-2',
+  },
+];
+
 // Mock handlers
 export const handlers: HttpHandler[] = [
   // Dashboard stats (dynamic per current config)
@@ -702,6 +739,16 @@ export const handlers: HttpHandler[] = [
       return newRoom;
     });
     return HttpResponse.json(createdRooms, { status: 201 });
+  }),
+
+  // Guest endpoints
+  http.get('/api/guests', () => {
+    return HttpResponse.json(mockGuests.filter(g => g.hotelConfigId === currentConfigId));
+  }),
+  http.get('/api/guests/:id', ({ params }: any) => {
+    const guest = mockGuests.find(g => g.id === params.id && g.hotelConfigId === currentConfigId);
+    if (!guest) return new HttpResponse(null, { status: 404 });
+    return HttpResponse.json(guest);
   }),
 ];
 

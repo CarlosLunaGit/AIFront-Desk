@@ -28,6 +28,7 @@ import {
   Settings as SettingsIcon,
   BarChart as BarChartIcon,
   Business as BusinessIcon,
+  People as PeopleIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { hotelConfigService } from '../../services/hotelConfigService';
@@ -56,6 +57,7 @@ const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
   { text: 'Communications', icon: <MessageIcon />, path: '/communications' },
   { text: 'Room Management', icon: <HotelIcon />, path: '/rooms' },
+  { text: 'Guest Management', icon: <PeopleIcon />, path: '/guests' },
   { text: 'Hotel Configuration', icon: <BusinessIcon />, path: '/hotel-config' },
   { text: 'Subscriptions', icon: <CreditCardIcon />, path: '/subscriptions' },
   { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },

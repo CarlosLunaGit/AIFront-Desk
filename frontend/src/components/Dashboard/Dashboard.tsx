@@ -123,11 +123,14 @@ const Dashboard: React.FC = () => {
               Rooms by Type
             </Typography>
             <List>
-              {stats?.byType && Object.entries(stats.byType).map(([typeId, count]) => (
-                <ListItem key={typeId}>
-                  <ListItemText primary={`${typeId}: ${count}`} />
-                </ListItem>
-              ))}
+              {stats?.byType && Object.entries(stats.byType).map(([typeId, count]) => {
+                const type = currentConfig.roomTypes.find(rt => rt.id === typeId);
+                return (
+                  <ListItem key={typeId}>
+                    <ListItemText primary={`${type ? type.name : typeId}: ${count}`} />
+                  </ListItem>
+                );
+              })}
             </List>
           </Paper>
         </Grid>
