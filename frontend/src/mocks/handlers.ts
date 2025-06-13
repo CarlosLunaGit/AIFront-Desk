@@ -56,74 +56,171 @@ const mockRooms = [
     number: '101',
     typeId: 'type-1',
     floorId: 'floor-1',
-    status: 'available',
+    status: 'partially-reserved' as RoomStatus,
     features: ['feature-3'],
     capacity: 2,
     rate: 150,
     notes: '',
     hotelConfigId: 'mock-hotel-1',
+    assignedGuests: ['guest-1'],
   },
   {
     id: 'room-102',
     number: '102',
     typeId: 'type-1',
     floorId: 'floor-1',
-    status: 'occupied',
+    status: 'partially-occupied' as RoomStatus,
     features: ['feature-3'],
     capacity: 2,
     rate: 150,
     notes: '',
     hotelConfigId: 'mock-hotel-1',
+    assignedGuests: ['guest-2'],
   },
   {
     id: 'room-201',
     number: '201',
     typeId: 'type-2',
     floorId: 'floor-2',
-    status: 'maintenance',
+    status: 'occupied' as RoomStatus,
     features: ['feature-4'],
-    capacity: 4,
+    capacity: 1,
     rate: 400,
     notes: '',
     hotelConfigId: 'mock-hotel-1',
+    assignedGuests: ['guest-3'],
   },
-  // Seaside Resort
+  {
+    id: 'room-202',
+    number: '202',
+    typeId: 'type-2',
+    floorId: 'floor-2',
+    status: 'partially-reserved' as RoomStatus,
+    features: ['feature-4'],
+    capacity: 2,
+    rate: 400,
+    notes: '',
+    hotelConfigId: 'mock-hotel-1',
+    assignedGuests: ['guest-7'],
+  },
+  {
+    id: 'room-203',
+    number: '203',
+    typeId: 'type-2',
+    floorId: 'floor-2',
+    status: 'partially-occupied' as RoomStatus,
+    features: ['feature-4'],
+    capacity: 2,
+    rate: 400,
+    notes: '',
+    hotelConfigId: 'mock-hotel-1',
+    assignedGuests: ['guest-8'],
+  },
   {
     id: 'room-301',
     number: '301',
-    typeId: 'type-4',
-    floorId: 'floor-3',
-    status: 'available',
+    typeId: 'type-3',
+    floorId: 'floor-2',
+    status: 'available' as RoomStatus,
     features: ['feature-4'],
-    capacity: 2,
-    rate: 300,
+    capacity: 4,
+    rate: 600,
     notes: '',
-    hotelConfigId: 'mock-hotel-2',
+    hotelConfigId: 'mock-hotel-1',
+    assignedGuests: [],
   },
   {
     id: 'room-302',
     number: '302',
+    typeId: 'type-3',
+    floorId: 'floor-2',
+    status: 'partially-reserved' as RoomStatus,
+    features: ['feature-4'],
+    capacity: 4,
+    rate: 600,
+    notes: '',
+    hotelConfigId: 'mock-hotel-1',
+    assignedGuests: ['guest-9'],
+  },
+  // Seaside Resort
+  {
+    id: 'room-401',
+    number: '401',
     typeId: 'type-4',
-    floorId: 'floor-4',
-    status: 'occupied',
+    floorId: 'floor-3',
+    status: 'partially-reserved' as RoomStatus,
     features: ['feature-4'],
     capacity: 2,
     rate: 300,
     notes: '',
     hotelConfigId: 'mock-hotel-2',
+    assignedGuests: ['guest-4'],
   },
   {
-    id: 'room-401',
-    number: '401',
-    typeId: 'type-5',
+    id: 'room-402',
+    number: '402',
+    typeId: 'type-4',
     floorId: 'floor-3',
-    status: 'maintenance',
+    status: 'partially-occupied' as RoomStatus,
+    features: ['feature-4'],
+    capacity: 2,
+    rate: 300,
+    notes: '',
+    hotelConfigId: 'mock-hotel-2',
+    assignedGuests: ['guest-5'],
+  },
+  {
+    id: 'room-403',
+    number: '403',
+    typeId: 'type-4',
+    floorId: 'floor-3',
+    status: 'occupied' as RoomStatus,
+    features: ['feature-4'],
+    capacity: 1,
+    rate: 300,
+    notes: '',
+    hotelConfigId: 'mock-hotel-2',
+    assignedGuests: ['guest-6'],
+  },
+  {
+    id: 'room-501',
+    number: '501',
+    typeId: 'type-5',
+    floorId: 'floor-4',
+    status: 'partially-reserved' as RoomStatus,
     features: ['feature-4'],
     capacity: 4,
     rate: 600,
     notes: '',
     hotelConfigId: 'mock-hotel-2',
+    assignedGuests: ['guest-10'],
   },
+  {
+    id: 'room-502',
+    number: '502',
+    typeId: 'type-5',
+    floorId: 'floor-4',
+    status: 'partially-occupied' as RoomStatus,
+    features: ['feature-4'],
+    capacity: 4,
+    rate: 600,
+    notes: '',
+    hotelConfigId: 'mock-hotel-2',
+    assignedGuests: ['guest-11'],
+  },
+  {
+    id: 'room-503',
+    number: '503',
+    typeId: 'type-5',
+    floorId: 'floor-4',
+    status: 'available' as RoomStatus,
+    features: ['feature-4'],
+    capacity: 4,
+    rate: 600,
+    notes: '',
+    hotelConfigId: 'mock-hotel-2',
+    assignedGuests: [],
+  }
 ];
 
 const mockRoomActions: RoomAction[] = [
@@ -421,39 +518,162 @@ let currentConfigId = 'mock-hotel-1';
 
 // Mock guest data
 const mockGuests = [
+  // Grand Plaza Hotel (mock-hotel-1)
   {
     id: 'guest-1',
     name: 'Alice Johnson',
     email: 'alice.johnson@example.com',
     phone: '+1 (555) 111-2222',
-    status: 'checked-in',
+    status: 'booked',
     roomId: 'room-101',
-    checkIn: '2024-06-01',
-    checkOut: '2024-06-05',
+    reservationStart: '2024-07-01T15:00:00',
+    reservationEnd: '2024-07-05T11:00:00',
+    checkIn: '',
+    checkOut: '',
     hotelConfigId: 'mock-hotel-1',
+    keepOpen: true,
   },
   {
     id: 'guest-2',
     name: 'Bob Smith',
     email: 'bob.smith@example.com',
     phone: '+1 (555) 333-4444',
-    status: 'checked-out',
+    status: 'checked-in',
     roomId: 'room-102',
-    checkIn: '2024-05-28',
-    checkOut: '2024-06-02',
+    reservationStart: '2024-06-10T15:00:00',
+    reservationEnd: '2024-06-15T11:00:00',
+    checkIn: '2024-06-10T16:00:00',
+    checkOut: '',
     hotelConfigId: 'mock-hotel-1',
+    keepOpen: true,
   },
   {
     id: 'guest-3',
-    name: 'Carla Rivera',
-    email: 'carla.rivera@example.com',
-    phone: '+1 (555) 555-6666',
-    status: 'checked-in',
-    roomId: 'room-301',
-    checkIn: '2024-06-03',
-    checkOut: '2024-06-10',
-    hotelConfigId: 'mock-hotel-2',
+    name: 'Charlie Brown',
+    email: 'charlie.brown@example.com',
+    phone: '+1 (555) 777-8888',
+    status: 'checked-out',
+    roomId: 'room-201',
+    reservationStart: '2024-05-20T15:00:00',
+    reservationEnd: '2024-05-25T11:00:00',
+    checkIn: '2024-05-20T15:30:00',
+    checkOut: '2024-05-25T10:00:00',
+    hotelConfigId: 'mock-hotel-1',
+    keepOpen: false,
   },
+  // Seaside Resort (mock-hotel-2)
+  {
+    id: 'guest-4',
+    name: 'Diana Prince',
+    email: 'diana.prince@example.com',
+    phone: '+1 (555) 222-3333',
+    status: 'booked',
+    roomId: 'room-301',
+    reservationStart: '2024-08-01T15:00:00',
+    reservationEnd: '2024-08-05T11:00:00',
+    checkIn: '',
+    checkOut: '',
+    hotelConfigId: 'mock-hotel-2',
+    keepOpen: true,
+  },
+  {
+    id: 'guest-5',
+    name: 'Evan Lee',
+    email: 'evan.lee@example.com',
+    phone: '+1 (555) 444-5555',
+    status: 'checked-in',
+    roomId: 'room-302',
+    reservationStart: '2024-07-10T15:00:00',
+    reservationEnd: '2024-07-15T11:00:00',
+    checkIn: '2024-07-10T16:00:00',
+    checkOut: '',
+    hotelConfigId: 'mock-hotel-2',
+    keepOpen: true,
+  },
+  {
+    id: 'guest-6',
+    name: 'Fiona Green',
+    email: 'fiona.green@example.com',
+    phone: '+1 (555) 666-7777',
+    status: 'checked-out',
+    roomId: 'room-401',
+    reservationStart: '2024-06-20T15:00:00',
+    reservationEnd: '2024-06-25T11:00:00',
+    checkIn: '2024-06-20T15:30:00',
+    checkOut: '2024-06-25T10:00:00',
+    hotelConfigId: 'mock-hotel-2',
+    keepOpen: false,
+  },
+  {
+    id: 'guest-7',
+    name: 'George Wilson',
+    email: 'george.wilson@example.com',
+    phone: '+1 (555) 888-9999',
+    status: 'booked',
+    roomId: 'room-202',
+    reservationStart: '2024-07-15T15:00:00',
+    reservationEnd: '2024-07-20T11:00:00',
+    checkIn: '',
+    checkOut: '',
+    hotelConfigId: 'mock-hotel-1',
+    keepOpen: true,
+  },
+  {
+    id: 'guest-8',
+    name: 'Hannah Miller',
+    email: 'hannah.miller@example.com',
+    phone: '+1 (555) 999-0000',
+    status: 'checked-in',
+    roomId: 'room-203',
+    reservationStart: '2024-06-25T15:00:00',
+    reservationEnd: '2024-06-30T11:00:00',
+    checkIn: '2024-06-25T16:00:00',
+    checkOut: '',
+    hotelConfigId: 'mock-hotel-1',
+    keepOpen: true,
+  },
+  {
+    id: 'guest-9',
+    name: 'Ian Thompson',
+    email: 'ian.thompson@example.com',
+    phone: '+1 (555) 000-1111',
+    status: 'booked',
+    roomId: 'room-302',
+    reservationStart: '2024-08-10T15:00:00',
+    reservationEnd: '2024-08-15T11:00:00',
+    checkIn: '',
+    checkOut: '',
+    hotelConfigId: 'mock-hotel-1',
+    keepOpen: true,
+  },
+  {
+    id: 'guest-10',
+    name: 'Julia Anderson',
+    email: 'julia.anderson@example.com',
+    phone: '+1 (555) 111-2222',
+    status: 'booked',
+    roomId: 'room-501',
+    reservationStart: '2024-08-20T15:00:00',
+    reservationEnd: '2024-08-25T11:00:00',
+    checkIn: '',
+    checkOut: '',
+    hotelConfigId: 'mock-hotel-2',
+    keepOpen: true,
+  },
+  {
+    id: 'guest-11',
+    name: 'Kevin Martinez',
+    email: 'kevin.martinez@example.com',
+    phone: '+1 (555) 222-3333',
+    status: 'checked-in',
+    roomId: 'room-502',
+    reservationStart: '2024-07-20T15:00:00',
+    reservationEnd: '2024-07-25T11:00:00',
+    checkIn: '2024-07-20T16:00:00',
+    checkOut: '',
+    hotelConfigId: 'mock-hotel-2',
+    keepOpen: true,
+  }
 ];
 
 // Mock handlers
@@ -543,7 +763,7 @@ export const handlers: HttpHandler[] = [
   http.post('/api/rooms', async ({ request }) => {
     const data = await request.json();
     const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
-    const newRoom = {
+    const newRoom = ensureRoomDefaults({
       id: `room-${Date.now()}`,
       number: typeof safeData.number === 'string' ? safeData.number : '',
       typeId: typeof safeData.typeId === 'string' ? safeData.typeId : '',
@@ -554,7 +774,8 @@ export const handlers: HttpHandler[] = [
       rate: typeof safeData.rate === 'number' ? safeData.rate : 0,
       notes: typeof safeData.notes === 'string' ? safeData.notes : '',
       hotelConfigId: currentConfigId,
-    };
+      assignedGuests: [],
+    });
     mockRooms.push(newRoom);
     return HttpResponse.json(newRoom, { status: 201 });
   }),
@@ -565,13 +786,11 @@ export const handlers: HttpHandler[] = [
     const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
     const idx = mockRooms.findIndex(r => r.id === id);
     if (idx === -1) return new HttpResponse(null, { status: 404 });
-    const updatedRoom = {
+    const updatedRoom = ensureRoomDefaults({
       ...mockRooms[idx],
       ...safeData,
       notes: typeof safeData.notes === 'string' ? safeData.notes : (mockRooms[idx].notes || ''),
-    };
-    // Ensure notes is always a string
-    updatedRoom.notes = typeof updatedRoom.notes === 'string' ? updatedRoom.notes : '';
+    });
     mockRooms[idx] = updatedRoom;
     return HttpResponse.json(updatedRoom);
   }),
@@ -620,28 +839,29 @@ export const handlers: HttpHandler[] = [
     return HttpResponse.json(updatedAction);
   }),
 
-  http.post('/api/rooms/:id/assign', async ({ params, request }: any) => {
+  http.post('/api/rooms/:id/assign', async ({ params, request }) => {
     const room = mockRooms.find(r => r.id === params.id);
     if (!room) {
       return new HttpResponse(null, { status: 404 });
     }
-
-    const { guestId, checkIn, checkOut } = await request.json() as RoomAssignRequest;
-    const updatedRoom: Room = {
-      ...room,
-      status: 'occupied' as RoomStatus,
-      currentGuest: {
-        id: guestId,
-        name: 'Guest Name', // In real app, this would come from guest data
-        checkIn,
-        checkOut,
-      },
-    };
-
-    const index = mockRooms.findIndex(r => r.id === params.id);
-    mockRooms[index] = updatedRoom;
-
-    return HttpResponse.json(updatedRoom);
+    const body = (await request.json()) as { guestId: string };
+    const guestId = body.guestId;
+    if (!guestId) {
+      return new HttpResponse('Missing guestId', { status: 400 });
+    }
+    // Add guest to assignedGuests if not already present
+    if (!room.assignedGuests.includes(guestId)) {
+      room.assignedGuests.push(guestId);
+    }
+    // Update status based on capacity and assigned guests
+    if (room.assignedGuests.length === 0) {
+      room.status = 'available' as RoomStatus;
+    } else if (room.assignedGuests.length < room.capacity) {
+      room.status = (room.status.startsWith('occupied') ? 'partially-occupied' : 'partially-reserved') as RoomStatus;
+    } else {
+      room.status = (room.status.startsWith('reserved') ? 'reserved' : 'occupied') as RoomStatus;
+    }
+    return HttpResponse.json(room);
   }),
 
   // Mock GET /api/hotel/config/current
@@ -722,8 +942,8 @@ export const handlers: HttpHandler[] = [
     if (!Array.isArray(data)) {
       return new HttpResponse('Invalid payload', { status: 400 });
     }
-    const createdRooms = data.map((room: any) => {
-      const newRoom = {
+    const createdRooms = data.map((room) => {
+      const newRoom = ensureRoomDefaults({
         id: `room-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         number: typeof room.number === 'string' ? room.number : '',
         typeId: typeof room.typeId === 'string' ? room.typeId : '',
@@ -734,7 +954,8 @@ export const handlers: HttpHandler[] = [
         rate: typeof room.rate === 'number' ? room.rate : 0,
         notes: typeof room.notes === 'string' ? room.notes : '',
         hotelConfigId: currentConfigId,
-      };
+        assignedGuests: [],
+      });
       mockRooms.push(newRoom);
       return newRoom;
     });
@@ -750,7 +971,87 @@ export const handlers: HttpHandler[] = [
     if (!guest) return new HttpResponse(null, { status: 404 });
     return HttpResponse.json(guest);
   }),
+  http.post('/api/guests', async ({ request }) => {
+    const data = await request.json();
+    const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+    const newGuest = ensureGuestDefaults({
+      id: `guest-${Date.now()}`,
+      hotelConfigId: currentConfigId,
+      name: safeData.name || '',
+      email: safeData.email || '',
+      phone: safeData.phone || '',
+      status: safeData.status || 'booked',
+      roomId: safeData.roomId || '',
+      reservationStart: safeData.reservationStart || '',
+      reservationEnd: safeData.reservationEnd || '',
+      checkIn: safeData.checkIn || '',
+      checkOut: safeData.checkOut || '',
+      keepOpen: typeof safeData.keepOpen === 'boolean' ? safeData.keepOpen : false,
+    });
+    mockGuests.push(newGuest);
+    return HttpResponse.json(newGuest, { status: 201 });
+  }),
+  http.patch('/api/guests/:id', async ({ params, request }) => {
+    const guest = mockGuests.find(g => g.id === params.id && g.hotelConfigId === currentConfigId);
+    if (!guest) return new HttpResponse(null, { status: 404 });
+    const updates = await request.json();
+    Object.assign(guest, ensureGuestDefaults(updates));
+    // Sync room status after guest update
+    if (guest.roomId) {
+      const room = mockRooms.find(r => r.id === guest.roomId && r.hotelConfigId === guest.hotelConfigId);
+      recalculateRoomStatus(room);
+    }
+    return HttpResponse.json(guest);
+  }),
 ];
 
 // Ensure all mockRooms have notes: '' if missing
-mockRooms.forEach(room => { if (typeof room.notes !== 'string') room.notes = ''; }); 
+mockRooms.forEach(room => { if (typeof room.notes !== 'string') room.notes = ''; });
+
+// Ensure all Room objects have assignedGuests (for dynamic creation)
+function ensureRoomDefaults(room: any) {
+  return {
+    ...room,
+    assignedGuests: Array.isArray(room.assignedGuests) ? room.assignedGuests : [],
+    notes: typeof room.notes === 'string' ? room.notes : '',
+  };
+}
+
+// Ensure all Guest objects have keepOpen (for dynamic creation)
+function ensureGuestDefaults(guest: any) {
+  return {
+    ...guest,
+    keepOpen: typeof guest.keepOpen === 'boolean' ? guest.keepOpen : false,
+  };
+}
+
+// Utility to recalculate room status based on assigned guests' statuses
+function recalculateRoomStatus(room: Room | undefined) {
+  if (!room) return;
+  const guests = mockGuests.filter(g => g.roomId === room.id && g.hotelConfigId === room.hotelConfigId);
+  const capacity = room.capacity || 1;
+  if (guests.length === 0) {
+    room.status = 'available' as RoomStatus;
+    room.assignedGuests = [];
+    return;
+  }
+  room.assignedGuests = guests.map(g => g.id);
+  const allCheckedOut = guests.every(g => g.status === 'checked-out');
+  const allCheckedIn = guests.every(g => g.status === 'checked-in');
+  const allBooked = guests.every(g => g.status === 'booked');
+  const checkedInCount = guests.filter(g => g.status === 'checked-in').length;
+  const bookedCount = guests.filter(g => g.status === 'booked').length;
+  if (allCheckedOut) {
+    room.status = 'cleaning' as RoomStatus;
+  } else if (allCheckedIn && guests.length === capacity) {
+    room.status = 'occupied' as RoomStatus;
+  } else if (allBooked && guests.length === capacity) {
+    room.status = 'reserved' as RoomStatus;
+  } else if (checkedInCount > 0) {
+    room.status = 'partially-occupied' as RoomStatus;
+  } else if (bookedCount > 0) {
+    room.status = 'partially-reserved' as RoomStatus;
+  } else {
+    room.status = 'available' as RoomStatus;
+  }
+} 
