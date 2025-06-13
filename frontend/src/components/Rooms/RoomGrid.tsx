@@ -11,6 +11,12 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
 } from '@mui/material';
 import {
   MoreVert as MoreIcon,
@@ -22,11 +28,13 @@ import {
 } from '@mui/icons-material';
 import type { Room } from '../../types/room';
 import type { RoomType, Floor, HotelFeature } from '../../types/hotel';
-import { useCreateRoomAction } from '../../services/roomService';
+import { useCreateRoomAction, useUpdateRoom } from '../../services/roomService';
 import Tooltip from '@mui/material/Tooltip';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CircleIcon from '@mui/icons-material/Circle';
+import BuildIcon from '@mui/icons-material/Build';
+import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 
 interface RoomGridProps {
   rooms: Room[];
@@ -34,12 +42,18 @@ interface RoomGridProps {
   floors: Floor[];
   features: HotelFeature[];
   mapView?: boolean;
+  selectedRoomId?: string | null;
+  onSelectRoom?: (roomId: string) => void;
 }
 
-const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features, mapView = false }) => {
+const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features, mapView = false, selectedRoomId, onSelectRoom }) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [selectedRoom, setSelectedRoom] = React.useState<Room | null>(null);
+  const [editRoom, setEditRoom] = React.useState<Room | null>(null);
+  const [viewRoom, setViewRoom] = React.useState<Room | null>(null);
   const createRoomAction = useCreateRoomAction();
+  const updateRoom = useUpdateRoom();
+  const [editRoomState, setEditRoomState] = React.useState<Room | null>(null);
 
   //  Memoize a map of floorId to floor for fast and always up-to-date lookup
   const floorMap = React.useMemo(() => {
@@ -54,6 +68,10 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
     for (const f of features) map[f.id] = f.name;
     return map;
   }, [features]);
+
+  React.useEffect(() => {
+    if (editRoom) setEditRoomState(editRoom);
+  }, [editRoom]);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, room: Room) => {
     setAnchorEl(event.currentTarget);
@@ -85,20 +103,29 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
       case 'occupied':
         return 'error.main';
       case 'maintenance':
-        return 'warning.main';
+        return '#FFD600';
       case 'cleaning':
         return 'info.main';
       case 'reserved':
-        return 'secondary.main';
+        return '#616161';
       case 'partially-occupied':
         return 'warning.dark';
       case 'partially-reserved':
-        return 'secondary.dark';
+        return '#BDBDBD';
       default:
         return 'grey.400';
     }
   };
 
+  const handleSetMaintenance = async (room: Room) => {
+    await fetch(`/api/rooms/${room.id}/maintenance`, { method: 'PATCH' });
+    window.location.reload();
+  };
+
+  const handleTerminateReservation = async (room: Room) => {
+    await fetch(`/api/rooms/${room.id}/terminate`, { method: 'POST' });
+    window.location.reload();
+  };
 
   if (mapView) {
     return (
@@ -108,16 +135,23 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
             const roomType = roomTypes.find(rt => rt.id === room.typeId);
             const floor = floorMap[room.floorId];
             const statusColor = getStatusColor(room.status);
+            const isSelected = selectedRoomId === room.id;
             return (
-              <Card key={room.id} sx={{
-                width: 220,
-                minWidth: 220,
-                margin: '0 auto',
-                transition: 'box-shadow 0.2s',
-                '&:hover': { boxShadow: 6, borderColor: 'primary.main' },
-                border: 1,
-                borderColor: 'grey.200',
-              }}>
+              <Card
+                key={room.id}
+                onClick={() => onSelectRoom && onSelectRoom(room.id)}
+                sx={{
+                  width: 220,
+                  minWidth: 220,
+                  margin: '0 auto',
+                  transition: 'box-shadow 0.2s',
+                  '&:hover': { boxShadow: 6, borderColor: 'primary.main' },
+                  border: isSelected ? '2px solid #1976d2' : undefined,
+                  borderColor: 'grey.200',
+                  cursor: 'pointer',
+                  backgroundColor: isSelected ? 'rgba(25, 118, 210, 0.08)' : undefined,
+                }}
+              >
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                     <Box>
@@ -132,13 +166,23 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
                     </Box>
                     <Box>
                       <Tooltip title="View Details" arrow>
-                        <IconButton size="small">
+                        <IconButton size="small" onClick={() => setViewRoom(room)}>
                           <VisibilityIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Edit Room" arrow>
-                        <IconButton size="small">
+                        <IconButton size="small" onClick={() => setEditRoom(room)}>
                           <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Set to Maintenance" arrow>
+                        <IconButton size="small" onClick={() => handleSetMaintenance(room)}>
+                          <BuildIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Terminate Reservation" arrow>
+                        <IconButton size="small" onClick={() => handleTerminateReservation(room)}>
+                          <DeleteForeverIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                     </Box>
@@ -227,131 +271,78 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
   }
 
   return (
-    <Box sx={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-      gap: 2,
-    }}>
+    <Grid container spacing={2}>
       {rooms.map((room) => {
+        const isSelected = selectedRoomId === room.id;
         const roomType = roomTypes.find(rt => rt.id === room.typeId);
-        const floor = floorMap[room.floorId];
+        const floor = floors.find(f => f.id === room.floorId);
         const statusColor = getStatusColor(room.status);
         return (
-          <Card key={room.id} sx={{
-            minWidth: 220,
-            maxWidth: 1,
-            margin: '0 auto',
-            height: '100%',
-            transition: 'box-shadow 0.2s',
-            '&:hover': { boxShadow: 6, borderColor: 'primary.main' },
-            border: 1,
-            borderColor: 'grey.200',
-          }}>
-            <CardContent>
-              <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                <Box>
-                  <Typography variant="h6" gutterBottom>
-                    Room {room.number}
-                  </Typography>
-                  <Tooltip title={roomType ? roomType.name : room.typeId} arrow>
+          <Grid item xs={12} sm={6} md={4} lg={3} key={room.id}>
+            <Card
+              onClick={() => onSelectRoom && onSelectRoom(room.id)}
+              sx={{
+                border: isSelected ? '2px solid #1976d2' : undefined,
+                boxShadow: isSelected ? 6 : undefined,
+                cursor: 'pointer',
+                backgroundColor: isSelected ? 'rgba(25, 118, 210, 0.08)' : undefined,
+                transition: 'box-shadow 0.2s, border 0.2s',
+              }}
+            >
+              <CardContent>
+                <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+                  <Box>
+                    <Typography variant="h6" gutterBottom>
+                      Room {room.number}
+                    </Typography>
                     <Typography variant="body2" color="textSecondary">
                       {roomType ? roomType.name : room.typeId}
                     </Typography>
-                  </Tooltip>
+                  </Box>
                 </Box>
-                <Box>
-                  <Tooltip title="View Details" arrow>
-                    <IconButton size="small">
-                      <VisibilityIcon fontSize="small" />
-                    </IconButton>
+                <Box mt={2} display="flex" alignItems="center" gap={1}>
+                  <Tooltip title={room.status.charAt(0).toUpperCase() + room.status.slice(1)} arrow>
+                    <CircleIcon sx={{ color: statusColor, fontSize: 18 }} />
                   </Tooltip>
-                  <Tooltip title="Edit Room" arrow>
-                    <IconButton size="small">
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
-              </Box>
-              <Box mt={2} display="flex" alignItems="center" gap={1}>
-                <Tooltip title={room.status.charAt(0).toUpperCase() + room.status.slice(1)} arrow>
-                  <CircleIcon sx={{ color: statusColor, fontSize: 18 }} />
-                </Tooltip>
-                <Chip
-                  label={floor ? `Floor ${floor.number} - ${floor.name}` : `Floor ${room.floorId}`}
-                  variant="outlined"
-                  size="small"
-                />
-              </Box>
-              <Box mt={2}>
-                <Typography variant="body2">
-                  Capacity: {room.capacity} persons
-                </Typography>
-                <Typography variant="body2">
-                  Rate: ${room.rate}/night
-                </Typography>
-              </Box>
-              {room.notes && (
-                <Box mt={2}>
-                  <Tooltip title={room.notes} arrow>
-                    <Typography variant="body2" color="textSecondary" noWrap>
-                      Notes: {room.notes}
-                    </Typography>
-                  </Tooltip>
-                </Box>
-              )}
-              <Box mt={2} display="flex" flexWrap="wrap" gap={0.5}>
-                {room.features.map((featureId) => (
                   <Chip
-                    key={featureId}
-                    label={featureMap[featureId] || featureId}
-                    size="small"
+                    label={floor ? `Floor ${floor.number} - ${floor.name}` : `Floor ${room.floorId}`}
                     variant="outlined"
+                    size="small"
                   />
-                ))}
-              </Box>
-            </CardContent>
-          </Card>
+                </Box>
+                <Box mt={2}>
+                  <Typography variant="body2">
+                    Capacity: {room.capacity} persons
+                  </Typography>
+                  <Typography variant="body2">
+                    Rate: ${room.rate}/night
+                  </Typography>
+                </Box>
+                {room.notes && (
+                  <Box mt={2}>
+                    <Tooltip title={room.notes} arrow>
+                      <Typography variant="body2" color="textSecondary" noWrap>
+                        Notes: {room.notes}
+                      </Typography>
+                    </Tooltip>
+                  </Box>
+                )}
+                <Box mt={2} display="flex" flexWrap="wrap" gap={0.5}>
+                  {room.features.map((featureId) => (
+                    <Chip
+                      key={featureId}
+                      label={featureId}
+                      size="small"
+                      variant="outlined"
+                    />
+                  ))}
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
         );
       })}
-
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-      >
-        <MenuItem onClick={() => handleAction('cleaning')}>
-          <ListItemIcon>
-            <CleaningIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Request Cleaning</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => handleAction('maintenance')}>
-          <ListItemIcon>
-            <MaintenanceIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Request Maintenance</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => handleAction('check-in')}>
-          <ListItemIcon>
-            <CheckInIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Check In</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => handleAction('check-out')}>
-          <ListItemIcon>
-            <CheckOutIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Check Out</ListItemText>
-        </MenuItem>
-        <MenuItem>
-          <ListItemIcon>
-            <InfoIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>View Details</ListItemText>
-        </MenuItem>
-      </Menu>
-      
-    </Box>
+    </Grid>
   );
 };
 

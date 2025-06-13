@@ -23,6 +23,7 @@ export interface Room {
   lastMaintenance?: string;
   assignedGuests: string[];
   notes: string;
+  keepOpen?: boolean;
 }
 
 export interface RoomAction {

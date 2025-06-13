@@ -10,6 +10,7 @@ import Login from './components/Auth/Login';
 import CommunicationInterface from './components/Communications/CommunicationInterface';
 import RoomManagement from './components/Rooms/RoomManagement';
 import GuestManagement from './components/GuestManagement';
+import ReservationHistoryPage from './pages/ReservationHistoryPage';
 import { AuthProvider } from './contexts/AuthContext';
 
 // Create a client
@@ -80,6 +81,14 @@ const router = createBrowserRouter(
       element: (
         <Layout>
           <GuestManagement />
+        </Layout>
+      ),
+    },
+    {
+      path: '/history',
+      element: (
+        <Layout>
+          <ReservationHistoryPage />
         </Layout>
       ),
     },

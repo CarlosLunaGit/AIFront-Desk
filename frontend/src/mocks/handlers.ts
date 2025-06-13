@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw';
 import type { HttpHandler } from 'msw';
 import type { Room, RoomAction, RoomStats, RoomStatus } from '../types/room';
 import type { HotelConfiguration, HotelConfigDocument, HotelConfigFormData } from '../types/hotel';
+import type { GuestStatus, Guest } from '../types/guest';
 
 // Type definitions for our API
 interface MessageRequest {
@@ -676,6 +677,49 @@ const mockGuests = [
   }
 ];
 
+// Mock in-memory store for reservation history
+let reservationHistory: Array<{
+  id: string;
+  roomId: string;
+  timestamp: string;
+  action: 'status_change' | 'guest_assigned' | 'guest_removed' | 'guest_status_change';
+  previousState: {
+    roomStatus?: RoomStatus;
+    guestStatus?: GuestStatus;
+    guestId?: string;
+  };
+  newState: {
+    roomStatus?: RoomStatus;
+    guestStatus?: GuestStatus;
+    guestId?: string;
+  };
+  performedBy: string;
+  notes?: string;
+}> = [];
+
+// Helper functions for history logging
+const addHistoryEntry = (entry: Omit<typeof reservationHistory[0], 'id' | 'timestamp'>) => {
+  const newEntry = {
+    ...entry,
+    id: Math.random().toString(36).substr(2, 9),
+    timestamp: new Date().toISOString(),
+  };
+  reservationHistory.push(newEntry);
+  return newEntry;
+};
+
+const getRoomHistory = (roomId: string) => {
+  return reservationHistory
+    .filter(entry => entry.roomId === roomId)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+};
+
+const getAllHistory = () => {
+  return [...reservationHistory].sort((a, b) => 
+    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+};
+
 // Mock handlers
 export const handlers: HttpHandler[] = [
   // Dashboard stats (dynamic per current config)
@@ -844,14 +888,22 @@ export const handlers: HttpHandler[] = [
     if (!room) {
       return new HttpResponse(null, { status: 404 });
     }
-    const body = (await request.json()) as { guestId: string };
-    const guestId = body.guestId;
-    if (!guestId) {
-      return new HttpResponse('Missing guestId', { status: 400 });
+    const body = await request.json() as { guestId: string };
+    if (!body || typeof body.guestId !== 'string') {
+      return new HttpResponse('Missing or invalid guestId', { status: 400 });
     }
+    // Log the guest assignment
+    addHistoryEntry({
+      roomId: room.id,
+      action: 'guest_assigned',
+      previousState: {},
+      newState: { guestId: body.guestId },
+      performedBy: 'system',
+      notes: 'Guest assigned via API',
+    });
     // Add guest to assignedGuests if not already present
-    if (!room.assignedGuests.includes(guestId)) {
-      room.assignedGuests.push(guestId);
+    if (!room.assignedGuests.includes(body.guestId)) {
+      room.assignedGuests.push(body.guestId);
     }
     // Update status based on capacity and assigned guests
     if (room.assignedGuests.length === 0) {
@@ -989,19 +1041,180 @@ export const handlers: HttpHandler[] = [
       keepOpen: typeof safeData.keepOpen === 'boolean' ? safeData.keepOpen : false,
     });
     mockGuests.push(newGuest);
+    // Log guest assignment if roomId is present
+    if (newGuest.roomId) {
+      addHistoryEntry({
+        roomId: newGuest.roomId,
+        action: 'guest_assigned',
+        previousState: {},
+        newState: { guestId: newGuest.id },
+        performedBy: 'system',
+        notes: 'Guest assigned via guest creation',
+      });
+      const room = mockRooms.find(r => r.id === newGuest.roomId && r.hotelConfigId === newGuest.hotelConfigId);
+      recalculateRoomStatus(room, 'system', 'Triggered by guest assignment');
+    }
     return HttpResponse.json(newGuest, { status: 201 });
   }),
   http.patch('/api/guests/:id', async ({ params, request }) => {
-    const guest = mockGuests.find(g => g.id === params.id && g.hotelConfigId === currentConfigId);
-    if (!guest) return new HttpResponse(null, { status: 404 });
-    const updates = await request.json();
-    Object.assign(guest, ensureGuestDefaults(updates));
+    const guest = mockGuests.find(g => g.id === params.id);
+    if (!guest) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    const body = await request.json() as Partial<Guest>;
+    if (!body) {
+      return new HttpResponse('Invalid request body', { status: 400 });
+    }
+    const previousStatus = guest.status as GuestStatus;
+    Object.assign(guest, ensureGuestDefaults(body));
+    // Log the guest status change if status was updated
+    if (body.status && body.status !== previousStatus) {
+      // Validate that the new status is a valid GuestStatus
+      if (!['booked', 'checked-in', 'checked-out'].includes(body.status)) {
+        return new HttpResponse('Invalid guest status', { status: 400 });
+      }
+      addHistoryEntry({
+        roomId: guest.roomId,
+        action: 'guest_status_change',
+        previousState: { 
+          guestId: guest.id, 
+          guestStatus: previousStatus as GuestStatus 
+        },
+        newState: { 
+          guestId: guest.id, 
+          guestStatus: body.status as GuestStatus 
+        },
+        performedBy: 'system',
+        notes: 'Guest status updated via API',
+      });
+    }
     // Sync room status after guest update
     if (guest.roomId) {
       const room = mockRooms.find(r => r.id === guest.roomId && r.hotelConfigId === guest.hotelConfigId);
-      recalculateRoomStatus(room);
+      recalculateRoomStatus(room, 'system', 'Triggered by guest status change');
     }
     return HttpResponse.json(guest);
+  }),
+  http.delete('/api/guests/:id', ({ params }) => {
+    const idx = mockGuests.findIndex(g => g.id === params.id);
+    if (idx === -1) return new HttpResponse(null, { status: 404 });
+    const guest = mockGuests[idx];
+    mockGuests.splice(idx, 1);
+    // Recalculate room status if guest was assigned to a room
+    if (guest.roomId) {
+      const room = mockRooms.find(r => r.id === guest.roomId && r.hotelConfigId === guest.hotelConfigId);
+      recalculateRoomStatus(room, 'system', 'Guest removed via API');
+    }
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.patch('/api/rooms/:id/maintenance', ({ params }) => {
+    const room = mockRooms.find(r => r.id === params.id);
+    if (!room) return new HttpResponse(null, { status: 404 });
+    room.status = 'maintenance';
+    return HttpResponse.json(room);
+  }),
+
+  http.post('/api/rooms/:id/terminate', ({ params }) => {
+    const room = mockRooms.find(r => r.id === params.id);
+    if (!room) return new HttpResponse(null, { status: 404 });
+    // Remove all assigned guests from this room and delete them
+    const guestsToRemove = mockGuests.filter(g => g.roomId === room.id && g.hotelConfigId === room.hotelConfigId);
+    guestsToRemove.forEach(g => {
+      const idx = mockGuests.findIndex(gg => gg.id === g.id);
+      if (idx !== -1) mockGuests.splice(idx, 1);
+    });
+    room.assignedGuests = [];
+    room.status = 'available';
+    (room as Room).keepOpen = false;
+    return HttpResponse.json(room);
+  }),
+
+  // Get all reservation history
+  http.get('/api/reservation-history', () => {
+    return HttpResponse.json(getAllHistory());
+  }),
+
+  // Get room-specific reservation history
+  http.get('/api/reservation-history/room/:roomId', ({ params }) => {
+    const roomId = typeof params.roomId === 'string' ? params.roomId : undefined;
+    if (!roomId) {
+      return new HttpResponse('Invalid room ID', { status: 400 });
+    }
+    return HttpResponse.json(getRoomHistory(roomId));
+  }),
+
+  // Room status change handler
+  http.patch('/api/rooms/:id/status', async ({ params, request }) => {
+    const roomId = typeof params.id === 'string' ? params.id : undefined;
+    if (!roomId) {
+      return new HttpResponse('Invalid room ID', { status: 400 });
+    }
+    const room = mockRooms.find(r => r.id === roomId);
+    if (!room) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    const body = await request.json() as { status: RoomStatus };
+    if (!body || typeof body.status !== 'string' || !['available', 'occupied', 'maintenance', 'cleaning', 'reserved', 'partially-reserved', 'partially-occupied'].includes(body.status)) {
+      return new HttpResponse('Invalid status', { status: 400 });
+    }
+    const previousStatus = room.status;
+    room.status = body.status;
+    // Log the status change
+    addHistoryEntry({
+      roomId: room.id,
+      action: 'status_change',
+      previousState: { roomStatus: previousStatus },
+      newState: { roomStatus: body.status },
+      performedBy: 'system',
+      notes: 'Status updated via API',
+    });
+    return HttpResponse.json(room);
+  }),
+
+  // Guest removal handler
+  http.delete('/api/rooms/:id/guests/:guestId', async ({ params }) => {
+    const roomId = typeof params.id === 'string' ? params.id : undefined;
+    const guestId = typeof params.guestId === 'string' ? params.guestId : undefined;
+    if (!roomId || !guestId) {
+      return new HttpResponse('Invalid room or guest ID', { status: 400 });
+    }
+    const room = mockRooms.find(r => r.id === roomId);
+    if (!room) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    // Log the guest removal
+    addHistoryEntry({
+      roomId: room.id,
+      action: 'guest_removed',
+      previousState: { guestId },
+      newState: {},
+      performedBy: 'system',
+      notes: 'Guest removed via API',
+    });
+    // ... rest of existing removal logic ...
+    return HttpResponse.json(room);
+  }),
+
+  // Set room to cleaning
+  http.patch('/api/rooms/:id/cleaning', ({ params }) => {
+    const room = mockRooms.find(r => r.id === params.id);
+    if (!room) return new HttpResponse(null, { status: 404 });
+    // Only allow if not already cleaning
+    if (room.status === 'cleaning') {
+      return new HttpResponse('Room is already being cleaned', { status: 400 });
+    }
+    const previousStatus = room.status;
+    room.status = 'cleaning';
+    addHistoryEntry({
+      roomId: room.id,
+      action: 'status_change',
+      previousState: { roomStatus: previousStatus },
+      newState: { roomStatus: 'cleaning' },
+      performedBy: 'system',
+      notes: 'Room set to cleaning via API',
+    });
+    return HttpResponse.json(room);
   }),
 ];
 
@@ -1026,32 +1239,53 @@ function ensureGuestDefaults(guest: any) {
 }
 
 // Utility to recalculate room status based on assigned guests' statuses
-function recalculateRoomStatus(room: Room | undefined) {
+function recalculateRoomStatus(room: Room | undefined, performedBy: string = 'system', notes: string = 'Room status recalculated') {
   if (!room) return;
+  const prevStatus = room.status;
   const guests = mockGuests.filter(g => g.roomId === room.id && g.hotelConfigId === room.hotelConfigId);
   const capacity = room.capacity || 1;
   if (guests.length === 0) {
     room.status = 'available' as RoomStatus;
     room.assignedGuests = [];
-    return;
-  }
-  room.assignedGuests = guests.map(g => g.id);
-  const allCheckedOut = guests.every(g => g.status === 'checked-out');
-  const allCheckedIn = guests.every(g => g.status === 'checked-in');
-  const allBooked = guests.every(g => g.status === 'booked');
-  const checkedInCount = guests.filter(g => g.status === 'checked-in').length;
-  const bookedCount = guests.filter(g => g.status === 'booked').length;
-  if (allCheckedOut) {
-    room.status = 'cleaning' as RoomStatus;
-  } else if (allCheckedIn && guests.length === capacity) {
-    room.status = 'occupied' as RoomStatus;
-  } else if (allBooked && guests.length === capacity) {
-    room.status = 'reserved' as RoomStatus;
-  } else if (checkedInCount > 0) {
-    room.status = 'partially-occupied' as RoomStatus;
-  } else if (bookedCount > 0) {
-    room.status = 'partially-reserved' as RoomStatus;
+    room.keepOpen = false;
   } else {
-    room.status = 'available' as RoomStatus;
+    room.assignedGuests = guests.map(g => g.id);
+    // keepOpen: true if all booked guests have keepOpen true, otherwise false
+    const bookedGuests = guests.filter(g => g.status === 'booked');
+    room.keepOpen = bookedGuests.length > 0 && bookedGuests.every(g => g.keepOpen === true);
+
+    const allCheckedOut = guests.every(g => g.status === 'checked-out');
+    const allCheckedIn = guests.every(g => g.status === 'checked-in');
+    const allBooked = guests.every(g => g.status === 'booked');
+    const checkedInCount = guests.filter(g => g.status === 'checked-in').length;
+    const bookedCount = guests.filter(g => g.status === 'booked').length;
+    const atLeastOneNoKeepOpen = guests.some(g => g.status === 'booked' && g.keepOpen === false);
+    const atLeastOneCheckedIn = checkedInCount > 0;
+    const atLeastOneNotCheckedIn = guests.some(g => g.status !== 'checked-in');
+
+    if (allCheckedOut) {
+      room.status = 'cleaning' as RoomStatus;
+    } else if (allCheckedIn && guests.length === capacity) {
+      room.status = 'occupied' as RoomStatus;
+    } else if (allBooked && (atLeastOneNoKeepOpen || guests.length === capacity)) {
+      room.status = 'reserved' as RoomStatus;
+    } else if (atLeastOneCheckedIn && atLeastOneNotCheckedIn) {
+      room.status = 'partially-occupied' as RoomStatus;
+    } else if (bookedCount > 0 && !atLeastOneNoKeepOpen && guests.length < capacity) {
+      room.status = 'partially-reserved' as RoomStatus;
+    } else {
+      room.status = 'available' as RoomStatus;
+    }
+  }
+  // Log status change if it actually changed
+  if (room.status !== prevStatus) {
+    addHistoryEntry({
+      roomId: room.id,
+      action: 'status_change',
+      previousState: { roomStatus: prevStatus },
+      newState: { roomStatus: room.status },
+      performedBy,
+      notes,
+    });
   }
 } 

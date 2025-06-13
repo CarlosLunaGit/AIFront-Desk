@@ -1,0 +1,287 @@
+import React, { useState } from 'react';
+import {
+  Box,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Chip,
+  IconButton,
+  Tooltip,
+  CircularProgress,
+  Alert,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Grid,
+  Card,
+  CardContent,
+} from '@mui/material';
+import { useQuery } from '@tanstack/react-query';
+import InfoIcon from '@mui/icons-material/Info';
+import { format } from 'date-fns';
+import { HotelConfigContext } from '../components/Layout/Layout';
+import { useContext } from 'react';
+
+interface ReservationHistoryEntry {
+  id: string;
+  roomId: string;
+  timestamp: string;
+  action: 'status_change' | 'guest_assigned' | 'guest_removed' | 'guest_status_change';
+  previousState: {
+    roomStatus?: string;
+    guestStatus?: string;
+    guestId?: string;
+  };
+  newState: {
+    roomStatus?: string;
+    guestStatus?: string;
+    guestId?: string;
+  };
+  performedBy: string;
+  notes?: string;
+}
+
+const fetchAllHistory = async () => {
+  const res = await fetch('/api/reservation-history');
+  if (!res.ok) throw new Error('Failed to fetch reservation history');
+  return res.json() as Promise<ReservationHistoryEntry[]>;
+};
+
+const getActionColor = (action: ReservationHistoryEntry['action']) => {
+  switch (action) {
+    case 'status_change':
+      return 'primary';
+    case 'guest_assigned':
+      return 'success';
+    case 'guest_removed':
+      return 'error';
+    case 'guest_status_change':
+      return 'warning';
+    default:
+      return 'default';
+  }
+};
+
+const formatAction = (entry: ReservationHistoryEntry) => {
+  switch (entry.action) {
+    case 'status_change':
+      return `Room status changed from ${entry.previousState.roomStatus} to ${entry.newState.roomStatus}`;
+    case 'guest_assigned':
+      return `Guest ${entry.newState.guestId} assigned to room`;
+    case 'guest_removed':
+      return `Guest ${entry.previousState.guestId} removed from room`;
+    case 'guest_status_change':
+      return `Guest ${entry.newState.guestId} status changed from ${entry.previousState.guestStatus} to ${entry.newState.guestStatus}`;
+    default:
+      return entry.action;
+  }
+};
+
+const ReservationHistoryPage: React.FC = () => {
+  const { currentConfig } = useContext(HotelConfigContext);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [actionFilter, setActionFilter] = useState<string>('all');
+  const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
+    start: format(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+    end: format(new Date(), 'yyyy-MM-dd'),
+  });
+
+  const { data: history, isLoading, error } = useQuery({
+    queryKey: ['reservationHistory', currentConfig?.id],
+    queryFn: fetchAllHistory,
+    enabled: !!currentConfig,
+  });
+
+  const filteredHistory = history?.filter(entry => {
+    const matchesSearch = 
+      entry.roomId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      entry.performedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (entry.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+      formatAction(entry).toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesAction = actionFilter === 'all' || entry.action === actionFilter;
+
+    const entryDate = new Date(entry.timestamp);
+    const startDate = new Date(dateRange.start);
+    const endDate = new Date(dateRange.end);
+    endDate.setHours(23, 59, 59, 999); // Include the entire end date
+    const matchesDate = entryDate >= startDate && entryDate <= endDate;
+
+    return matchesSearch && matchesAction && matchesDate;
+  });
+
+  if (isLoading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" p={3}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box p={3}>
+        <Alert severity="error">{(error as Error).message}</Alert>
+      </Box>
+    );
+  }
+
+  if (!history || history.length === 0) {
+    return (
+      <Box p={3}>
+        <Typography color="textSecondary">No reservation history available.</Typography>
+      </Box>
+    );
+  }
+
+  // Calculate some stats
+  const totalEntries = filteredHistory?.length ?? 0;
+  const actionCounts = filteredHistory?.reduce((acc, entry) => {
+    acc[entry.action] = (acc[entry.action] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) ?? {};
+
+  return (
+    <Box p={3}>
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h5" gutterBottom>
+          {currentConfig ? (
+            <>Reservation History for <b>{currentConfig.name}</b></>
+          ) : (
+            'Reservation History'
+          )}
+        </Typography>
+        <Typography variant="body1" color="text.secondary" gutterBottom>
+          View and filter the complete history of room status changes, guest assignments, and check-ins/outs.
+        </Typography>
+
+        <Grid container spacing={2} sx={{ mt: 2 }}>
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              label="Search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by room, guest, or action..."
+            />
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <FormControl fullWidth>
+              <InputLabel>Action Type</InputLabel>
+              <Select
+                value={actionFilter}
+                label="Action Type"
+                onChange={(e) => setActionFilter(e.target.value)}
+              >
+                <MenuItem value="all">All Actions</MenuItem>
+                <MenuItem value="status_change">Status Changes</MenuItem>
+                <MenuItem value="guest_assigned">Guest Assignments</MenuItem>
+                <MenuItem value="guest_removed">Guest Removals</MenuItem>
+                <MenuItem value="guest_status_change">Guest Status Changes</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={2}>
+            <TextField
+              fullWidth
+              type="date"
+              label="Start Date"
+              value={dateRange.start}
+              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+          <Grid item xs={12} md={2}>
+            <TextField
+              fullWidth
+              type="date"
+              label="End Date"
+              value={dateRange.end}
+              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+        </Grid>
+
+        <Grid container spacing={2} sx={{ mt: 2 }}>
+          <Grid item xs={12} md={3}>
+            <Card>
+              <CardContent>
+                <Typography color="textSecondary" gutterBottom>Total Entries</Typography>
+                <Typography variant="h4">{totalEntries}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          {Object.entries(actionCounts).map(([action, count]) => (
+            <Grid item xs={12} md={3} key={action}>
+              <Card>
+                <CardContent>
+                  <Typography color="textSecondary" gutterBottom>
+                    {action.replace('_', ' ').toUpperCase()}
+                  </Typography>
+                  <Typography variant="h4">{count}</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </Paper>
+
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Timestamp</TableCell>
+              <TableCell>Room</TableCell>
+              <TableCell>Action</TableCell>
+              <TableCell>Details</TableCell>
+              <TableCell>Performed By</TableCell>
+              <TableCell>Notes</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredHistory?.map((entry) => (
+              <TableRow key={entry.id}>
+                <TableCell>
+                  {format(new Date(entry.timestamp), 'MMM d, yyyy HH:mm:ss')}
+                </TableCell>
+                <TableCell>{entry.roomId}</TableCell>
+                <TableCell>
+                  <Chip
+                    label={entry.action.replace('_', ' ')}
+                    color={getActionColor(entry.action)}
+                    size="small"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Typography variant="body2">
+                    {formatAction(entry)}
+                  </Typography>
+                </TableCell>
+                <TableCell>{entry.performedBy}</TableCell>
+                <TableCell>
+                  {entry.notes && (
+                    <Tooltip title={entry.notes}>
+                      <IconButton size="small">
+                        <InfoIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
+  );
+};
+
+export default ReservationHistoryPage; 

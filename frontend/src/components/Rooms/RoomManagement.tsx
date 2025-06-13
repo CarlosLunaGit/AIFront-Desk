@@ -34,6 +34,11 @@ import {
   LocalBar as MinibarIcon,
   Balcony as BalconyIcon,
   Visibility as ViewIcon,
+  Build as BuildIcon,
+  CleaningServices as CleaningIcon,
+  CheckCircle as CheckInIcon,
+  Cancel as CheckOutIcon,
+  DeleteForever as DeleteForeverIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { hotelConfigService } from '../../services/hotelConfigService';
@@ -41,14 +46,15 @@ import type { RoomTemplate, RoomType, Floor, HotelFeature } from '../../types/ho
 import { RoomStatus, RoomFilter } from '../../types/room';
 import RoomFilters from './RoomFilters';
 import RoomGrid from './RoomGrid';
-import { useRooms } from '../../services/roomService';
+import { useRooms, useUpdateRoom } from '../../services/roomService';
 import type { Room } from '../../types/room';
 import { HotelConfigContext } from '../Layout/Layout';
 import { Circle as CircleIcon } from '@mui/icons-material';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 
 const RoomManagement: React.FC = () => {
   const queryClient = useQueryClient();
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [filter, setFilter] = useState<RoomFilter>({
     status: [],
     type: [],
@@ -88,6 +94,10 @@ const RoomManagement: React.FC = () => {
     refetch: refetchRooms
   } = useRooms({ hotelConfigId: selectedConfigId });
   const isLoading = !currentConfig || roomsLoading || roomsFetching;
+  const [editRoom, setEditRoom] = useState<Room | null>(null);
+  const [viewRoom, setViewRoom] = useState<Room | null>(null);
+  const [editRoomState, setEditRoomState] = useState<Room | null>(null);
+  const updateRoom = useUpdateRoom();
 
   React.useEffect(() => {
     if (selectedConfigId && currentConfig?.id === selectedConfigId) {
@@ -103,6 +113,8 @@ const RoomManagement: React.FC = () => {
       (!search || room.number.includes(search))
     );
   }, [rooms, filterStatus, filterType, filterFloor, search]);
+
+  const selectedRoom = filteredRooms.find(r => r.id === selectedRoomId) || null;
 
   const handleBulkCreate = async () => {
     setBulkError(null);
@@ -183,6 +195,100 @@ const RoomManagement: React.FC = () => {
     } catch (e) {
       setAddError('Failed to create room.');
       setAddLoading(false);
+    }
+  };
+
+  const handleToggleMaintenance = async () => {
+    if (!selectedRoom) return;
+    if (selectedRoom.status === 'maintenance') {
+      // Unset maintenance
+      await fetch(`/api/rooms/${selectedRoom.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'available' }),
+      });
+    } else if (['available', 'cleaning'].includes(selectedRoom.status)) {
+      // Set to maintenance
+      await fetch(`/api/rooms/${selectedRoom.id}/maintenance`, { method: 'PATCH' });
+    }
+    setSelectedRoomId(null);
+    queryClient.invalidateQueries({ queryKey: ['rooms'] });
+  };
+
+  const handleToggleCleaning = async () => {
+    if (!selectedRoom) return;
+    if (selectedRoom.status === 'cleaning') {
+      // Unset cleaning
+      await fetch(`/api/rooms/${selectedRoom.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'available' }),
+      });
+    } else {
+      // Request cleaning
+      await fetch(`/api/rooms/${selectedRoom.id}/cleaning`, { method: 'PATCH' });
+    }
+    setSelectedRoomId(null);
+    queryClient.invalidateQueries({ queryKey: ['rooms'] });
+  };
+
+  const handleCheckInOut = async () => {
+    if (!selectedRoom || !selectedRoom.assignedGuests.length) return;
+    const now = new Date().toISOString();
+    if (["reserved", "partially-reserved", "partially-occupied"].includes(selectedRoom.status)) {
+      // Check In: set all assigned guests to checked-in
+      await Promise.all(selectedRoom.assignedGuests.map(guestId =>
+        fetch(`/api/guests/${guestId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ checkIn: now, status: 'checked-in' }),
+        })
+      ));
+      // Set room to occupied
+      await fetch(`/api/rooms/${selectedRoom.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'occupied' }),
+      });
+    } else if (selectedRoom.status === 'occupied') {
+      // Check Out: set all assigned guests to checked-out
+      await Promise.all(selectedRoom.assignedGuests.map(guestId =>
+        fetch(`/api/guests/${guestId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ checkOut: now, status: 'checked-out' }),
+        })
+      ));
+      // Set room to cleaning
+      await fetch(`/api/rooms/${selectedRoom.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cleaning' }),
+      });
+    }
+    setSelectedRoomId(null);
+    queryClient.invalidateQueries({ queryKey: ['rooms'] });
+  };
+
+  const handleTerminateReservation = async () => {
+    if (!selectedRoom || !selectedRoom.assignedGuests.length) return;
+    await Promise.all(selectedRoom.assignedGuests.map(guestId =>
+      fetch(`/api/guests/${guestId}`, { method: 'DELETE' })
+    ));
+    setSelectedRoomId(null);
+    queryClient.invalidateQueries({ queryKey: ['rooms'] });
+  };
+
+  const handleEditRoom = () => {
+    if (selectedRoom) {
+      setEditRoom(selectedRoom);
+      setEditRoomState(selectedRoom);
+    }
+  };
+
+  const handleViewDetails = () => {
+    if (selectedRoom) {
+      setViewRoom(selectedRoom);
     }
   };
 
@@ -275,9 +381,9 @@ const RoomManagement: React.FC = () => {
                   { label: 'Available', color: 'success.main', description: 'Room is ready for booking' },
                   { label: 'Occupied', color: 'error.main', description: 'Room is fully occupied' },
                   { label: 'Partially Occupied', color: 'warning.dark', description: 'Room has some guests checked in' },
-                  { label: 'Partially Reserved', color: 'secondary.dark', description: 'Room has some guests booked' },
-                  { label: 'Reserved', color: 'secondary.main', description: 'Room is fully booked' },
-                  { label: 'Maintenance', color: 'warning.main', description: 'Room is under maintenance' },
+                  { label: 'Partially Reserved', color: '#BDBDBD', description: 'Room has some guests booked' },
+                  { label: 'Reserved', color: '#616161', description: 'Room is fully booked' },
+                  { label: 'Maintenance', color: '#FFD600', description: 'Room is under maintenance' },
                   { label: 'Cleaning', color: 'info.main', description: 'Room is being cleaned' },
                 ].map(({ label, color, description }) => (
                   <Tooltip key={label} title={description} arrow>
@@ -292,12 +398,123 @@ const RoomManagement: React.FC = () => {
           </Paper>
         </Grid>
         <Grid item xs={12}>
+          <Box display="flex" gap={2} alignItems="center" mb={2}>
+            {/* Maintenance Button */}
+            <Tooltip title={selectedRoom ? (selectedRoom.status === 'maintenance' ? 'Unset maintenance (set to available)' : 'Set room to maintenance') : 'Select a room'}>
+              <span>
+                <Button
+                  variant={selectedRoom && selectedRoom.status === 'maintenance' ? 'outlined' : 'contained'}
+                  color={selectedRoom && selectedRoom.status === 'maintenance' ? 'success' : 'warning'}
+                  startIcon={<BuildIcon />}
+                  disabled={!selectedRoom || (!['available', 'cleaning', 'maintenance'].includes(selectedRoom.status))}
+                  onClick={handleToggleMaintenance}
+                >
+                  {selectedRoom && selectedRoom.status === 'maintenance' ? 'Unset Maintenance' : 'Set to Maintenance'}
+                </Button>
+              </span>
+            </Tooltip>
+            {/* Cleaning Button */}
+            <Tooltip title={selectedRoom ? (selectedRoom.status === 'cleaning' ? 'Unset cleaning (set to available)' : 'Request cleaning for this room') : 'Select a room'}>
+              <span>
+                <Button
+                  variant={selectedRoom && selectedRoom.status === 'cleaning' ? 'outlined' : 'contained'}
+                  color={selectedRoom && selectedRoom.status === 'cleaning' ? 'success' : 'info'}
+                  startIcon={<CleaningIcon />}
+                  disabled={!selectedRoom || (!['available', 'reserved', 'partially-reserved', 'occupied', 'partially-occupied', 'maintenance', 'cleaning'].includes(selectedRoom.status))}
+                  onClick={handleToggleCleaning}
+                >
+                  {selectedRoom && selectedRoom.status === 'cleaning' ? 'Unset Cleaning' : 'Request Cleaning'}
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip
+              title={
+                !selectedRoom
+                  ? 'Select a room'
+                  : !selectedRoom.assignedGuests.length
+                    ? 'Room has no assigned guests'
+                    : (["reserved", "partially-reserved", "partially-occupied"].includes(selectedRoom.status)
+                        ? 'Check in all guests'
+                        : (selectedRoom.status === 'occupied' ? 'Check out all guests' : 'Cannot check in/out in this state'))
+              }
+            >
+              <span>
+                <Button
+                  variant="contained"
+                  color={selectedRoom && selectedRoom.status === 'occupied' ? 'error' : 'primary'}
+                  startIcon={selectedRoom && selectedRoom.status === 'occupied' ? <CheckOutIcon /> : <CheckInIcon />}
+                  disabled={
+                    !selectedRoom ||
+                    !selectedRoom.assignedGuests.length ||
+                    !(["reserved", "partially-reserved", "partially-occupied", "occupied"].includes(selectedRoom.status))
+                  }
+                  onClick={handleCheckInOut}
+                >
+                  {selectedRoom && selectedRoom.status === 'occupied' ? 'Check Out' : 'Check In'}
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip
+              title={
+                !selectedRoom
+                  ? 'Select a room'
+                  : !selectedRoom.assignedGuests.length
+                    ? 'Room has no assigned guests'
+                    : 'Terminate reservation and delete all assigned guests'
+              }
+            >
+              <span>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteForeverIcon />}
+                  disabled={!selectedRoom || !selectedRoom.assignedGuests.length}
+                  onClick={handleTerminateReservation}
+                >
+                  Terminate Reservation
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip title={selectedRoom ? 'Edit this room' : 'Select a room to edit'}>
+              <span>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<EditIcon />}
+                  disabled={!selectedRoom}
+                  onClick={handleEditRoom}
+                >
+                  Edit Room
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip title={selectedRoom ? 'View details for this room' : 'Select a room to view details'}>
+              <span>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<VisibilityIcon />}
+                  disabled={!selectedRoom}
+                  onClick={handleViewDetails}
+                >
+                  View Details
+                </Button>
+              </span>
+            </Tooltip>
+          </Box>
           {isLoading ? (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="40vh">
               <CircularProgress />
             </Box>
           ) : view === 'grid' ? (
-            <RoomGrid rooms={filteredRooms} roomTypes={currentConfig.roomTypes} floors={currentConfig.floors} features={currentConfig.features} />
+            <RoomGrid
+              rooms={filteredRooms}
+              roomTypes={currentConfig.roomTypes}
+              floors={currentConfig.floors}
+              features={currentConfig.features}
+              selectedRoomId={selectedRoomId}
+              onSelectRoom={setSelectedRoomId}
+            />
           ) : (
             <Box>
               {currentConfig.floors.map(floor => (
@@ -448,6 +665,119 @@ const RoomManagement: React.FC = () => {
           <Button variant="contained" onClick={handleAddRoom} disabled={addLoading}>Add Room</Button>
         </DialogActions>
       </Dialog>
+      {/* Edit Room Modal */}
+      {editRoom && editRoomState && (
+        <Dialog open={!!editRoom} onClose={() => setEditRoom(null)}>
+          <DialogTitle>Edit Room</DialogTitle>
+          <DialogContent>
+            <Box display="flex" flexDirection="column" gap={2} mt={1}>
+              <TextField
+                label="Room Number"
+                value={editRoomState.number}
+                onChange={e => setEditRoomState({ ...editRoomState, number: e.target.value })}
+                fullWidth
+              />
+              <TextField
+                select
+                label="Room Type"
+                value={editRoomState.typeId}
+                onChange={e => setEditRoomState({ ...editRoomState, typeId: e.target.value })}
+                fullWidth
+              >
+                {currentConfig.roomTypes.map(rt => (
+                  <option key={rt.id} value={rt.id}>{rt.name}</option>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Floor"
+                value={editRoomState.floorId}
+                onChange={e => setEditRoomState({ ...editRoomState, floorId: e.target.value })}
+                fullWidth
+              >
+                {currentConfig.floors.map(f => (
+                  <option key={f.id} value={f.id}>{f.name} (Floor {f.number})</option>
+                ))}
+              </TextField>
+              <TextField
+                label="Capacity"
+                type="number"
+                value={editRoomState.capacity}
+                onChange={e => setEditRoomState({ ...editRoomState, capacity: Number(e.target.value) })}
+                fullWidth
+              />
+              <TextField
+                label="Rate"
+                type="number"
+                value={editRoomState.rate}
+                onChange={e => setEditRoomState({ ...editRoomState, rate: Number(e.target.value) })}
+                fullWidth
+              />
+              <TextField
+                label="Notes"
+                value={editRoomState.notes}
+                onChange={e => setEditRoomState({ ...editRoomState, notes: e.target.value })}
+                fullWidth
+              />
+              <TextField
+                select
+                label="Features"
+                value={editRoomState.features}
+                onChange={e => setEditRoomState({ ...editRoomState, features: typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value })}
+                SelectProps={{ multiple: true }}
+                fullWidth
+              >
+                {currentConfig.features.map(f => (
+                  <MenuItem key={f.id} value={f.id}>{f.name}</MenuItem>
+                ))}
+              </TextField>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEditRoom(null)}>Cancel</Button>
+            <Button
+              variant="contained"
+              onClick={async () => {
+                if (editRoomState) {
+                  await updateRoom.mutateAsync(editRoomState);
+                  setEditRoom(null);
+                }
+              }}
+            >Save</Button>
+          </DialogActions>
+        </Dialog>
+      )}
+      {/* View Room Details Modal */}
+      {viewRoom && (
+        <Dialog 
+          open={!!viewRoom} 
+          onClose={() => setViewRoom(null)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>Room Details</DialogTitle>
+          <DialogContent>
+            <Box display="flex" flexDirection="column" gap={2} mt={1}>
+              <Typography><b>Room Number:</b> {viewRoom.number}</Typography>
+              <Typography><b>Type:</b> {currentConfig.roomTypes.find(rt => rt.id === viewRoom.typeId)?.name || viewRoom.typeId}</Typography>
+              <Typography><b>Floor:</b> {currentConfig.floors.find(f => f.id === viewRoom.floorId)?.name || viewRoom.floorId}</Typography>
+              <Typography><b>Status:</b> {viewRoom.status}</Typography>
+              <Typography><b>Capacity:</b> {viewRoom.capacity}</Typography>
+              <Typography><b>Rate:</b> ${viewRoom.rate}/night</Typography>
+              <Typography><b>Notes:</b> {viewRoom.notes}</Typography>
+              <Typography><b>Features:</b> {viewRoom.features.map(fid => currentConfig.features.find(f => f.id === fid)?.name || fid).join(', ')}</Typography>
+              <Typography><b>keepOpen:</b> {viewRoom.keepOpen ? 'true' : 'false'}</Typography>
+              <Typography><b>Assigned Guests:</b></Typography>
+              <ul>
+                {viewRoom.assignedGuests.length === 0 ? <li>None</li> : viewRoom.assignedGuests.map(gid => <li key={gid}>{gid}</li>)}
+              </ul>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setViewRoom(null)}>Close</Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </Box>
   );
 };

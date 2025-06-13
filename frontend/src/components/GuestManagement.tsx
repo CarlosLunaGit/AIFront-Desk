@@ -18,6 +18,8 @@ import {
   DialogActions,
   Button,
   TextField,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -51,13 +53,13 @@ const GuestManagement: React.FC = () => {
   // State for delete confirmation
   const [deleteGuest, setDeleteGuest] = useState<any | null>(null);
   const [addGuestOpen, setAddGuestOpen] = useState(false);
-  const [newGuest, setNewGuest] = useState({ name: '', email: '', phone: '', status: 'booked', roomId: '', reservationStart: '', reservationEnd: '' });
+  const [newGuest, setNewGuest] = useState({ name: '', email: '', phone: '', status: 'booked', roomId: '', reservationStart: '', reservationEnd: '', keepOpen: false });
   const [search, setSearch] = useState('');
 
   // Fetch available rooms for assignment
   const { data: rooms = [] } = useRooms({ hotelConfigId: currentConfig?.id });
-  // Only rooms that are available (not occupied/maintenance/cleaning/reserved/checked-in)
-  const availableRooms = rooms.filter((room: any) => room.status === 'available' && !guests?.some((g: any) => g.roomId === room.id && g.status === 'checked-in'));
+  // Only rooms that are available or partially-reserved (not occupied/maintenance/cleaning/reserved/checked-in)
+  const availableRooms = rooms.filter((room: any) => (room.status === 'available' || room.status === 'partially-reserved') && !guests?.some((g: any) => g.roomId === room.id && g.status === 'checked-in'));
 
   // Filter guests by search
   const filteredGuests = Array.isArray(guests)
@@ -76,12 +78,16 @@ const GuestManagement: React.FC = () => {
     refetch();
   };
 
-  // Handler for delete (mock only)
-  const handleDelete = () => {
-    // In a real app, call a mutation here
-    alert(`Deleted guest ${deleteGuest.name}`);
-    setDeleteGuest(null);
-    refetch();
+  // Handler for delete
+  const handleDelete = async () => {
+    if (!deleteGuest) return;
+    try {
+      await api.delete(`/api/guests/${deleteGuest.id}`);
+      setDeleteGuest(null);
+      refetch();
+    } catch (err) {
+      alert('Failed to delete guest');
+    }
   };
 
   // Handler for Add Guest (POST to API)
@@ -95,9 +101,10 @@ const GuestManagement: React.FC = () => {
         reservationEnd: newGuest.reservationEnd,
         checkIn: '',
         checkOut: '',
+        keepOpen: newGuest.keepOpen,
       });
       setAddGuestOpen(false);
-      setNewGuest({ name: '', email: '', phone: '', status: 'booked', roomId: '', reservationStart: '', reservationEnd: '' });
+      setNewGuest({ name: '', email: '', phone: '', status: 'booked', roomId: '', reservationStart: '', reservationEnd: '', keepOpen: false });
       refetch();
     } catch (err) {
       alert('Failed to add guest');
@@ -265,7 +272,59 @@ const GuestManagement: React.FC = () => {
                 onChange={e => setEditGuest({ ...editGuest, phone: e.target.value })}
                 fullWidth
               />
-              {/* Add more fields as needed */}
+              <TextField
+                label="Reservation Start"
+                type="datetime-local"
+                value={editGuest.reservationStart}
+                onChange={e => setEditGuest({ ...editGuest, reservationStart: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+                required
+              />
+              <TextField
+                label="Reservation End (optional)"
+                type="datetime-local"
+                value={editGuest.reservationEnd}
+                onChange={e => setEditGuest({ ...editGuest, reservationEnd: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+              />
+              <TextField
+                select
+                label="Status"
+                value={editGuest.status}
+                onChange={e => setEditGuest({ ...editGuest, status: e.target.value })}
+                SelectProps={{ native: true }}
+                fullWidth
+              >
+                <option value="booked">Booked</option>
+                <option value="checked-in">Checked-in</option>
+                <option value="checked-out">Checked-out</option>
+              </TextField>
+              <TextField
+                select
+                label="Room"
+                value={editGuest.roomId}
+                onChange={e => setEditGuest({ ...editGuest, roomId: e.target.value })}
+                SelectProps={{ native: true }}
+                fullWidth
+              >
+                <option value="">-- Select Room --</option>
+                {availableRooms.map((room: any) => (
+                  <option key={room.id} value={room.id}>
+                    {room.number}
+                  </option>
+                ))}
+              </TextField>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={editGuest.keepOpen}
+                    onChange={e => setEditGuest({ ...editGuest, keepOpen: e.target.checked })}
+                  />
+                }
+                label="Keep Room Open to add more guests"
+              />
             </Box>
           )}
         </DialogContent>
@@ -354,6 +413,15 @@ const GuestManagement: React.FC = () => {
                 </option>
               ))}
             </TextField>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={newGuest.keepOpen}
+                  onChange={e => setNewGuest({ ...newGuest, keepOpen: e.target.checked })}
+                />
+              }
+              label="Keep Room Open to add more guests"
+            />
           </Box>
         </DialogContent>
         <DialogActions>
