@@ -81,17 +81,21 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
   const getStatusColor = (status: Room['status']) => {
     switch (status) {
       case 'available':
-        return 'success';
+        return 'success.main';
       case 'occupied':
-        return 'error';
+        return 'error.main';
       case 'maintenance':
-        return 'warning';
+        return 'warning.main';
       case 'cleaning':
-        return 'info';
+        return 'info.main';
       case 'reserved':
-        return 'secondary';
+        return 'secondary.main';
+      case 'partially-occupied':
+        return 'warning.dark';
+      case 'partially-reserved':
+        return 'secondary.dark';
       default:
-        return 'default';
+        return 'grey.400';
     }
   };
 
@@ -103,13 +107,7 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
           {rooms.map((room) => {
             const roomType = roomTypes.find(rt => rt.id === room.typeId);
             const floor = floorMap[room.floorId];
-            const statusColor = {
-              available: 'success.main',
-              occupied: 'error.main',
-              maintenance: 'warning.main',
-              cleaning: 'info.main',
-              reserved: 'secondary.main',
-            }[room.status] || 'grey.400';
+            const statusColor = getStatusColor(room.status);
             return (
               <Card key={room.id} sx={{
                 width: 220,
@@ -237,13 +235,7 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
       {rooms.map((room) => {
         const roomType = roomTypes.find(rt => rt.id === room.typeId);
         const floor = floorMap[room.floorId];
-        const statusColor = {
-          available: 'success.main',
-          occupied: 'error.main',
-          maintenance: 'warning.main',
-          cleaning: 'info.main',
-          reserved: 'secondary.main',
-        }[room.status] || 'grey.400';
+        const statusColor = getStatusColor(room.status);
         return (
           <Card key={room.id} sx={{
             minWidth: 220,

@@ -1,4 +1,11 @@
-export type RoomStatus = 'available' | 'occupied' | 'maintenance' | 'cleaning' | 'reserved';
+export type RoomStatus =
+  | 'available'
+  | 'partially-reserved'
+  | 'reserved'
+  | 'partially-occupied'
+  | 'occupied'
+  | 'cleaning'
+  | 'maintenance';
 export type RoomType = 'standard' | 'deluxe' | 'suite' | 'presidential';
 export type RoomFeature = 'wifi' | 'minibar' | 'balcony' | 'ocean-view' | 'jacuzzi' | 'king-bed';
 
@@ -14,12 +21,7 @@ export interface Room {
   hotelConfigId: string;
   lastCleaned?: string;
   lastMaintenance?: string;
-  currentGuest?: {
-    id: string;
-    name: string;
-    checkIn: string;
-    checkOut: string;
-  };
+  assignedGuests: string[];
   notes: string;
 }
 
@@ -56,4 +58,19 @@ export interface RoomStats {
   byFloor: Record<number, number>;
   occupancyRate: number;
   averageStayDuration: number;
+}
+
+export interface Guest {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: 'booked' | 'checked-in' | 'checked-out';
+  roomId: string;
+  reservationStart: string;
+  reservationEnd: string;
+  checkIn: string;
+  checkOut: string;
+  hotelConfigId: string;
+  keepOpen: boolean;
 } 

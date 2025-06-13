@@ -23,6 +23,7 @@ import {
   CircularProgress,
   ToggleButtonGroup,
   ToggleButton,
+  Tooltip,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -269,18 +270,22 @@ const RoomManagement: React.FC = () => {
                 <TextField size="small" label="Search" value={search} onChange={e => setSearch(e.target.value)} />
               </Box>
               {/* Status legend to the right */}
-              <Box display="flex" gap={2} alignItems="center">
+              <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
                 {[
-                  { label: 'Available', color: 'success.main' },
-                  { label: 'Occupied', color: 'error.main' },
-                  { label: 'Maintenance', color: 'warning.main' },
-                  { label: 'Cleaning', color: 'info.main' },
-                  { label: 'Reserved', color: 'secondary.main' },
-                ].map(({ label, color }) => (
-                  <Box key={label} display="flex" alignItems="center" gap={0.5}>
-                    <CircleIcon sx={{ color, fontSize: 18 }} />
-                    <Typography variant="body2">{label}</Typography>
-                  </Box>
+                  { label: 'Available', color: 'success.main', description: 'Room is ready for booking' },
+                  { label: 'Occupied', color: 'error.main', description: 'Room is fully occupied' },
+                  { label: 'Partially Occupied', color: 'warning.dark', description: 'Room has some guests checked in' },
+                  { label: 'Partially Reserved', color: 'secondary.dark', description: 'Room has some guests booked' },
+                  { label: 'Reserved', color: 'secondary.main', description: 'Room is fully booked' },
+                  { label: 'Maintenance', color: 'warning.main', description: 'Room is under maintenance' },
+                  { label: 'Cleaning', color: 'info.main', description: 'Room is being cleaned' },
+                ].map(({ label, color, description }) => (
+                  <Tooltip key={label} title={description} arrow>
+                    <Box display="flex" alignItems="center" gap={0.5}>
+                      <CircleIcon sx={{ color, fontSize: 18 }} />
+                      <Typography variant="body2">{label}</Typography>
+                    </Box>
+                  </Tooltip>
                 ))}
               </Box>
             </Box>
