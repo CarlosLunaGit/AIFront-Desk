@@ -106,4 +106,36 @@ api.interceptors.response.use(
 
     return Promise.reject(error);
   }
-); 
+);
+
+// Reservation API
+export const getReservations = async () => {
+  const { data } = await api.get('/api/reservations');
+  return data;
+};
+
+export const createReservation = async (reservation: any) => {
+  const { data } = await api.post('/api/reservations', reservation);
+  return data;
+};
+
+export const updateReservation = async (id: string, reservation: any) => {
+  const { data } = await api.patch(`/api/reservations/${id}`, reservation);
+  return data;
+};
+
+export const deleteReservation = async (id: string) => {
+  await api.delete(`/api/reservations/${id}`);
+};
+
+// Guest API
+export const getGuests = async () => {
+  const { data } = await api.get('/api/guests');
+  return data;
+};
+
+// Room API
+export const getRooms = async () => {
+  const { data } = await api.get('/api/rooms');
+  return data;
+}; 

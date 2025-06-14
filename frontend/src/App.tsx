@@ -11,7 +11,12 @@ import CommunicationInterface from './components/Communications/CommunicationInt
 import RoomManagement from './components/Rooms/RoomManagement';
 import GuestManagement from './components/GuestManagement';
 import ReservationHistoryPage from './pages/ReservationHistoryPage';
+import ReservationsPage from './pages/ReservationsPage';
+import ActivityHistoryPage from './pages/ActivityHistoryPage';
+import ReservationsHistoryPage from './pages/ReservationsHistoryPage';
 import { AuthProvider } from './contexts/AuthContext';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -37,7 +42,7 @@ const router = createBrowserRouter(
       element: <Login />,
     },
     {
-      path: '/',
+      path: '/dashboard',
       element: (
         <Layout>
           <Dashboard />
@@ -45,10 +50,18 @@ const router = createBrowserRouter(
       ),
     },
     {
-      path: '/dashboard',
+      path: '/reservations',
       element: (
         <Layout>
-          <Dashboard />
+          <ReservationsPage />
+        </Layout>
+      ),
+    },
+    {
+      path: '/activity-history',
+      element: (
+        <Layout>
+          <ActivityHistoryPage />
         </Layout>
       ),
     },
@@ -85,14 +98,6 @@ const router = createBrowserRouter(
       ),
     },
     {
-      path: '/history',
-      element: (
-        <Layout>
-          <ReservationHistoryPage />
-        </Layout>
-      ),
-    },
-    {
       path: '/subscriptions',
       element: (
         <Layout>
@@ -117,6 +122,14 @@ const router = createBrowserRouter(
       ),
     },
     {
+      path: '/reservations-history',
+      element: (
+        <Layout>
+          <ReservationsHistoryPage />
+        </Layout>
+      ),
+    },
+    {
       path: '*',
       element: <Navigate to="/dashboard" replace />,
     },
@@ -134,7 +147,9 @@ function App() {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <AuthProvider>
-          <RouterProvider router={router} />
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <RouterProvider router={router} />
+          </LocalizationProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

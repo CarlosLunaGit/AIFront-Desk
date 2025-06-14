@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@date-io/dayjs": "^2.17.0",
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",
     "@mui/icons-material": "^5.15.7",
     "@mui/material": "^5.15.7",
+    "@mui/x-date-pickers": "^5.0.20",
     "@stripe/stripe-js": "^2.4.0",
     "@tanstack/react-query": "^5.17.19",
     "@testing-library/dom": "^10.4.0",
@@ -20,9 +22,10 @@
     "autoprefixer": "^10.4.17",
     "axios": "^1.6.7",
     "date-fns": "^3.3.1",
+    "dayjs": "^1.11.13",
     "postcss": "^8.4.35",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-hook-form": "^7.50.1",
     "react-icons": "^5.0.1",
     "react-router-dom": "^6.22.0",
@@ -33,6 +36,7 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@jest/globals": "^30.0.0",
     "@types/jest": "^29.5.14",
     "msw": "^2.10.2",
     "ts-jest": "^29.4.0"

@@ -762,6 +762,38 @@ const getAllHistory = () => {
   );
 };
 
+// Sync assignedGuests in mockRooms with mockGuests
+mockRooms.forEach(room => {
+  room.assignedGuests = mockGuests.filter(g => g.roomId === room.id && g.hotelConfigId === room.hotelConfigId).map(g => g.id);
+});
+
+// Generate aligned mockReservations from mockGuests and mockRooms
+function getEarliestDate(dates: string[]) {
+  return dates.filter(Boolean).sort()[0] || '';
+}
+function getLatestDate(dates: string[]) {
+  return dates.filter(Boolean).sort().reverse()[0] || '';
+}
+let mockReservations = mockRooms
+  .filter(room => room.assignedGuests && room.assignedGuests.length > 0)
+  .map((room, idx) => {
+    const guests = mockGuests.filter(g => room.assignedGuests.includes(g.id));
+    const guestIds = guests.map(g => g.id);
+    const startDates = guests.map(g => g.reservationStart);
+    const endDates = guests.map(g => g.reservationEnd);
+    const dates = `${getEarliestDate(startDates).split('T')[0]} to ${getLatestDate(endDates).split('T')[0]}`;
+    const status = guests.some(g => g.status === 'checked-in') ? 'Confirmed' : 'Pending';
+    return {
+      id: `R-${(idx + 1).toString().padStart(3, '0')}`,
+      guestIds,
+      rooms: room.number,
+      dates,
+      status,
+      notes: '',
+      price: 0,
+    };
+  });
+
 // Mock handlers
 export const handlers: HttpHandler[] = [
   // Dashboard stats (dynamic per current config)
@@ -1160,13 +1192,13 @@ export const handlers: HttpHandler[] = [
   http.delete('/api/guests/:id', ({ params }) => {
     const idx = mockGuests.findIndex(g => g.id === params.id);
     if (idx === -1) return new HttpResponse(null, { status: 404 });
-    const guest = mockGuests[idx];
+    // Remove guest from any reservation
+    mockReservations.forEach(r => {
+      if (Array.isArray(r.guestIds)) {
+        r.guestIds = r.guestIds.filter((gid: string) => gid !== params.id);
+      }
+    });
     mockGuests.splice(idx, 1);
-    // Recalculate room status if guest was assigned to a room
-    if (guest.roomId) {
-      const room = mockRooms.find(r => r.id === guest.roomId && r.hotelConfigId === guest.hotelConfigId);
-      recalculateRoomStatus(room, 'system', 'Guest removed via API');
-    }
     return new HttpResponse(null, { status: 204 });
   }),
 
@@ -1277,6 +1309,81 @@ export const handlers: HttpHandler[] = [
       notes: 'Room set to cleaning via API',
     });
     return HttpResponse.json(room);
+  }),
+
+  // Reservation endpoints
+  http.get('/api/reservations', () => {
+    return HttpResponse.json(mockReservations);
+  }),
+  http.post('/api/reservations', async ({ request }) => {
+    const data = await request.json();
+    const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+    // Create new guests if needed
+    let guestIds = Array.isArray(safeData.guestIds) ? safeData.guestIds : [];
+    if (Array.isArray(safeData.newGuests)) {
+      safeData.newGuests.forEach((g: any) => {
+        const newGuestId = `guest-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        mockGuests.push({
+          id: newGuestId,
+          name: g.name,
+          email: g.email || '',
+          phone: g.phone || '',
+          status: 'booked',
+          roomId: safeData.rooms,
+          reservationStart: safeData.dates.split(' to ')[0],
+          reservationEnd: safeData.dates.split(' to ')[1],
+          checkIn: '',
+          checkOut: '',
+          hotelConfigId: currentConfigId,
+          keepOpen: false,
+        });
+        guestIds.push(newGuestId);
+      });
+    }
+    const newReservation = {
+      id: `R-${(mockReservations.length + 1).toString().padStart(3, '0')}`,
+      guestIds,
+      rooms: safeData.rooms || '',
+      dates: safeData.dates || '',
+      status: safeData.status || 'Pending',
+      notes: safeData.notes || '',
+      price: typeof safeData.price === 'number' ? safeData.price : 0,
+    };
+    mockReservations.push(newReservation);
+    // Update guests' reservation info
+    guestIds.forEach((gid: string) => {
+      const guest = mockGuests.find(g => g.id === gid);
+      if (guest) {
+        guest.roomId = newReservation.rooms;
+        guest.reservationStart = newReservation.dates.split(' to ')[0];
+        guest.reservationEnd = newReservation.dates.split(' to ')[1];
+      }
+    });
+    return HttpResponse.json(newReservation, { status: 201 });
+  }),
+  http.patch('/api/reservations/:id', async ({ params, request }) => {
+    const { id } = params;
+    const data = await request.json();
+    const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+    const idx = mockReservations.findIndex(r => r.id === id);
+    if (idx === -1) return new HttpResponse(null, { status: 404 });
+    mockReservations[idx] = { ...mockReservations[idx], ...safeData };
+    return HttpResponse.json(mockReservations[idx]);
+  }),
+  http.delete('/api/reservations/:id', ({ params }) => {
+    const { id } = params;
+    const idx = mockReservations.findIndex(r => r.id === id);
+    if (idx === -1) return new HttpResponse(null, { status: 404 });
+    const reservation = mockReservations[idx];
+    // Remove guests associated with this reservation
+    if (Array.isArray(reservation.guestIds)) {
+      reservation.guestIds.forEach((gid: string) => {
+        const gidx = mockGuests.findIndex(g => g.id === gid);
+        if (gidx !== -1) mockGuests.splice(gidx, 1);
+      });
+    }
+    mockReservations.splice(idx, 1);
+    return new HttpResponse(null, { status: 204 });
   }),
 ];
 

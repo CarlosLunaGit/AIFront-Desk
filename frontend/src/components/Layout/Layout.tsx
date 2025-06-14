@@ -30,10 +30,13 @@ import {
   Business as BusinessIcon,
   People as PeopleIcon,
   History as HistoryIcon,
+  Event as EventIcon,
+  EventNote as EventNoteIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { hotelConfigService } from '../../services/hotelConfigService';
 import type { HotelConfiguration } from '../../types/hotel';
+import { Link } from 'react-router-dom';
 
 // Create a context for the selected hotel configuration
 export const HotelConfigContext = React.createContext<{
@@ -55,11 +58,13 @@ interface LayoutProps {
 }
 
 const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
+  { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+  { text: 'Reservations', icon: <EventIcon />, path: '/reservations' },
+  { text: 'Reservations History', icon: <EventNoteIcon />, path: '/reservations-history' },
+  { text: 'Activity History', icon: <HistoryIcon />, path: '/activity-history' },
   { text: 'Communications', icon: <MessageIcon />, path: '/communications' },
   { text: 'Room Management', icon: <HotelIcon />, path: '/rooms' },
   { text: 'Guest Management', icon: <PeopleIcon />, path: '/guests' },
-  { text: 'Reservation History', icon: <HistoryIcon />, path: '/history' },
   { text: 'Hotel Configuration', icon: <BusinessIcon />, path: '/hotel-config' },
   { text: 'Subscriptions', icon: <CreditCardIcon />, path: '/subscriptions' },
   { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
@@ -130,11 +135,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <ListItem
             button
             key={item.text}
-            onClick={() => {
-              navigate(item.path);
-              setMobileOpen(false);
-            }}
+            component={Link}
+            to={item.path}
             selected={location.pathname === item.path}
+            onClick={() => setMobileOpen(false)}
             sx={{
               '&.Mui-selected': {
                 backgroundColor: theme.palette.primary.light,
