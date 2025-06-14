@@ -21,7 +21,7 @@ import {
   Checkbox,
   FormControlLabel,
 } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import LogoutIcon from '@mui/icons-material/Logout';
 import EditIcon from '@mui/icons-material/Edit';
@@ -45,6 +45,8 @@ const GuestManagement: React.FC = () => {
     queryFn: fetchGuests,
     enabled: !!currentConfig,
   });
+
+  const queryClient = useQueryClient();
 
   // Modal state for viewing guest details
   const [selectedGuest, setSelectedGuest] = useState<any | null>(null);
@@ -70,12 +72,17 @@ const GuestManagement: React.FC = () => {
       )
     : [];
 
-  // Handler for edit (mock only)
-  const handleEditSave = () => {
-    // In a real app, call a mutation here
-    alert(`Saved changes for ${editGuest.name}`);
-    setEditGuest(null);
-    refetch();
+  // Handler for edit (now actually saves to backend)
+  const handleEditSave = async () => {
+    if (!editGuest) return;
+    try {
+      await api.patch(`/api/guests/${editGuest.id}`, editGuest);
+      setEditGuest(null);
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+    } catch (err) {
+      alert('Failed to save guest');
+    }
   };
 
   // Handler for delete
@@ -179,8 +186,16 @@ const GuestManagement: React.FC = () => {
                   <TableCell>Name</TableCell>
                   <TableCell>Email</TableCell>
                   <TableCell>Phone</TableCell>
-                  <TableCell>Status</TableCell>
+                  <TableCell>
+                    Status
+                    <span title="Partially Occupied: Some guests have checked in, others are still booked." style={{ cursor: 'help', marginLeft: 4 }}>🛈</span>
+                  </TableCell>
                   <TableCell>Room</TableCell>
+                  <TableCell>
+                    Room Open State
+                    <span title="Shows if the room is open to more guests (all assigned guests have keepOpen true) or closed (at least one assigned guest has keepOpen false)." style={{ cursor: 'help', marginLeft: 4 }}>🛈</span>
+                  </TableCell>
+                  <TableCell>Guest keepOpen (debug)</TableCell>
                   <TableCell>Reservation Start</TableCell>
                   <TableCell>Reservation End</TableCell>
                   <TableCell>Check-in</TableCell>
@@ -189,40 +204,50 @@ const GuestManagement: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredGuests.map((guest: any) => (
-                  <TableRow key={guest.id}>
-                    <TableCell>{guest.name}</TableCell>
-                    <TableCell>{guest.email}</TableCell>
-                    <TableCell>{guest.phone}</TableCell>
-                    <TableCell>{guest.status}</TableCell>
-                    <TableCell>{guest.roomId}</TableCell>
-                    <TableCell>{guest.reservationStart ? new Date(guest.reservationStart).toLocaleString() : ''}</TableCell>
-                    <TableCell>{guest.reservationEnd ? new Date(guest.reservationEnd).toLocaleString() : ''}</TableCell>
-                    <TableCell>{guest.checkIn ? new Date(guest.checkIn).toLocaleString() : ''}</TableCell>
-                    <TableCell>{guest.checkOut ? new Date(guest.checkOut).toLocaleString() : ''}</TableCell>
-                    <TableCell>
-                      <IconButton onClick={() => setSelectedGuest(guest)} size="small" title="View Details">
-                        <VisibilityIcon />
-                      </IconButton>
-                      {guest.status === 'checked-in' && (
-                        <IconButton onClick={() => handleCheckout(guest)} size="small" title="Check-out">
-                          <LogoutIcon sx={{ color: 'warning.main' }} />
+                {filteredGuests.map((guest: any) => {
+                  const room = rooms.find((r: any) => r.id === guest.roomId);
+                  let openState = '—';
+                  if (room) {
+                    console.log('DEBUG Room for guest', guest.name, room);
+                    openState = room.keepOpen ? 'Open to more guests' : 'Closed room';
+                  }
+                  return (
+                    <TableRow key={guest.id}>
+                      <TableCell>{guest.name}</TableCell>
+                      <TableCell>{guest.email}</TableCell>
+                      <TableCell>{guest.phone}</TableCell>
+                      <TableCell>{guest.status}</TableCell>
+                      <TableCell>{guest.roomId}</TableCell>
+                      <TableCell>{openState}</TableCell>
+                      <TableCell>{guest.keepOpen ? 'true' : 'false'}</TableCell>
+                      <TableCell>{guest.reservationStart ? new Date(guest.reservationStart).toLocaleString() : ''}</TableCell>
+                      <TableCell>{guest.reservationEnd ? new Date(guest.reservationEnd).toLocaleString() : ''}</TableCell>
+                      <TableCell>{guest.checkIn ? new Date(guest.checkIn).toLocaleString() : ''}</TableCell>
+                      <TableCell>{guest.checkOut ? new Date(guest.checkOut).toLocaleString() : ''}</TableCell>
+                      <TableCell>
+                        <IconButton onClick={() => setSelectedGuest(guest)} size="small" title="View Details">
+                          <VisibilityIcon />
                         </IconButton>
-                      )}
-                      {guest.status === 'booked' && (
-                        <IconButton onClick={() => handleCheckIn(guest)} size="small" title="Check-in">
-                          <LoginIcon sx={{ color: 'success.main' }} />
+                        {guest.status === 'checked-in' && (
+                          <IconButton onClick={() => handleCheckout(guest)} size="small" title="Check-out">
+                            <LogoutIcon sx={{ color: 'warning.main' }} />
+                          </IconButton>
+                        )}
+                        {guest.status === 'booked' && (
+                          <IconButton onClick={() => handleCheckIn(guest)} size="small" title="Check-in">
+                            <LoginIcon sx={{ color: 'success.main' }} />
+                          </IconButton>
+                        )}
+                        <IconButton onClick={() => setEditGuest(guest)} size="small" title="Edit">
+                          <EditIcon />
                         </IconButton>
-                      )}
-                      <IconButton onClick={() => setEditGuest(guest)} size="small" title="Edit">
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton onClick={() => setDeleteGuest(guest)} size="small" title="Delete">
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        <IconButton onClick={() => setDeleteGuest(guest)} size="small" title="Delete">
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </TableContainer>

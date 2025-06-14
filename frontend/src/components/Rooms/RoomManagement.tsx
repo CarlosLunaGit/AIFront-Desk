@@ -292,6 +292,26 @@ const RoomManagement: React.FC = () => {
     }
   };
 
+  const handleToggleKeepOpen = async () => {
+    if (!selectedRoom || !selectedRoom.assignedGuests.length) return;
+    // Fetch all guests and filter to those assigned to this room
+    const res = await fetch(`/api/guests`);
+    if (!res.ok) return;
+    const allGuests = await res.json();
+    const roomGuests = allGuests.filter((g: any) => g.roomId === selectedRoom.id);
+    const allKeepOpen = roomGuests.length > 0 && roomGuests.every((g: any) => g.keepOpen);
+    await Promise.all(roomGuests.map((g: any) =>
+      fetch(`/api/guests/${g.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keepOpen: !allKeepOpen }),
+      })
+    ));
+    setSelectedRoomId(null);
+    queryClient.invalidateQueries({ queryKey: ['rooms'] });
+    queryClient.invalidateQueries({ queryKey: ['guests'] });
+  };
+
   if (isLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
@@ -380,7 +400,7 @@ const RoomManagement: React.FC = () => {
                 {[
                   { label: 'Available', color: 'success.main', description: 'Room is ready for booking' },
                   { label: 'Occupied', color: 'error.main', description: 'Room is fully occupied' },
-                  { label: 'Partially Occupied', color: 'warning.dark', description: 'Room has some guests checked in' },
+                  { label: 'Partially Occupied', color: 'orange', description: 'Some guests have checked in, others are still booked.' },
                   { label: 'Partially Reserved', color: '#BDBDBD', description: 'Room has some guests booked' },
                   { label: 'Reserved', color: '#616161', description: 'Room is fully booked' },
                   { label: 'Maintenance', color: '#FFD600', description: 'Room is under maintenance' },
@@ -498,6 +518,29 @@ const RoomManagement: React.FC = () => {
                   onClick={handleViewDetails}
                 >
                   View Details
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip
+              title={
+                !selectedRoom
+                  ? 'Select a room'
+                  : !selectedRoom.assignedGuests.length
+                    ? 'Room has no assigned guests'
+                    : selectedRoom.keepOpen
+                      ? 'Close room for further bookings (set keepOpen to false for all guests)'
+                      : 'Keep room open for further bookings (set keepOpen to true for all guests)'
+              }
+            >
+              <span>
+                <Button
+                  variant="outlined"
+                  color={selectedRoom && selectedRoom.keepOpen ? 'error' : 'success'}
+                  startIcon={<BuildIcon />}
+                  disabled={!selectedRoom || !selectedRoom.assignedGuests.length}
+                  onClick={handleToggleKeepOpen}
+                >
+                  {selectedRoom && selectedRoom.keepOpen ? 'Close Room' : 'Keep Open'}
                 </Button>
               </span>
             </Tooltip>

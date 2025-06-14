@@ -13,7 +13,6 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
-    "@types/jest": "^27.5.2",
     "@types/node": "^16.18.126",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.6",
@@ -34,7 +33,9 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
-    "msw": "^2.10.2"
+    "@types/jest": "^29.5.14",
+    "msw": "^2.10.2",
+    "ts-jest": "^29.4.0"
   },
   "scripts": {
     "start": "react-scripts start",

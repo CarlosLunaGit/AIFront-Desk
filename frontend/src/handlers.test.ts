@@ -1,3 +1,15 @@
+/**
+ * Unit tests for the pure room status calculation logic (true table).
+ *
+ * These tests verify that the recalculateRoomStatus function returns the correct
+ * room status and keepOpen value for various combinations of guest and room states.
+ *
+ * NOTE: These tests do NOT cover integration between guest updates and room status
+ * recalculation in the backend. They do not simulate actual API calls or handler flows.
+ *
+ * For integration tests, see: [integration test file to be created].
+ */
+
 import { describe, it, expect } from '@jest/globals';
 import type { Room } from './types/room';
 import type { Guest } from './types/guest';
@@ -93,6 +105,29 @@ describe('recalculateRoomStatus (true table logic)', () => {
     guests.push(makeGuest({ id: 'g1', status: 'checked-in' }));
     const result = recalculateRoomStatus(room, guests);
     expect(result.status).not.toBe('reserved');
+  });
+
+  // Edge case: single guest, checked-in, should be occupied if at capacity 1
+  it('sets status to occupied if single guest is checked-in and room capacity is 1', () => {
+    room = makeRoom({ capacity: 1 });
+    guests.push(makeGuest({ id: 'g1', status: 'checked-in' }));
+    const result = recalculateRoomStatus(room, guests);
+    expect(result.status).toBe('occupied');
+  });
+});
+
+// Integration-style test (mocked)
+describe('integration: guest check-in triggers room status recalculation', () => {
+  it('room becomes occupied after guest is checked-in', () => {
+    // Simulate backend handler logic
+    const room = makeRoom({ capacity: 1 });
+    const guest = makeGuest({ id: 'g1', status: 'booked' });
+    let guests = [guest];
+    // Guest checks in
+    guest.status = 'checked-in';
+    // Backend recalculates room status
+    const result = recalculateRoomStatus(room, guests);
+    expect(result.status).toBe('occupied');
   });
 });
 

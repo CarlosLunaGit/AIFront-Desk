@@ -535,6 +535,20 @@ const mockGuests = [
     keepOpen: true,
   },
   {
+    id: 'guest-1a',
+    name: 'Liam (Room 101)',
+    email: 'liam@example.com',
+    phone: '+1 (555) 111-2223',
+    status: 'booked',
+    roomId: 'room-101',
+    reservationStart: '2024-07-01T15:00:00',
+    reservationEnd: '2024-07-05T11:00:00',
+    checkIn: '',
+    checkOut: '',
+    hotelConfigId: 'mock-hotel-1',
+    keepOpen: false,
+  },
+  {
     id: 'guest-2',
     name: 'Bob Smith',
     email: 'bob.smith@example.com',
@@ -578,6 +592,20 @@ const mockGuests = [
     keepOpen: true,
   },
   {
+    id: 'guest-4a',
+    name: 'Liam (Room 301)',
+    email: 'liam2@example.com',
+    phone: '+1 (555) 222-3334',
+    status: 'booked',
+    roomId: 'room-301',
+    reservationStart: '2024-08-01T15:00:00',
+    reservationEnd: '2024-08-05T11:00:00',
+    checkIn: '',
+    checkOut: '',
+    hotelConfigId: 'mock-hotel-2',
+    keepOpen: false,
+  },
+  {
     id: 'guest-5',
     name: 'Evan Lee',
     email: 'evan.lee@example.com',
@@ -602,6 +630,20 @@ const mockGuests = [
     reservationEnd: '2024-06-25T11:00:00',
     checkIn: '2024-06-20T15:30:00',
     checkOut: '2024-06-25T10:00:00',
+    hotelConfigId: 'mock-hotel-2',
+    keepOpen: false,
+  },
+  {
+    id: 'guest-6a',
+    name: 'Liam (Room 401)',
+    email: 'liam3@example.com',
+    phone: '+1 (555) 666-7778',
+    status: 'booked',
+    roomId: 'room-401',
+    reservationStart: '2024-06-20T15:00:00',
+    reservationEnd: '2024-06-25T11:00:00',
+    checkIn: '',
+    checkOut: '',
     hotelConfigId: 'mock-hotel-2',
     keepOpen: false,
   },
@@ -730,7 +772,7 @@ export const handlers: HttpHandler[] = [
     const occupiedRooms = rooms.filter(r => r.status === 'occupied').length;
     const maintenanceRooms = rooms.filter(r => r.status === 'maintenance').length;
     const cleaningRooms = rooms.filter(r => r.status === 'cleaning').length;
-    const reservedRooms = rooms.filter(r => r.status === 'reserved').length;
+    const reservedRooms = rooms.filter(r => r.status === 'reserved' || r.status === 'partially-reserved').length;
     const occupancyRate = totalRooms > 0 ? occupiedRooms / totalRooms : 0;
     const byType: Record<string, number> = {};
     rooms.forEach(r => {
@@ -801,7 +843,16 @@ export const handlers: HttpHandler[] = [
 
   // Room endpoints
   http.get('/api/rooms', () => {
-    return HttpResponse.json(mockRooms.filter(r => r.hotelConfigId === currentConfigId));
+    // For each room, recalculate status and keepOpen, then log keepOpen
+    const rooms = mockRooms.filter(r => r.hotelConfigId === currentConfigId).map(room => {
+      recalculateRoomStatus(room); // Ensure status and keepOpen are up-to-date
+      const guests = mockGuests.filter(g => g.roomId === room.id && g.hotelConfigId === room.hotelConfigId);
+      const keepOpen = guests.length > 0 && guests.every(g => g.keepOpen === true);
+      const roomWithKeepOpen = { ...room, keepOpen };
+      console.log('DEBUG /api/rooms:', room.id, 'keepOpen:', keepOpen, 'status:', room.status);
+      return roomWithKeepOpen;
+    });
+    return HttpResponse.json(rooms);
   }),
 
   http.post('/api/rooms', async ({ request }) => {
@@ -830,13 +881,24 @@ export const handlers: HttpHandler[] = [
     const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
     const idx = mockRooms.findIndex(r => r.id === id);
     if (idx === -1) return new HttpResponse(null, { status: 404 });
-    const updatedRoom = ensureRoomDefaults({
+    // If status is being set to 'maintenance' or 'cleaning', set it directly and skip recalculation
+    if (safeData.status === 'maintenance' || safeData.status === 'cleaning') {
+      mockRooms[idx] = ensureRoomDefaults({
+        ...mockRooms[idx],
+        ...safeData,
+        notes: typeof safeData.notes === 'string' ? safeData.notes : (mockRooms[idx].notes || ''),
+        status: safeData.status,
+      });
+      return HttpResponse.json(mockRooms[idx]);
+    }
+    // Otherwise, update and recalculate
+    mockRooms[idx] = ensureRoomDefaults({
       ...mockRooms[idx],
       ...safeData,
       notes: typeof safeData.notes === 'string' ? safeData.notes : (mockRooms[idx].notes || ''),
     });
-    mockRooms[idx] = updatedRoom;
-    return HttpResponse.json(updatedRoom);
+    recalculateRoomStatus(mockRooms[idx], 'system', 'Room updated via PATCH');
+    return HttpResponse.json(mockRooms[idx]);
   }),
 
   http.get('/api/rooms/:id', ({ params }: any) => {
@@ -1088,7 +1150,7 @@ export const handlers: HttpHandler[] = [
         notes: 'Guest status updated via API',
       });
     }
-    // Sync room status after guest update
+    // Always recalculate room status after guest update
     if (guest.roomId) {
       const room = mockRooms.find(r => r.id === guest.roomId && r.hotelConfigId === guest.hotelConfigId);
       recalculateRoomStatus(room, 'system', 'Triggered by guest status change');
@@ -1241,6 +1303,10 @@ function ensureGuestDefaults(guest: any) {
 // Utility to recalculate room status based on assigned guests' statuses
 function recalculateRoomStatus(room: Room | undefined, performedBy: string = 'system', notes: string = 'Room status recalculated') {
   if (!room) return;
+  // If room is in 'maintenance' or 'cleaning', do not override status
+  if (room.status === 'maintenance' || room.status === 'cleaning') {
+    return;
+  }
   const prevStatus = room.status;
   const guests = mockGuests.filter(g => g.roomId === room.id && g.hotelConfigId === room.hotelConfigId);
   const capacity = room.capacity || 1;
@@ -1250,32 +1316,35 @@ function recalculateRoomStatus(room: Room | undefined, performedBy: string = 'sy
     room.keepOpen = false;
   } else {
     room.assignedGuests = guests.map(g => g.id);
-    // keepOpen: true if all booked guests have keepOpen true, otherwise false
-    const bookedGuests = guests.filter(g => g.status === 'booked');
-    room.keepOpen = bookedGuests.length > 0 && bookedGuests.every(g => g.keepOpen === true);
+    // keepOpen: true if all assigned guests have keepOpen true, otherwise false
+    room.keepOpen = guests.length > 0 && guests.every(g => g.keepOpen === true);
 
     const allCheckedOut = guests.every(g => g.status === 'checked-out');
     const allCheckedIn = guests.every(g => g.status === 'checked-in');
     const allBooked = guests.every(g => g.status === 'booked');
     const checkedInCount = guests.filter(g => g.status === 'checked-in').length;
     const bookedCount = guests.filter(g => g.status === 'booked').length;
-    const atLeastOneNoKeepOpen = guests.some(g => g.status === 'booked' && g.keepOpen === false);
+    const atLeastOneNoKeepOpen = guests.some(g => g.keepOpen === false);
     const atLeastOneCheckedIn = checkedInCount > 0;
     const atLeastOneNotCheckedIn = guests.some(g => g.status !== 'checked-in');
 
     if (allCheckedOut) {
       room.status = 'cleaning' as RoomStatus;
-    } else if (allCheckedIn && guests.length === capacity) {
+    } else if (allCheckedIn) {
       room.status = 'occupied' as RoomStatus;
-    } else if (allBooked && (atLeastOneNoKeepOpen || guests.length === capacity)) {
+    } else if (allBooked && atLeastOneNoKeepOpen) {
       room.status = 'reserved' as RoomStatus;
     } else if (atLeastOneCheckedIn && atLeastOneNotCheckedIn) {
       room.status = 'partially-occupied' as RoomStatus;
-    } else if (bookedCount > 0 && !atLeastOneNoKeepOpen && guests.length < capacity) {
+    } else if (allBooked && !atLeastOneNoKeepOpen) {
       room.status = 'partially-reserved' as RoomStatus;
     } else {
       room.status = 'available' as RoomStatus;
     }
+  }
+  // Debug log for status transition
+  if (room.status !== prevStatus) {
+    console.log('DEBUG recalculateRoomStatus:', room.id, 'from', prevStatus, 'to', room.status);
   }
   // Log status change if it actually changed
   if (room.status !== prevStatus) {
