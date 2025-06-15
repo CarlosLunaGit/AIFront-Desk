@@ -8,10 +8,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getReservations, createReservation, updateReservation, deleteReservation, getGuests, getRooms } from '../services/api';
 import Autocomplete from '@mui/material/Autocomplete';
 import { HotelConfigContext } from '../components/Layout/Layout';
+import SearchIcon from '@mui/icons-material/Search';
+import { useSnackbar } from 'notistack';
+import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import Tooltip from '@mui/material/Tooltip';
 
 const ReservationsPage: React.FC = () => {
   const queryClient = useQueryClient();
-  const { selectedConfigId } = useContext(HotelConfigContext);
+  const { selectedConfigId, currentConfig } = useContext(HotelConfigContext);
+  const { enqueueSnackbar } = useSnackbar();
   // Fetch reservations
   const { data: reservations = [], isLoading: loadingReservations } = useQuery({
     queryKey: ['reservations'],
@@ -29,7 +35,21 @@ const ReservationsPage: React.FC = () => {
   });
 
   const roomNumbersForConfig = rooms.filter((r: any) => r.hotelConfigId === selectedConfigId).map((r: any) => r.number);
-  const filteredReservations = reservations.filter((res: any) => roomNumbersForConfig.includes(res.rooms));
+  const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const filteredReservations = reservations
+    .filter((res: any) => roomNumbersForConfig.includes(res.rooms))
+    .filter((res: any) => {
+      if (!search) return true;
+      return (
+        res.id.toLowerCase().includes(search.toLowerCase()) ||
+        (res.guestIds && res.guestIds.some((gid: string) => {
+          const g = guests.find((gg: any) => gg.id === gid);
+          return g && g.name.toLowerCase().includes(search.toLowerCase());
+        })) ||
+        res.rooms.toLowerCase().includes(search.toLowerCase())
+      );
+    });
 
   // Mutations
   const createMutation = useMutation({
@@ -51,6 +71,8 @@ const ReservationsPage: React.FC = () => {
   const [error, setError] = useState('');
   const [newGuest, setNewGuest] = useState({ name: '', email: '', phone: '' });
   const [newGuests, setNewGuests] = useState<any[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -75,8 +97,21 @@ const ReservationsPage: React.FC = () => {
     setOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    await deleteMutation.mutateAsync(id);
+  const handleRequestDelete = (id: string) => {
+    setPendingDeleteId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (pendingDeleteId) {
+      await deleteReservation(pendingDeleteId);
+      enqueueSnackbar('Reservation deleted and guests released.', { variant: 'success' });
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      setSelectedReservationId(null);
+    }
+    setDeleteDialogOpen(false);
+    setPendingDeleteId(null);
   };
 
   if (loadingReservations || loadingGuests || loadingRooms) {
@@ -85,11 +120,58 @@ const ReservationsPage: React.FC = () => {
 
   return (
     <Box p={3}>
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="h4">Reservations</Typography>
-          <Button variant="contained" color="primary" onClick={() => { setOpen(true); setEditId(null); }}>
-            Create Reservation
+      <Paper sx={{ p: 3, mb: 2 }}>
+        <Typography variant="h5" gutterBottom>
+          {currentConfig ? (
+            <>Welcome to <b>{currentConfig.name}</b> Reservations
+              <Tooltip title={`View and manage all reservations for ${currentConfig.name}. All changes apply only to this hotel configuration.`}>
+                <InfoOutlinedIcon sx={{ ml: 1, fontSize: 20, verticalAlign: 'middle', color: 'text.secondary', cursor: 'pointer' }} />
+              </Tooltip>
+            </>
+          ) : (
+            'Reservations'
+          )}
+        </Typography>
+      </Paper>
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Box display="flex" alignItems="center" gap={2}>
+          <TextField
+            variant="outlined"
+            size="small"
+            placeholder="Search reservations..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            InputProps={{ startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1 }} /> }}
+            sx={{ width: 300 }}
+          />
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => setOpen(true)}
+            sx={{ ml: 'auto' }}
+          >
+            CREATE RESERVATION
+          </Button>
+          <Button
+            variant="outlined"
+            color="secondary"
+            startIcon={<EditIcon />}
+            disabled={!selectedReservationId}
+            onClick={() => {
+              const res = filteredReservations.find((r: any) => r.id === selectedReservationId);
+              if (res) handleEdit(res);
+            }}
+          >
+            Edit
+          </Button>
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<DeleteIcon />}
+            disabled={!selectedReservationId}
+            onClick={() => handleRequestDelete(selectedReservationId!)}
+          >
+            Delete
           </Button>
         </Box>
       </Paper>
@@ -104,12 +186,21 @@ const ReservationsPage: React.FC = () => {
               <TableCell>Price</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Notes</TableCell>
-              <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {filteredReservations.map((res: any) => (
-              <TableRow key={res.id}>
+              <TableRow
+                key={res.id}
+                hover
+                selected={selectedReservationId === res.id}
+                onClick={() => setSelectedReservationId(res.id)}
+                tabIndex={0}
+                style={{ cursor: 'pointer' }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') setSelectedReservationId(res.id);
+                }}
+              >
                 <TableCell>{res.id}</TableCell>
                 <TableCell>{res.guestIds && Array.isArray(res.guestIds)
                   ? res.guestIds.map((gid: string) => {
@@ -122,10 +213,6 @@ const ReservationsPage: React.FC = () => {
                 <TableCell>{res.price}</TableCell>
                 <TableCell>{res.status}</TableCell>
                 <TableCell>{res.notes}</TableCell>
-                <TableCell>
-                  <IconButton onClick={() => handleEdit(res)}><EditIcon /></IconButton>
-                  <IconButton onClick={() => handleDelete(res.id)} color="error"><DeleteIcon /></IconButton>
-                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -188,6 +275,13 @@ const ReservationsPage: React.FC = () => {
           <Button variant="contained" color="primary" onClick={handleCreateOrEdit}>{editId ? 'Save' : 'Create'}</Button>
         </DialogActions>
       </Dialog>
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Reservation"
+        description="Are you sure you want to delete this reservation? Guests will be released but not deleted. This action cannot be undone."
+      />
     </Box>
   );
 };

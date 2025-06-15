@@ -51,6 +51,7 @@ import type { Room } from '../../types/room';
 import { HotelConfigContext } from '../Layout/Layout';
 import { Circle as CircleIcon } from '@mui/icons-material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
 const RoomManagement: React.FC = () => {
   const queryClient = useQueryClient();
@@ -332,249 +333,271 @@ const RoomManagement: React.FC = () => {
 
   return (
     <Box p={3}>
-      <Grid container spacing={3} alignItems="center">
-        <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3, mb: 2 }}>
-            <Typography variant="h5" gutterBottom>
-              Welcome to <b>{currentConfig.name}</b> Room Management
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Manage rooms, floors, and features for <b>{currentConfig.name}</b>. All changes apply only to this hotel configuration.
-            </Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={4} sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 2 }}>
-          <Box display="flex" gap={1}>
-            <ToggleButtonGroup value={view} exclusive onChange={(_, v) => v && setView(v)} size="small">
-              <ToggleButton value="grid">Grid View</ToggleButton>
-              <ToggleButton value="map">Map View</ToggleButton>
-            </ToggleButtonGroup>
-            <Button variant="contained" onClick={() => setAddDialogOpen(true)}>
-              Add Room
-            </Button>
-            <Button variant="contained" onClick={() => setBulkDialogOpen(true)}>
-              Bulk Create Rooms
-            </Button>
-          </Box>
-        </Grid>
-        <Grid item xs={12}>
-          <Paper sx={{ p: 2 }}>
+      <Paper sx={{ p: 3, mb: 2 }}>
+        <Typography variant="h5" gutterBottom>
+          Welcome to <b>{currentConfig.name}</b> Room Management
+          <Tooltip title={`Manage rooms, floors, and features for ${currentConfig.name}. All changes apply only to this hotel configuration.`}>
+            <InfoOutlinedIcon sx={{ ml: 1, fontSize: 20, verticalAlign: 'middle', color: 'text.secondary', cursor: 'pointer' }} />
+          </Tooltip>
+        </Typography>
+      </Paper>
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={8} lg={9}>
             <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 500 }}>
               Filters
             </Typography>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Box display="flex" gap={2}>
-                <FormControl size="small" sx={{ minWidth: 120 }}>
-                  <InputLabel>Status</InputLabel>
-                  <Select value={filterStatus} label="Status" onChange={e => setFilterStatus(e.target.value)}>
-                    <MenuItem value="">All</MenuItem>
-                    <MenuItem value="available">Available</MenuItem>
-                    <MenuItem value="occupied">Occupied</MenuItem>
-                    <MenuItem value="maintenance">Maintenance</MenuItem>
-                    <MenuItem value="cleaning">Cleaning</MenuItem>
-                    <MenuItem value="reserved">Reserved</MenuItem>
-                  </Select>
-                </FormControl>
-                <FormControl size="small" sx={{ minWidth: 120 }}>
-                  <InputLabel>Type</InputLabel>
-                  <Select value={filterType} label="Type" onChange={e => setFilterType(e.target.value)}>
-                    <MenuItem value="">All</MenuItem>
-                    {currentConfig.roomTypes.map(rt => (
-                      <MenuItem key={rt.id} value={rt.id}>{rt.name}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <FormControl size="small" sx={{ minWidth: 120 }}>
-                  <InputLabel>Floor</InputLabel>
-                  <Select value={filterFloor} label="Floor" onChange={e => setFilterFloor(e.target.value)}>
-                    <MenuItem value="">All</MenuItem>
-                    {currentConfig.floors.map(f => (
-                      <MenuItem key={f.id} value={f.id}>{f.name} (Floor {f.number})</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <TextField size="small" label="Search" value={search} onChange={e => setSearch(e.target.value)} />
-              </Box>
-              {/* Status legend to the right */}
-              <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
-                {[
-                  { label: 'Available', color: 'success.main', description: 'Room is ready for booking' },
-                  { label: 'Occupied', color: 'error.main', description: 'Room is fully occupied' },
-                  { label: 'Partially Occupied', color: 'orange', description: 'Some guests have checked in, others are still booked.' },
-                  { label: 'Partially Reserved', color: '#BDBDBD', description: 'Room has some guests booked' },
-                  { label: 'Reserved', color: '#616161', description: 'Room is fully booked' },
-                  { label: 'Maintenance', color: '#FFD600', description: 'Room is under maintenance' },
-                  { label: 'Cleaning', color: 'info.main', description: 'Room is being cleaned' },
-                ].map(({ label, color, description }) => (
-                  <Tooltip key={label} title={description} arrow>
-                    <Box display="flex" alignItems="center" gap={0.5}>
-                      <CircleIcon sx={{ color, fontSize: 18 }} />
-                      <Typography variant="body2">{label}</Typography>
-                    </Box>
-                  </Tooltip>
-                ))}
-              </Box>
+            <Box display="flex" gap={2} flexWrap="wrap" alignItems="center" mb={2}>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Status</InputLabel>
+                <Select value={filterStatus} label="Status" onChange={e => setFilterStatus(e.target.value)}>
+                  <MenuItem value="">All</MenuItem>
+                  <MenuItem value="available">Available</MenuItem>
+                  <MenuItem value="occupied">Occupied</MenuItem>
+                  <MenuItem value="maintenance">Maintenance</MenuItem>
+                  <MenuItem value="cleaning">Cleaning</MenuItem>
+                  <MenuItem value="reserved">Reserved</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Type</InputLabel>
+                <Select value={filterType} label="Type" onChange={e => setFilterType(e.target.value)}>
+                  <MenuItem value="">All</MenuItem>
+                  {currentConfig.roomTypes.map(rt => (
+                    <MenuItem key={rt.id} value={rt.id}>{rt.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Floor</InputLabel>
+                <Select value={filterFloor} label="Floor" onChange={e => setFilterFloor(e.target.value)}>
+                  <MenuItem value="">All</MenuItem>
+                  {currentConfig.floors.map(f => (
+                    <MenuItem key={f.id} value={f.id}>{f.name} (Floor {f.number})</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <TextField size="small" label="Search" value={search} onChange={e => setSearch(e.target.value)} />
             </Box>
-          </Paper>
-        </Grid>
-        <Grid item xs={12}>
-          <Box display="flex" gap={2} alignItems="center" mb={2}>
-            {/* Maintenance Button */}
-            <Tooltip title={selectedRoom ? (selectedRoom.status === 'maintenance' ? 'Unset maintenance (set to available)' : 'Set room to maintenance') : 'Select a room'}>
-              <span>
-                <Button
-                  variant={selectedRoom && selectedRoom.status === 'maintenance' ? 'outlined' : 'contained'}
-                  color={selectedRoom && selectedRoom.status === 'maintenance' ? 'success' : 'warning'}
-                  startIcon={<BuildIcon />}
-                  disabled={!selectedRoom || (!['available', 'cleaning', 'maintenance'].includes(selectedRoom.status))}
-                  onClick={handleToggleMaintenance}
-                >
-                  {selectedRoom && selectedRoom.status === 'maintenance' ? 'Unset Maintenance' : 'Set to Maintenance'}
-                </Button>
-              </span>
-            </Tooltip>
-            {/* Cleaning Button */}
-            <Tooltip title={selectedRoom ? (selectedRoom.status === 'cleaning' ? 'Unset cleaning (set to available)' : 'Request cleaning for this room') : 'Select a room'}>
-              <span>
-                <Button
-                  variant={selectedRoom && selectedRoom.status === 'cleaning' ? 'outlined' : 'contained'}
-                  color={selectedRoom && selectedRoom.status === 'cleaning' ? 'success' : 'info'}
-                  startIcon={<CleaningIcon />}
-                  disabled={!selectedRoom || (!['available', 'reserved', 'partially-reserved', 'occupied', 'partially-occupied', 'maintenance', 'cleaning'].includes(selectedRoom.status))}
-                  onClick={handleToggleCleaning}
-                >
-                  {selectedRoom && selectedRoom.status === 'cleaning' ? 'Unset Cleaning' : 'Request Cleaning'}
-                </Button>
-              </span>
-            </Tooltip>
-            <Tooltip
-              title={
-                !selectedRoom
-                  ? 'Select a room'
-                  : !selectedRoom.assignedGuests.length
-                    ? 'Room has no assigned guests'
-                    : (["reserved", "partially-reserved", "partially-occupied"].includes(selectedRoom.status)
-                        ? 'Check in all guests'
-                        : (selectedRoom.status === 'occupied' ? 'Check out all guests' : 'Cannot check in/out in this state'))
-              }
-            >
-              <span>
-                <Button
-                  variant="contained"
-                  color={selectedRoom && selectedRoom.status === 'occupied' ? 'error' : 'primary'}
-                  startIcon={selectedRoom && selectedRoom.status === 'occupied' ? <CheckOutIcon /> : <CheckInIcon />}
-                  disabled={
-                    !selectedRoom ||
-                    !selectedRoom.assignedGuests.length ||
-                    !(["reserved", "partially-reserved", "partially-occupied", "occupied"].includes(selectedRoom.status))
-                  }
-                  onClick={handleCheckInOut}
-                >
-                  {selectedRoom && selectedRoom.status === 'occupied' ? 'Check Out' : 'Check In'}
-                </Button>
-              </span>
-            </Tooltip>
-            <Tooltip
-              title={
-                !selectedRoom
-                  ? 'Select a room'
-                  : !selectedRoom.assignedGuests.length
-                    ? 'Room has no assigned guests'
-                    : 'Terminate reservation and delete all assigned guests'
-              }
-            >
-              <span>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  startIcon={<DeleteForeverIcon />}
-                  disabled={!selectedRoom || !selectedRoom.assignedGuests.length}
-                  onClick={handleTerminateReservation}
-                >
-                  Terminate Reservation
-                </Button>
-              </span>
-            </Tooltip>
-            <Tooltip title={selectedRoom ? 'Edit this room' : 'Select a room to edit'}>
-              <span>
-                <Button
-                  variant="outlined"
-                  color="primary"
-                  startIcon={<EditIcon />}
-                  disabled={!selectedRoom}
-                  onClick={handleEditRoom}
-                >
-                  Edit Room
-                </Button>
-              </span>
-            </Tooltip>
-            <Tooltip title={selectedRoom ? 'View details for this room' : 'Select a room to view details'}>
-              <span>
-                <Button
-                  variant="outlined"
-                  color="primary"
-                  startIcon={<VisibilityIcon />}
-                  disabled={!selectedRoom}
-                  onClick={handleViewDetails}
-                >
-                  View Details
-                </Button>
-              </span>
-            </Tooltip>
-            <Tooltip
-              title={
-                !selectedRoom
-                  ? 'Select a room'
-                  : !selectedRoom.assignedGuests.length
-                    ? 'Room has no assigned guests'
-                    : selectedRoom.keepOpen
-                      ? 'Close room for further bookings (set keepOpen to false for all guests)'
-                      : 'Keep room open for further bookings (set keepOpen to true for all guests)'
-              }
-            >
-              <span>
-                <Button
-                  variant="outlined"
-                  color={selectedRoom && selectedRoom.keepOpen ? 'error' : 'success'}
-                  startIcon={<BuildIcon />}
-                  disabled={!selectedRoom || !selectedRoom.assignedGuests.length}
-                  onClick={handleToggleKeepOpen}
-                >
-                  {selectedRoom && selectedRoom.keepOpen ? 'Close Room' : 'Keep Open'}
-                </Button>
-              </span>
-            </Tooltip>
-          </Box>
-          {isLoading ? (
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight="40vh">
-              <CircularProgress />
-            </Box>
-          ) : view === 'grid' ? (
-            <RoomGrid
-              rooms={filteredRooms}
-              roomTypes={currentConfig.roomTypes}
-              floors={currentConfig.floors}
-              features={currentConfig.features}
-              selectedRoomId={selectedRoomId}
-              onSelectRoom={setSelectedRoomId}
-            />
-          ) : (
-            <Box>
-              {currentConfig.floors.map(floor => (
-                <Box key={floor.id} mb={3}>
-                  <Typography variant="h6">Floor {floor.number} - {floor.name}</Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start' }}>
-                    {filteredRooms.filter(r => r.floorId === floor.id).map(room => (
-                      <Box key={room.id} sx={{ flex: '0 0 220px', width: 220, minWidth: 220 }}>
-                        <RoomGrid rooms={[room]} roomTypes={currentConfig.roomTypes} floors={currentConfig.floors} features={currentConfig.features} mapView />
-                      </Box>
-                    ))}
+          </Grid>
+          <Grid item xs={12} md={4} lg={3} sx={{ display: { xs: 'none', md: 'flex' }, justifyContent: 'flex-end', alignItems: 'flex-start', flexDirection: 'column' }}>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 500 }}>Legend</Typography>
+            <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
+              {[
+                { label: 'Available', color: 'success.main', description: 'Room is ready for booking' },
+                { label: 'Occupied', color: 'error.main', description: 'Room is fully occupied' },
+                { label: 'Partially Occupied', color: 'orange', description: 'Some guests have checked in, others are still booked.' },
+                { label: 'Partially Reserved', color: '#BDBDBD', description: 'Room has some guests booked' },
+                { label: 'Reserved', color: '#616161', description: 'Room is fully booked' },
+                { label: 'Maintenance', color: '#FFD600', description: 'Room is under maintenance' },
+                { label: 'Cleaning', color: 'info.main', description: 'Room is being cleaned' },
+              ].map(({ label, color, description }) => (
+                <Tooltip key={label} title={description} arrow>
+                  <Box display="flex" alignItems="center" gap={0.5}>
+                    <CircleIcon sx={{ color, fontSize: 18 }} />
+                    <Typography variant="body2">{label}</Typography>
                   </Box>
-                </Box>
+                </Tooltip>
               ))}
             </Box>
-          )}
+          </Grid>
+          <Grid item xs={12}>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 500 }}>
+              Actions
+            </Typography>
+            <Box display="flex" gap={1} flexWrap="wrap" mb={2}>
+              <ToggleButtonGroup value={view} exclusive onChange={(_, v) => v && setView(v)} size="small">
+                <ToggleButton value="grid">Grid View</ToggleButton>
+                <ToggleButton value="map">Map View</ToggleButton>
+              </ToggleButtonGroup>
+              <Button variant="contained" onClick={() => setAddDialogOpen(true)}>
+                Add Room
+              </Button>
+              <Button variant="contained" onClick={() => setBulkDialogOpen(true)}>
+                Bulk Create Rooms
+              </Button>
+            </Box>
+          </Grid>
+          <Grid item xs={12} sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', alignItems: 'flex-start', mt: 1 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 500 }}>Legend</Typography>
+            <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
+              {[
+                { label: 'Available', color: 'success.main', description: 'Room is ready for booking' },
+                { label: 'Occupied', color: 'error.main', description: 'Room is fully occupied' },
+                { label: 'Partially Occupied', color: 'orange', description: 'Some guests have checked in, others are still booked.' },
+                { label: 'Partially Reserved', color: '#BDBDBD', description: 'Room has some guests booked' },
+                { label: 'Reserved', color: '#616161', description: 'Room is fully booked' },
+                { label: 'Maintenance', color: '#FFD600', description: 'Room is under maintenance' },
+                { label: 'Cleaning', color: 'info.main', description: 'Room is being cleaned' },
+              ].map(({ label, color, description }) => (
+                <Tooltip key={label} title={description} arrow>
+                  <Box display="flex" alignItems="center" gap={0.5}>
+                    <CircleIcon sx={{ color, fontSize: 18 }} />
+                    <Typography variant="body2">{label}</Typography>
+                  </Box>
+                </Tooltip>
+              ))}
+            </Box>
+          </Grid>
         </Grid>
+      </Paper>
+      <Grid item xs={12}>
+        <Box display="flex" gap={2} alignItems="center" mb={2}>
+          {/* Maintenance Button */}
+          <Tooltip title={selectedRoom ? (selectedRoom.status === 'maintenance' ? 'Unset maintenance (set to available)' : 'Set room to maintenance') : 'Select a room'}>
+            <span>
+              <Button
+                variant={selectedRoom && selectedRoom.status === 'maintenance' ? 'outlined' : 'contained'}
+                color={selectedRoom && selectedRoom.status === 'maintenance' ? 'success' : 'warning'}
+                startIcon={<BuildIcon />}
+                disabled={!selectedRoom || (!['available', 'cleaning', 'maintenance'].includes(selectedRoom.status))}
+                onClick={handleToggleMaintenance}
+              >
+                {selectedRoom && selectedRoom.status === 'maintenance' ? 'Unset Maintenance' : 'Set to Maintenance'}
+              </Button>
+            </span>
+          </Tooltip>
+          {/* Cleaning Button */}
+          <Tooltip title={selectedRoom ? (selectedRoom.status === 'cleaning' ? 'Unset cleaning (set to available)' : 'Request cleaning for this room') : 'Select a room'}>
+            <span>
+              <Button
+                variant={selectedRoom && selectedRoom.status === 'cleaning' ? 'outlined' : 'contained'}
+                color={selectedRoom && selectedRoom.status === 'cleaning' ? 'success' : 'info'}
+                startIcon={<CleaningIcon />}
+                disabled={!selectedRoom || (!['available', 'reserved', 'partially-reserved', 'occupied', 'partially-occupied', 'maintenance', 'cleaning'].includes(selectedRoom.status))}
+                onClick={handleToggleCleaning}
+              >
+                {selectedRoom && selectedRoom.status === 'cleaning' ? 'Unset Cleaning' : 'Request Cleaning'}
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip
+            title={
+              !selectedRoom
+                ? 'Select a room'
+                : !selectedRoom.assignedGuests.length
+                  ? 'Room has no assigned guests'
+                  : (["reserved", "partially-reserved", "partially-occupied"].includes(selectedRoom.status)
+                      ? 'Check in all guests'
+                      : (selectedRoom.status === 'occupied' ? 'Check out all guests' : 'Cannot check in/out in this state'))
+            }
+          >
+            <span>
+              <Button
+                variant="contained"
+                color={selectedRoom && selectedRoom.status === 'occupied' ? 'error' : 'primary'}
+                startIcon={selectedRoom && selectedRoom.status === 'occupied' ? <CheckOutIcon /> : <CheckInIcon />}
+                disabled={
+                  !selectedRoom ||
+                  !selectedRoom.assignedGuests.length ||
+                  !(["reserved", "partially-reserved", "partially-occupied", "occupied"].includes(selectedRoom.status))
+                }
+                onClick={handleCheckInOut}
+              >
+                {selectedRoom && selectedRoom.status === 'occupied' ? 'Check Out' : 'Check In'}
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip
+            title={
+              !selectedRoom
+                ? 'Select a room'
+                : !selectedRoom.assignedGuests.length
+                  ? 'Room has no assigned guests'
+                  : 'Terminate reservation and delete all assigned guests'
+            }
+          >
+            <span>
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={<DeleteForeverIcon />}
+                disabled={!selectedRoom || !selectedRoom.assignedGuests.length}
+                onClick={handleTerminateReservation}
+              >
+                Terminate Reservation
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title={selectedRoom ? 'Edit this room' : 'Select a room to edit'}>
+            <span>
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={<EditIcon />}
+                disabled={!selectedRoom}
+                onClick={handleEditRoom}
+              >
+                Edit Room
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title={selectedRoom ? 'View details for this room' : 'Select a room to view details'}>
+            <span>
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={<VisibilityIcon />}
+                disabled={!selectedRoom}
+                onClick={handleViewDetails}
+              >
+                View Details
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip
+            title={
+              !selectedRoom
+                ? 'Select a room'
+                : !selectedRoom.assignedGuests.length
+                  ? 'Room has no assigned guests'
+                  : selectedRoom.keepOpen
+                    ? 'Close room for further bookings (set keepOpen to false for all guests)'
+                    : 'Keep room open for further bookings (set keepOpen to true for all guests)'
+            }
+          >
+            <span>
+              <Button
+                variant="outlined"
+                color={selectedRoom && selectedRoom.keepOpen ? 'error' : 'success'}
+                startIcon={<BuildIcon />}
+                disabled={!selectedRoom || !selectedRoom.assignedGuests.length}
+                onClick={handleToggleKeepOpen}
+              >
+                {selectedRoom && selectedRoom.keepOpen ? 'Close Room' : 'Keep Open'}
+              </Button>
+            </span>
+          </Tooltip>
+        </Box>
+        {isLoading ? (
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight="40vh">
+            <CircularProgress />
+          </Box>
+        ) : view === 'grid' ? (
+          <RoomGrid
+            rooms={filteredRooms}
+            roomTypes={currentConfig.roomTypes}
+            floors={currentConfig.floors}
+            features={currentConfig.features}
+            selectedRoomId={selectedRoomId}
+            onSelectRoom={setSelectedRoomId}
+          />
+        ) : (
+          <Box>
+            {currentConfig.floors.map(floor => (
+              <Box key={floor.id} mb={3}>
+                <Typography variant="h6">Floor {floor.number} - {floor.name}</Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start' }}>
+                  {filteredRooms.filter(r => r.floorId === floor.id).map(room => (
+                    <Box key={room.id} sx={{ flex: '0 0 220px', width: 220, minWidth: 220 }}>
+                      <RoomGrid rooms={[room]} roomTypes={currentConfig.roomTypes} floors={currentConfig.floors} features={currentConfig.features} mapView />
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        )}
       </Grid>
       <Dialog open={bulkDialogOpen} onClose={() => setBulkDialogOpen(false)}>
         <DialogTitle>Bulk Create Rooms</DialogTitle>

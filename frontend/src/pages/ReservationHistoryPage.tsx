@@ -22,12 +22,16 @@ import {
   Grid,
   Card,
   CardContent,
+  Button,
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import InfoIcon from '@mui/icons-material/Info';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { format } from 'date-fns';
 import { HotelConfigContext } from '../components/Layout/Layout';
 import { useContext } from 'react';
+import SearchIcon from '@mui/icons-material/Search';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 
 interface ReservationHistoryEntry {
   id: string;
@@ -92,6 +96,8 @@ const ReservationHistoryPage: React.FC = () => {
     start: format(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
     end: format(new Date(), 'yyyy-MM-dd'),
   });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   const { data: history, isLoading, error } = useQuery({
     queryKey: ['reservationHistory', currentConfig?.id],
@@ -116,6 +122,12 @@ const ReservationHistoryPage: React.FC = () => {
 
     return matchesSearch && matchesAction && matchesDate;
   });
+
+  const filtered = filteredHistory?.filter(r =>
+    r.roomId.toLowerCase().includes(search.toLowerCase()) ||
+    r.performedBy.toLowerCase().includes(search.toLowerCase()) ||
+    (r.notes?.toLowerCase().includes(search.toLowerCase()) ?? false)
+  ) || [];
 
   if (isLoading) {
     return (
@@ -153,88 +165,111 @@ const ReservationHistoryPage: React.FC = () => {
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h5" gutterBottom>
           {currentConfig ? (
-            <>Reservation History for <b>{currentConfig.name}</b></>
+            <>Reservation History for <b>{currentConfig.name}</b>
+              <Tooltip title="View and filter the complete history of room status changes, guest assignments, and check-ins/outs.">
+                <InfoOutlinedIcon sx={{ ml: 1, fontSize: 20, verticalAlign: 'middle', color: 'text.secondary', cursor: 'pointer' }} />
+              </Tooltip>
+            </>
           ) : (
             'Reservation History'
           )}
         </Typography>
-        <Typography variant="body1" color="text.secondary" gutterBottom>
-          View and filter the complete history of room status changes, guest assignments, and check-ins/outs.
-        </Typography>
+      </Paper>
 
-        <Grid container spacing={2} sx={{ mt: 2 }}>
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              label="Search"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by room, guest, or action..."
-            />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>Action Type</InputLabel>
-              <Select
-                value={actionFilter}
-                label="Action Type"
-                onChange={(e) => setActionFilter(e.target.value)}
-              >
-                <MenuItem value="all">All Actions</MenuItem>
-                <MenuItem value="status_change">Status Changes</MenuItem>
-                <MenuItem value="guest_assigned">Guest Assignments</MenuItem>
-                <MenuItem value="guest_removed">Guest Removals</MenuItem>
-                <MenuItem value="guest_status_change">Guest Status Changes</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={2}>
-            <TextField
-              fullWidth
-              type="date"
-              label="Start Date"
-              value={dateRange.start}
-              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-          <Grid item xs={12} md={2}>
-            <TextField
-              fullWidth
-              type="date"
-              label="End Date"
-              value={dateRange.end}
-              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Box display="flex" alignItems="center" gap={2}>
+          <TextField
+            variant="outlined"
+            size="small"
+            placeholder="Search history..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            InputProps={{ startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1 }} /> }}
+            sx={{ width: 300 }}
+          />
+          <Button
+            variant="outlined"
+            startIcon={<VisibilityIcon />}
+            disabled={!selectedId}
+            onClick={() => setSelectedId(filtered.find(r => r.id === selectedId)?.id || null)}
+          >
+            View
+          </Button>
+        </Box>
+      </Paper>
+
+      <Grid container spacing={2} sx={{ mt: 2 }}>
+        <Grid item xs={12} md={4}>
+          <TextField
+            fullWidth
+            label="Search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by room, guest, or action..."
+          />
         </Grid>
+        <Grid item xs={12} md={3}>
+          <FormControl fullWidth>
+            <InputLabel>Action Type</InputLabel>
+            <Select
+              value={actionFilter}
+              label="Action Type"
+              onChange={(e) => setActionFilter(e.target.value)}
+            >
+              <MenuItem value="all">All Actions</MenuItem>
+              <MenuItem value="status_change">Status Changes</MenuItem>
+              <MenuItem value="guest_assigned">Guest Assignments</MenuItem>
+              <MenuItem value="guest_removed">Guest Removals</MenuItem>
+              <MenuItem value="guest_status_change">Guest Status Changes</MenuItem>
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid item xs={12} md={2}>
+          <TextField
+            fullWidth
+            type="date"
+            label="Start Date"
+            value={dateRange.start}
+            onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+            InputLabelProps={{ shrink: true }}
+          />
+        </Grid>
+        <Grid item xs={12} md={2}>
+          <TextField
+            fullWidth
+            type="date"
+            label="End Date"
+            value={dateRange.end}
+            onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+            InputLabelProps={{ shrink: true }}
+          />
+        </Grid>
+      </Grid>
 
-        <Grid container spacing={2} sx={{ mt: 2 }}>
-          <Grid item xs={12} md={3}>
+      <Grid container spacing={2} sx={{ mt: 2 }}>
+        <Grid item xs={12} md={3}>
+          <Card>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>Total Entries</Typography>
+              <Typography variant="h4">{totalEntries}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        {Object.entries(actionCounts).map(([action, count]) => (
+          <Grid item xs={12} md={3} key={action}>
             <Card>
               <CardContent>
-                <Typography color="textSecondary" gutterBottom>Total Entries</Typography>
-                <Typography variant="h4">{totalEntries}</Typography>
+                <Typography color="textSecondary" gutterBottom>
+                  {action.replace('_', ' ').toUpperCase()}
+                </Typography>
+                <Typography variant="h4">{count}</Typography>
               </CardContent>
             </Card>
           </Grid>
-          {Object.entries(actionCounts).map(([action, count]) => (
-            <Grid item xs={12} md={3} key={action}>
-              <Card>
-                <CardContent>
-                  <Typography color="textSecondary" gutterBottom>
-                    {action.replace('_', ' ').toUpperCase()}
-                  </Typography>
-                  <Typography variant="h4">{count}</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      </Paper>
+        ))}
+      </Grid>
 
-      <TableContainer component={Paper}>
+      <TableContainer component={Paper} sx={{ mt: 2 }}>
         <Table>
           <TableHead>
             <TableRow>
@@ -247,8 +282,18 @@ const ReservationHistoryPage: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredHistory?.map((entry) => (
-              <TableRow key={entry.id}>
+            {filtered.map((entry) => (
+              <TableRow
+                key={entry.id}
+                hover
+                selected={selectedId === entry.id}
+                onClick={() => setSelectedId(entry.id)}
+                tabIndex={0}
+                style={{ cursor: 'pointer' }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') setSelectedId(entry.id);
+                }}
+              >
                 <TableCell>
                   {format(new Date(entry.timestamp), 'MMM d, yyyy HH:mm:ss')}
                 </TableCell>

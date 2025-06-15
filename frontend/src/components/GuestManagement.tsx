@@ -28,6 +28,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import LoginIcon from '@mui/icons-material/Login';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import Tooltip from '@mui/material/Tooltip';
 import { HotelConfigContext } from './Layout/Layout';
 import { api } from '../services/api';
 import { useRooms } from '../services/roomService';
@@ -49,7 +51,7 @@ const GuestManagement: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Modal state for viewing guest details
-  const [selectedGuest, setSelectedGuest] = useState<any | null>(null);
+  const [viewGuest, setViewGuest] = useState<any | null>(null);
   // Modal state for editing guest
   const [editGuest, setEditGuest] = useState<any | null>(null);
   // State for delete confirmation
@@ -57,6 +59,7 @@ const GuestManagement: React.FC = () => {
   const [addGuestOpen, setAddGuestOpen] = useState(false);
   const [newGuest, setNewGuest] = useState({ name: '', email: '', phone: '', status: 'booked', roomId: '', reservationStart: '', reservationEnd: '', keepOpen: false });
   const [search, setSearch] = useState('');
+  const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
 
   // Fetch available rooms for assignment
   const { data: rooms = [] } = useRooms({ hotelConfigId: currentConfig?.id });
@@ -71,6 +74,8 @@ const GuestManagement: React.FC = () => {
         g.phone.toLowerCase().includes(search.toLowerCase())
       )
     : [];
+
+  const selectedGuest = filteredGuests.find((g: any) => g.id === selectedGuestId) || null;
 
   // Handler for edit (now actually saves to backend)
   const handleEditSave = async () => {
@@ -138,20 +143,35 @@ const GuestManagement: React.FC = () => {
     }
   };
 
+  // Handler for toggle keepOpen
+  const handleToggleKeepOpen = async (guest: any) => {
+    try {
+      await api.patch(`/api/guests/${guest.id}`, { keepOpen: !guest.keepOpen });
+      refetch();
+    } catch (err) {
+      alert('Failed to update keepOpen');
+    }
+  };
+
+  function renderDateField(val: string) {
+    if (!val || val === '—') return '—';
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? '—' : d.toLocaleString();
+  }
+
   return (
     <Box p={3}>
       <Paper sx={{ p: 3, mb: 2 }}>
         <Typography variant="h5" gutterBottom>
           {currentConfig ? (
-            <>Welcome to <b>{currentConfig.name}</b> Guest Management</>
+            <>Welcome to <b>{currentConfig.name}</b> Guest Management
+              <Tooltip title={`View and manage all guests for ${currentConfig.name}. All changes apply only to this hotel configuration.`}>
+                <InfoOutlinedIcon sx={{ ml: 1, fontSize: 20, verticalAlign: 'middle', color: 'text.secondary', cursor: 'pointer' }} />
+              </Tooltip>
+            </>
           ) : (
             'Guest Management'
           )}
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          {currentConfig
-            ? <>View and manage all guests for <b>{currentConfig.name}</b>. All changes apply only to this hotel configuration.</>
-            : 'View and manage all guests for the current hotel configuration.'}
         </Typography>
         <Box display="flex" justifyContent="space-between" alignItems="center" mt={2}>
           <TextField
@@ -171,6 +191,44 @@ const GuestManagement: React.FC = () => {
           </Button>
         </Box>
       </Paper>
+      <Box display="flex" gap={2} mb={2}>
+        <Button
+          variant="contained"
+          color="error"
+          disabled={!selectedGuest}
+          onClick={() => selectedGuest && setDeleteGuest(selectedGuest)}
+        >
+          Delete
+        </Button>
+        <Button
+          variant="outlined"
+          disabled={!selectedGuest}
+          onClick={() => selectedGuest && setEditGuest(selectedGuest)}
+        >
+          Edit
+        </Button>
+        <Button
+          variant="outlined"
+          disabled={!selectedGuest || selectedGuest.status === 'checked-in'}
+          onClick={() => selectedGuest && handleCheckIn(selectedGuest)}
+        >
+          Check In
+        </Button>
+        <Button
+          variant="outlined"
+          disabled={!selectedGuest || selectedGuest.status !== 'checked-in'}
+          onClick={() => selectedGuest && handleCheckout(selectedGuest)}
+        >
+          Check Out
+        </Button>
+        <Button
+          variant="outlined"
+          disabled={!selectedGuest}
+          onClick={() => selectedGuest && handleToggleKeepOpen(selectedGuest)}
+        >
+          {selectedGuest?.keepOpen ? 'Close' : 'Keep Open'}
+        </Button>
+      </Box>
       <Paper>
         {isLoading ? (
           <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
@@ -200,77 +258,53 @@ const GuestManagement: React.FC = () => {
                   <TableCell>Reservation End</TableCell>
                   <TableCell>Check-in</TableCell>
                   <TableCell>Check-out</TableCell>
-                  <TableCell>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredGuests.map((guest: any) => {
-                  const room = rooms.find((r: any) => r.id === guest.roomId);
-                  let openState = '—';
-                  if (room) {
-                    console.log('DEBUG Room for guest', guest.name, room);
-                    openState = room.keepOpen ? 'Open to more guests' : 'Closed room';
-                  }
-                  return (
-                    <TableRow key={guest.id}>
-                      <TableCell>{guest.name}</TableCell>
-                      <TableCell>{guest.email}</TableCell>
-                      <TableCell>{guest.phone}</TableCell>
-                      <TableCell>{guest.status}</TableCell>
-                      <TableCell>{guest.roomId}</TableCell>
-                      <TableCell>{openState}</TableCell>
-                      <TableCell>{guest.keepOpen ? 'true' : 'false'}</TableCell>
-                      <TableCell>{guest.reservationStart ? new Date(guest.reservationStart).toLocaleString() : ''}</TableCell>
-                      <TableCell>{guest.reservationEnd ? new Date(guest.reservationEnd).toLocaleString() : ''}</TableCell>
-                      <TableCell>{guest.checkIn ? new Date(guest.checkIn).toLocaleString() : ''}</TableCell>
-                      <TableCell>{guest.checkOut ? new Date(guest.checkOut).toLocaleString() : ''}</TableCell>
-                      <TableCell>
-                        <IconButton onClick={() => setSelectedGuest(guest)} size="small" title="View Details">
-                          <VisibilityIcon />
-                        </IconButton>
-                        {guest.status === 'checked-in' && (
-                          <IconButton onClick={() => handleCheckout(guest)} size="small" title="Check-out">
-                            <LogoutIcon sx={{ color: 'warning.main' }} />
-                          </IconButton>
-                        )}
-                        {guest.status === 'booked' && (
-                          <IconButton onClick={() => handleCheckIn(guest)} size="small" title="Check-in">
-                            <LoginIcon sx={{ color: 'success.main' }} />
-                          </IconButton>
-                        )}
-                        <IconButton onClick={() => setEditGuest(guest)} size="small" title="Edit">
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton onClick={() => setDeleteGuest(guest)} size="small" title="Delete">
-                          <DeleteIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {filteredGuests.map((guest: any) => (
+                  <TableRow
+                    key={guest.id}
+                    hover
+                    selected={selectedGuestId === guest.id}
+                    onClick={() => setSelectedGuestId(guest.id)}
+                    sx={{ cursor: 'pointer', backgroundColor: selectedGuestId === guest.id ? 'rgba(25, 118, 210, 0.08)' : undefined }}
+                  >
+                    <TableCell>{guest.name}</TableCell>
+                    <TableCell>{guest.email}</TableCell>
+                    <TableCell>{guest.phone}</TableCell>
+                    <TableCell>{guest.status}</TableCell>
+                    <TableCell>{guest.roomId}</TableCell>
+                    <TableCell>{guest.keepOpen ? 'Open to more guests' : 'Closed room'}</TableCell>
+                    <TableCell>{guest.keepOpen ? 'true' : 'false'}</TableCell>
+                    <TableCell>{renderDateField(guest.reservationStart)}</TableCell>
+                    <TableCell>{renderDateField(guest.reservationEnd)}</TableCell>
+                    <TableCell>{renderDateField(guest.checkIn)}</TableCell>
+                    <TableCell>{renderDateField(guest.checkOut)}</TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </TableContainer>
         )}
       </Paper>
       {/* Guest Details Modal */}
-      <Dialog open={!!selectedGuest} onClose={() => setSelectedGuest(null)} maxWidth="sm" fullWidth>
+      <Dialog open={!!viewGuest} onClose={() => setViewGuest(null)} maxWidth="sm" fullWidth>
         <DialogTitle>Guest Details</DialogTitle>
         <DialogContent>
-          {selectedGuest && (
+          {viewGuest && (
             <Box>
-              <Typography><b>Name:</b> {selectedGuest.name}</Typography>
-              <Typography><b>Email:</b> {selectedGuest.email}</Typography>
-              <Typography><b>Phone:</b> {selectedGuest.phone}</Typography>
-              <Typography><b>Status:</b> {selectedGuest.status}</Typography>
-              <Typography><b>Room:</b> {selectedGuest.roomId}</Typography>
-              <Typography><b>Check-in:</b> {selectedGuest.checkIn}</Typography>
-              <Typography><b>Check-out:</b> {selectedGuest.checkOut}</Typography>
+              <Typography><b>Name:</b> {viewGuest.name}</Typography>
+              <Typography><b>Email:</b> {viewGuest.email}</Typography>
+              <Typography><b>Phone:</b> {viewGuest.phone}</Typography>
+              <Typography><b>Status:</b> {viewGuest.status}</Typography>
+              <Typography><b>Room:</b> {viewGuest.roomId}</Typography>
+              <Typography><b>Check-in:</b> {viewGuest.checkIn}</Typography>
+              <Typography><b>Check-out:</b> {viewGuest.checkOut}</Typography>
             </Box>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setSelectedGuest(null)}>Close</Button>
+          <Button onClick={() => setViewGuest(null)}>Close</Button>
         </DialogActions>
       </Dialog>
       {/* Edit Guest Modal */}

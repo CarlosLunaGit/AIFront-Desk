@@ -724,11 +724,12 @@ let reservationHistory: Array<{
   id: string;
   roomId: string;
   timestamp: string;
-  action: 'status_change' | 'guest_assigned' | 'guest_removed' | 'guest_status_change';
+  action: 'status_change' | 'guest_assigned' | 'guest_removed' | 'guest_status_change' | 'reservation_deleted';
   previousState: {
     roomStatus?: RoomStatus;
     guestStatus?: GuestStatus;
     guestId?: string;
+    guestIds?: string[];
   };
   newState: {
     roomStatus?: RoomStatus;
@@ -1375,13 +1376,31 @@ export const handlers: HttpHandler[] = [
     const idx = mockReservations.findIndex(r => r.id === id);
     if (idx === -1) return new HttpResponse(null, { status: 404 });
     const reservation = mockReservations[idx];
-    // Remove guests associated with this reservation
+    // For each guest, unassign from room and reset times
     if (Array.isArray(reservation.guestIds)) {
       reservation.guestIds.forEach((gid: string) => {
-        const gidx = mockGuests.findIndex(g => g.id === gid);
-        if (gidx !== -1) mockGuests.splice(gidx, 1);
+        const guest = mockGuests.find(g => g.id === gid);
+        if (guest) {
+          guest.roomId = '';
+          guest.keepOpen = false;
+          guest.reservationStart = '—';
+          guest.reservationEnd = '—';
+          guest.checkIn = '—';
+          guest.checkOut = '—';
+        }
       });
     }
+    // Add to reservation history
+    reservationHistory.push({
+      id: `HIST-${Date.now()}`,
+      roomId: reservation.rooms,
+      timestamp: new Date().toISOString(),
+      action: 'reservation_deleted',
+      previousState: { guestIds: reservation.guestIds },
+      newState: {},
+      performedBy: 'system',
+      notes: 'Reservation deleted via API',
+    });
     mockReservations.splice(idx, 1);
     return new HttpResponse(null, { status: 204 });
   }),
