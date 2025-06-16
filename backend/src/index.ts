@@ -8,6 +8,7 @@ import { logger } from './utils/logger';
 import authRoutes from './routes/auth';
 import hotelRoutes from './routes/hotel';
 import communicationRoutes from './routes/communication';
+import communicationsRoutes from './routes/communications';
 import subscriptionRoutes from './routes/subscription';
 
 dotenv.config();
@@ -25,6 +26,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/hotel', hotelRoutes);
 app.use('/api/communication', communicationRoutes);
+app.use('/api/communications', communicationsRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 
 // Error handling
