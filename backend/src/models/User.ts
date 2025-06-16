@@ -1,24 +1,25 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
-export enum SubscriptionTier {
-  FREE = 'free',
-  BASIC = 'basic',
-  PREMIUM = 'premium',
-  ENTERPRISE = 'enterprise'
+export enum UserRole {
+  OWNER = 'owner',
+  MANAGER = 'manager',
+  STAFF = 'staff',
+  ADMIN = 'admin'
 }
 
 export interface IUser extends Document {
   email: string;
   password: string;
   name: string;
-  hotelName: string;
-  subscriptionTier: SubscriptionTier;
-  stripeCustomerId?: string;
-  stripeSubscriptionId?: string;
+  role: UserRole;
+  tenantId: mongoose.Types.ObjectId;
   isActive: boolean;
   lastLogin?: Date;
-  comparePassword(candidatePassword: string): Promise<boolean>;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
+  emailVerified: boolean;
+  emailVerificationToken?: string;
 }
 
 const userSchema = new Schema<IUser>(
@@ -27,36 +28,28 @@ const userSchema = new Schema<IUser>(
       type: String,
       required: true,
       unique: true,
-      trim: true,
       lowercase: true,
+      trim: true,
     },
     password: {
       type: String,
       required: true,
-      minlength: 8,
+      minlength: 6,
     },
     name: {
       type: String,
       required: true,
       trim: true,
     },
-    hotelName: {
+    role: {
       type: String,
+      enum: Object.values(UserRole),
+      default: UserRole.OWNER,
+    },
+    tenantId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Tenant',
       required: true,
-      trim: true,
-    },
-    subscriptionTier: {
-      type: String,
-      enum: Object.values(SubscriptionTier),
-      default: SubscriptionTier.FREE,
-    },
-    stripeCustomerId: {
-      type: String,
-      sparse: true,
-    },
-    stripeSubscriptionId: {
-      type: String,
-      sparse: true,
     },
     isActive: {
       type: Boolean,
@@ -65,11 +58,37 @@ const userSchema = new Schema<IUser>(
     lastLogin: {
       type: Date,
     },
+    resetPasswordToken: {
+      type: String,
+    },
+    resetPasswordExpires: {
+      type: Date,
+    },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationToken: {
+      type: String,
+    },
   },
   {
     timestamps: true,
   }
 );
+
+// Indexes for efficient querying
+userSchema.index({ email: 1 });
+userSchema.index({ tenantId: 1 });
+userSchema.index({ tenantId: 1, role: 1 });
+
+// Virtual for tenant information
+userSchema.virtual('tenant', {
+  ref: 'Tenant',
+  localField: 'tenantId',
+  foreignField: '_id',
+  justOne: true,
+});
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {

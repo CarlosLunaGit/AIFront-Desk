@@ -25,3 +25,12 @@ yarn-error.log*
 # Ignore all .cache folders
 .cache/
 **/.cache/
+
+# Ignore node_modules
+node_modules/
+
+# Ignore .env files
+.env
+
+# Ignore .env.local files
+.env.local
