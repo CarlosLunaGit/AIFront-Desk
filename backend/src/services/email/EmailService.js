@@ -1,62 +1,59 @@
-import nodemailer from 'nodemailer';
-import { logger } from '../../utils/logger';
-
-interface ReservationConfirmation {
-  guestEmail: string;
-  guestName: string;
-  hotelName: string;
-  checkIn: string;
-  checkOut: string;
-  guests: number;
-  totalPrice: number;
-  confirmationNumber: string;
-  paymentAuthId: string;
-}
-
-export class EmailService {
-  private transporter: nodemailer.Transporter;
-
-  constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
+"use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
-  }
-
-  async sendReservationConfirmation(data: ReservationConfirmation): Promise<boolean> {
-    try {
-      const emailTemplate = this.generateConfirmationEmail(data);
-      
-      const mailOptions = {
-        from: `"${data.hotelName}" <${process.env.SMTP_USER}>`,
-        to: data.guestEmail,
-        subject: `Reservation Confirmed - ${data.hotelName}`,
-        html: emailTemplate,
-        text: this.generatePlainTextConfirmation(data)
-      };
-
-      const result = await this.transporter.sendMail(mailOptions);
-      
-      logger.info('Confirmation email sent:', {
-        messageId: result.messageId,
-        to: data.guestEmail,
-        confirmationNumber: data.confirmationNumber
-      });
-
-      return true;
-    } catch (error) {
-      logger.error('Email sending error:', error);
-      return false;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.EmailService = void 0;
+const nodemailer_1 = __importDefault(require("nodemailer"));
+const logger_1 = require("../../utils/logger");
+class EmailService {
+    constructor() {
+        this.transporter = nodemailer_1.default.createTransport({
+            host: process.env.SMTP_HOST || 'smtp.gmail.com',
+            port: parseInt(process.env.SMTP_PORT || '587'),
+            secure: false, // true for 465, false for other ports
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS,
+            },
+        });
     }
-  }
-
-  private generateConfirmationEmail(data: ReservationConfirmation): string {
-    return `
+    sendReservationConfirmation(data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const emailTemplate = this.generateConfirmationEmail(data);
+                const mailOptions = {
+                    from: `"${data.hotelName}" <${process.env.SMTP_USER}>`,
+                    to: data.guestEmail,
+                    subject: `Reservation Confirmed - ${data.hotelName}`,
+                    html: emailTemplate,
+                    text: this.generatePlainTextConfirmation(data)
+                };
+                const result = yield this.transporter.sendMail(mailOptions);
+                logger_1.logger.info('Confirmation email sent:', {
+                    messageId: result.messageId,
+                    to: data.guestEmail,
+                    confirmationNumber: data.confirmationNumber
+                });
+                return true;
+            }
+            catch (error) {
+                logger_1.logger.error('Email sending error:', error);
+                return false;
+            }
+        });
+    }
+    generateConfirmationEmail(data) {
+        return `
     <!DOCTYPE html>
     <html>
     <head>
@@ -136,10 +133,9 @@ export class EmailService {
     </body>
     </html>
     `;
-  }
-
-  private generatePlainTextConfirmation(data: ReservationConfirmation): string {
-    return `
+    }
+    generatePlainTextConfirmation(data) {
+        return `
 RESERVATION CONFIRMED - ${data.hotelName}
 
 Dear ${data.guestName},
@@ -166,30 +162,30 @@ We look forward to hosting you!
 
 ${data.hotelName}
     `;
-  }
-
-  async sendEmail(to: string, subject: string, html: string, text?: string): Promise<boolean> {
-    try {
-      const mailOptions = {
-        from: process.env.SMTP_USER,
-        to,
-        subject,
-        html,
-        text
-      };
-
-      const result = await this.transporter.sendMail(mailOptions);
-      
-      logger.info('Email sent:', {
-        messageId: result.messageId,
-        to,
-        subject
-      });
-
-      return true;
-    } catch (error) {
-      logger.error('Email sending error:', error);
-      return false;
     }
-  }
-} 
+    sendEmail(to, subject, html, text) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const mailOptions = {
+                    from: process.env.SMTP_USER,
+                    to,
+                    subject,
+                    html,
+                    text
+                };
+                const result = yield this.transporter.sendMail(mailOptions);
+                logger_1.logger.info('Email sent:', {
+                    messageId: result.messageId,
+                    to,
+                    subject
+                });
+                return true;
+            }
+            catch (error) {
+                logger_1.logger.error('Email sending error:', error);
+                return false;
+            }
+        });
+    }
+}
+exports.EmailService = EmailService;
