@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { Box, Typography, Paper, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, MenuItem, CircularProgress } from '@mui/material';
+import { Box, Typography, Paper, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, MenuItem, CircularProgress, Collapse } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -13,6 +13,8 @@ import { useSnackbar } from 'notistack';
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import Tooltip from '@mui/material/Tooltip';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 const ReservationsPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -34,11 +36,16 @@ const ReservationsPage: React.FC = () => {
     queryFn: getRooms,
   });
 
-  const roomNumbersForConfig = rooms.filter((r: any) => r.hotelConfigId === selectedConfigId).map((r: any) => r.number);
+  // Only show reservations for rooms in the current hotel config, using room ID
+  const roomIdsForConfig = rooms.filter((r: any) => r.hotelConfigId === selectedConfigId).map((r: any) => r.id);
   const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('dates');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [expandedRows, setExpandedRows] = useState<{ [id: string]: boolean }>({});
+
   const filteredReservations = reservations
-    .filter((res: any) => roomNumbersForConfig.includes(res.rooms))
+    .filter((res: any) => roomIdsForConfig.includes(res.rooms))
     .filter((res: any) => {
       if (!search) return true;
       return (
@@ -50,6 +57,9 @@ const ReservationsPage: React.FC = () => {
         res.rooms.toLowerCase().includes(search.toLowerCase())
       );
     });
+
+  // Only show available rooms for new reservations
+  const availableRooms = rooms.filter((r: any) => (r.status === 'available' || r.status === 'partially-reserved') && r.hotelConfigId === selectedConfigId);
 
   // Mutations
   const createMutation = useMutation({
@@ -113,6 +123,23 @@ const ReservationsPage: React.FC = () => {
     setDeleteDialogOpen(false);
     setPendingDeleteId(null);
   };
+
+  const handleSort = (col: string) => {
+    if (sortBy === col) setSortDir(dir => (dir === 'asc' ? 'desc' : 'asc'));
+    else { setSortBy(col); setSortDir('desc'); }
+  };
+
+  const sortedReservations = [...filteredReservations].sort((a, b) => {
+    let aVal = a[sortBy];
+    let bVal = b[sortBy];
+    if (sortBy === 'dates') {
+      aVal = a.dates?.split(' to ')[0] || '';
+      bVal = b.dates?.split(' to ')[0] || '';
+    }
+    if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   if (loadingReservations || loadingGuests || loadingRooms) {
     return <Box display="flex" justifyContent="center" alignItems="center" p={3}><CircularProgress /></Box>;
@@ -179,42 +206,78 @@ const ReservationsPage: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Reservation ID</TableCell>
-              <TableCell>Guest(s)</TableCell>
-              <TableCell>Room(s)</TableCell>
-              <TableCell>Dates</TableCell>
-              <TableCell>Price</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Notes</TableCell>
+              <TableCell onClick={() => handleSort('id')} style={{ cursor: 'pointer' }}>Reservation ID</TableCell>
+              <TableCell onClick={() => handleSort('guestIds')} style={{ cursor: 'pointer' }}>Guest(s)</TableCell>
+              <TableCell onClick={() => handleSort('rooms')} style={{ cursor: 'pointer' }}>Room(s)</TableCell>
+              <TableCell onClick={() => handleSort('dates')} style={{ cursor: 'pointer' }}>Dates</TableCell>
+              <TableCell onClick={() => handleSort('price')} style={{ cursor: 'pointer' }}>Price</TableCell>
+              <TableCell onClick={() => handleSort('status')} style={{ cursor: 'pointer' }}>Status</TableCell>
+              <TableCell onClick={() => handleSort('notes')} style={{ cursor: 'pointer' }}>Notes</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredReservations.map((res: any) => (
-              <TableRow
-                key={res.id}
-                hover
-                selected={selectedReservationId === res.id}
-                onClick={() => setSelectedReservationId(res.id)}
-                tabIndex={0}
-                style={{ cursor: 'pointer' }}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' || e.key === ' ') setSelectedReservationId(res.id);
-                }}
-              >
-                <TableCell>{res.id}</TableCell>
-                <TableCell>{res.guestIds && Array.isArray(res.guestIds)
-                  ? res.guestIds.map((gid: string) => {
-                      const g = guests.find((gg: any) => gg.id === gid);
-                      return g ? g.name : gid;
-                    }).join(', ')
-                  : ''}</TableCell>
-                <TableCell>{res.rooms}</TableCell>
-                <TableCell>{res.dates}</TableCell>
-                <TableCell>{res.price}</TableCell>
-                <TableCell>{res.status}</TableCell>
-                <TableCell>{res.notes}</TableCell>
-              </TableRow>
-            ))}
+            {sortedReservations.map((res: any) => {
+              const guestNames = res.guestIds && Array.isArray(res.guestIds)
+                ? res.guestIds.map((gid: string) => {
+                    const g = guests.find((gg: any) => gg.id === gid);
+                    return g ? g.name : gid;
+                  })
+                : [];
+              const firstGuest = guestNames[0] || '';
+              const moreCount = guestNames.length - 1;
+              const expanded = expandedRows[res.id];
+              return (
+                <React.Fragment key={res.id}>
+                  <TableRow
+                    hover
+                    selected={selectedReservationId === res.id}
+                    onClick={() => setSelectedReservationId(res.id)}
+                    tabIndex={0}
+                    style={{ cursor: 'pointer' }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') setSelectedReservationId(res.id);
+                    }}
+                  >
+                    <TableCell>{res.id}</TableCell>
+                    <TableCell>
+                      {firstGuest}
+                      {moreCount > 0 && (
+                        <>
+                          {' '}
+                          <IconButton size="small" onClick={e => { e.stopPropagation(); setExpandedRows(r => ({ ...r, [res.id]: !expanded })); }}>
+                            {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                          </IconButton>
+                          <span style={{ color: '#1976d2', cursor: 'pointer' }} onClick={e => { e.stopPropagation(); setExpandedRows(r => ({ ...r, [res.id]: !expanded })); }}>
+                            +{moreCount} more
+                          </span>
+                        </>
+                      )}
+                    </TableCell>
+                    <TableCell>{(() => {
+                      const room = rooms.find((r: any) => r.id === res.rooms || r.number === res.rooms);
+                      return room ? room.number : res.rooms;
+                    })()}</TableCell>
+                    <TableCell>{res.dates}</TableCell>
+                    <TableCell>{res.price}</TableCell>
+                    <TableCell>{res.status}</TableCell>
+                    <TableCell>{res.notes}</TableCell>
+                  </TableRow>
+                  {moreCount > 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} style={{ padding: 0, background: '#f9f9f9' }}>
+                        <Collapse in={expanded} timeout="auto" unmountOnExit>
+                          <Box pl={6} py={1}>
+                            {guestNames.slice(1).map((name: string, idx: number) => (
+                              <Typography key={idx} variant="body2">{name}</Typography>
+                            ))}
+                          </Box>
+                        </Collapse>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>
@@ -250,7 +313,7 @@ const ReservationsPage: React.FC = () => {
             fullWidth
             margin="normal"
           >
-            {rooms.map((r: any) => <MenuItem key={r.id} value={r.number}>{r.number}</MenuItem>)}
+            {availableRooms.map((r: any) => <MenuItem key={r.id} value={r.id}>{r.number}</MenuItem>)}
           </TextField>
           <Box display="flex" gap={2}>
             <DatePicker

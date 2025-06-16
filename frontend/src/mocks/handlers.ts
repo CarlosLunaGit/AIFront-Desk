@@ -719,81 +719,52 @@ const mockGuests = [
   }
 ];
 
-// Mock in-memory store for reservation history
-let reservationHistory: Array<{
-  id: string;
-  roomId: string;
-  timestamp: string;
-  action: 'status_change' | 'guest_assigned' | 'guest_removed' | 'guest_status_change' | 'reservation_deleted';
-  previousState: {
-    roomStatus?: RoomStatus;
-    guestStatus?: GuestStatus;
-    guestId?: string;
-    guestIds?: string[];
-  };
-  newState: {
-    roomStatus?: RoomStatus;
-    guestStatus?: GuestStatus;
-    guestId?: string;
-  };
-  performedBy: string;
-  notes?: string;
-}> = [];
-
-// Helper functions for history logging
-const addHistoryEntry = (entry: Omit<typeof reservationHistory[0], 'id' | 'timestamp'>) => {
-  const newEntry = {
-    ...entry,
-    id: Math.random().toString(36).substr(2, 9),
-    timestamp: new Date().toISOString(),
-  };
-  reservationHistory.push(newEntry);
-  return newEntry;
-};
-
-const getRoomHistory = (roomId: string) => {
-  return reservationHistory
-    .filter(entry => entry.roomId === roomId)
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-};
-
-const getAllHistory = () => {
-  return [...reservationHistory].sort((a, b) => 
-    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  );
-};
-
-// Sync assignedGuests in mockRooms with mockGuests
+// Sync assignedGuests for all rooms on startup
 mockRooms.forEach(room => {
   room.assignedGuests = mockGuests.filter(g => g.roomId === room.id && g.hotelConfigId === room.hotelConfigId).map(g => g.id);
 });
 
-// Generate aligned mockReservations from mockGuests and mockRooms
-function getEarliestDate(dates: string[]) {
-  return dates.filter(Boolean).sort()[0] || '';
-}
-function getLatestDate(dates: string[]) {
-  return dates.filter(Boolean).sort().reverse()[0] || '';
-}
-let mockReservations = mockRooms
-  .filter(room => room.assignedGuests && room.assignedGuests.length > 0)
-  .map((room, idx) => {
-    const guests = mockGuests.filter(g => room.assignedGuests.includes(g.id));
+// Generate aligned mockReservations and reservationHistory from mockGuests and mockRooms
+function generateMockReservationsAndHistory() {
+  const reservations: any[] = [];
+  const history: any[] = [];
+  let reservationCount = 1;
+  // For each room, collect all guests assigned to it by roomId and hotelConfigId
+  mockRooms.forEach(room => {
+    const guests = mockGuests.filter(g => g.roomId === room.id && g.hotelConfigId === room.hotelConfigId);
+    if (guests.length === 0) return;
     const guestIds = guests.map(g => g.id);
     const startDates = guests.map(g => g.reservationStart);
     const endDates = guests.map(g => g.reservationEnd);
-    const dates = `${getEarliestDate(startDates).split('T')[0]} to ${getLatestDate(endDates).split('T')[0]}`;
-    const status = guests.some(g => g.status === 'checked-in') ? 'Confirmed' : 'Pending';
-    return {
-      id: `R-${(idx + 1).toString().padStart(3, '0')}`,
+    const getEarliestDate = (dates: string[]) => dates.filter(Boolean).sort()[0] || '';
+    const getLatestDate = (dates: string[]) => dates.filter(Boolean).sort().slice(-1)[0] || '';
+    const reservation = {
+      id: `mock-res-${reservationCount++}`,
+      rooms: room.id,
       guestIds,
-      rooms: room.number,
-      dates,
-      status,
+      dates: `${getEarliestDate(startDates)} to ${getLatestDate(endDates)}`,
+      price: 100 * guestIds.length,
+      status: 'booked',
       notes: '',
-      price: 0,
+      hotelConfigId: room.hotelConfigId,
     };
+    reservations.push(reservation);
+    // Add a reservation_created action for this reservation
+    history.push({
+      id: `mock-history-${reservation.id}`,
+      roomId: room.id,
+      timestamp: new Date().toISOString(),
+      action: 'reservation_created',
+      previousState: {},
+      newState: { guestIds: Array.from(new Set(guestIds)) },
+      performedBy: 'System',
+      notes: '',
+    });
   });
+  return { reservations, history };
+}
+
+const { reservations: mockReservations, history: reservationHistory } = generateMockReservationsAndHistory();
 
 // Mock handlers
 export const handlers: HttpHandler[] = [
@@ -988,14 +959,6 @@ export const handlers: HttpHandler[] = [
       return new HttpResponse('Missing or invalid guestId', { status: 400 });
     }
     // Log the guest assignment
-    addHistoryEntry({
-      roomId: room.id,
-      action: 'guest_assigned',
-      previousState: {},
-      newState: { guestId: body.guestId },
-      performedBy: 'system',
-      notes: 'Guest assigned via API',
-    });
     // Add guest to assignedGuests if not already present
     if (!room.assignedGuests.includes(body.guestId)) {
       room.assignedGuests.push(body.guestId);
@@ -1138,16 +1101,7 @@ export const handlers: HttpHandler[] = [
     mockGuests.push(newGuest);
     // Log guest assignment if roomId is present
     if (newGuest.roomId) {
-      addHistoryEntry({
-        roomId: newGuest.roomId,
-        action: 'guest_assigned',
-        previousState: {},
-        newState: { guestId: newGuest.id },
-        performedBy: 'system',
-        notes: 'Guest assigned via guest creation',
-      });
-      const room = mockRooms.find(r => r.id === newGuest.roomId && r.hotelConfigId === newGuest.hotelConfigId);
-      recalculateRoomStatus(room, 'system', 'Triggered by guest assignment');
+      recalculateRoomStatus(mockRooms.find(r => r.id === newGuest.roomId && r.hotelConfigId === newGuest.hotelConfigId), 'system', 'Triggered by guest assignment');
     }
     return HttpResponse.json(newGuest, { status: 201 });
   }),
@@ -1162,31 +1116,9 @@ export const handlers: HttpHandler[] = [
     }
     const previousStatus = guest.status as GuestStatus;
     Object.assign(guest, ensureGuestDefaults(body));
-    // Log the guest status change if status was updated
-    if (body.status && body.status !== previousStatus) {
-      // Validate that the new status is a valid GuestStatus
-      if (!['booked', 'checked-in', 'checked-out'].includes(body.status)) {
-        return new HttpResponse('Invalid guest status', { status: 400 });
-      }
-      addHistoryEntry({
-        roomId: guest.roomId,
-        action: 'guest_status_change',
-        previousState: { 
-          guestId: guest.id, 
-          guestStatus: previousStatus as GuestStatus 
-        },
-        newState: { 
-          guestId: guest.id, 
-          guestStatus: body.status as GuestStatus 
-        },
-        performedBy: 'system',
-        notes: 'Guest status updated via API',
-      });
-    }
     // Always recalculate room status after guest update
     if (guest.roomId) {
-      const room = mockRooms.find(r => r.id === guest.roomId && r.hotelConfigId === guest.hotelConfigId);
-      recalculateRoomStatus(room, 'system', 'Triggered by guest status change');
+      recalculateRoomStatus(mockRooms.find(r => r.id === guest.roomId && r.hotelConfigId === guest.hotelConfigId), 'system', 'Triggered by guest status change');
     }
     return HttpResponse.json(guest);
   }),
@@ -1227,7 +1159,10 @@ export const handlers: HttpHandler[] = [
 
   // Get all reservation history
   http.get('/api/reservation-history', () => {
-    return HttpResponse.json(getAllHistory());
+    // Only return history for the current hotel config
+    const roomIdsForConfig = mockRooms.filter(r => r.hotelConfigId === currentConfigId).map(r => r.id);
+    const filtered = reservationHistory.filter(h => roomIdsForConfig.includes(h.roomId));
+    return HttpResponse.json(filtered);
   }),
 
   // Get room-specific reservation history
@@ -1236,7 +1171,7 @@ export const handlers: HttpHandler[] = [
     if (!roomId) {
       return new HttpResponse('Invalid room ID', { status: 400 });
     }
-    return HttpResponse.json(getRoomHistory(roomId));
+    return HttpResponse.json(reservationHistory.filter(h => h.roomId === roomId));
   }),
 
   // Room status change handler
@@ -1256,14 +1191,7 @@ export const handlers: HttpHandler[] = [
     const previousStatus = room.status;
     room.status = body.status;
     // Log the status change
-    addHistoryEntry({
-      roomId: room.id,
-      action: 'status_change',
-      previousState: { roomStatus: previousStatus },
-      newState: { roomStatus: body.status },
-      performedBy: 'system',
-      notes: 'Status updated via API',
-    });
+    recalculateRoomStatus(room, 'system', 'Status updated via API');
     return HttpResponse.json(room);
   }),
 
@@ -1278,15 +1206,6 @@ export const handlers: HttpHandler[] = [
     if (!room) {
       return new HttpResponse(null, { status: 404 });
     }
-    // Log the guest removal
-    addHistoryEntry({
-      roomId: room.id,
-      action: 'guest_removed',
-      previousState: { guestId },
-      newState: {},
-      performedBy: 'system',
-      notes: 'Guest removed via API',
-    });
     // ... rest of existing removal logic ...
     return HttpResponse.json(room);
   }),
@@ -1301,20 +1220,16 @@ export const handlers: HttpHandler[] = [
     }
     const previousStatus = room.status;
     room.status = 'cleaning';
-    addHistoryEntry({
-      roomId: room.id,
-      action: 'status_change',
-      previousState: { roomStatus: previousStatus },
-      newState: { roomStatus: 'cleaning' },
-      performedBy: 'system',
-      notes: 'Room set to cleaning via API',
-    });
+    recalculateRoomStatus(room, 'system', 'Room set to cleaning via API');
     return HttpResponse.json(room);
   }),
 
   // Reservation endpoints
   http.get('/api/reservations', () => {
-    return HttpResponse.json(mockReservations);
+    // Only return reservations for the current hotel config
+    const roomIdsForConfig = mockRooms.filter(r => r.hotelConfigId === currentConfigId).map(r => r.id);
+    const filtered = mockReservations.filter(r => roomIdsForConfig.includes(r.rooms));
+    return HttpResponse.json(filtered);
   }),
   http.post('/api/reservations', async ({ request }) => {
     const data = await request.json();
@@ -1341,14 +1256,17 @@ export const handlers: HttpHandler[] = [
         guestIds.push(newGuestId);
       });
     }
+    const price = typeof safeData.price === 'number' ? safeData.price : Number(safeData.price);
     const newReservation = {
       id: `R-${(mockReservations.length + 1).toString().padStart(3, '0')}`,
       guestIds,
+      guests: guestIds.map(id => mockGuests.find(g => g.id === id)?.name || ''),
       rooms: safeData.rooms || '',
       dates: safeData.dates || '',
       status: safeData.status || 'Pending',
       notes: safeData.notes || '',
-      price: typeof safeData.price === 'number' ? safeData.price : 0,
+      price: !isNaN(price) ? price : 0,
+      createdDate: new Date().toISOString().split('T')[0],
     };
     mockReservations.push(newReservation);
     // Update guests' reservation info
@@ -1360,6 +1278,17 @@ export const handlers: HttpHandler[] = [
         guest.reservationEnd = newReservation.dates.split(' to ')[1];
       }
     });
+    // Add to reservation history: reservation_created
+    reservationHistory.push({
+      id: `HIST-${Date.now()}`,
+      roomId: newReservation.rooms,
+      timestamp: new Date().toISOString(),
+      action: 'reservation_created',
+      previousState: {},
+      newState: { guestIds: newReservation.guestIds },
+      performedBy: 'system',
+      notes: 'Reservation created via API',
+    });
     return HttpResponse.json(newReservation, { status: 201 });
   }),
   http.patch('/api/reservations/:id', async ({ params, request }) => {
@@ -1368,7 +1297,71 @@ export const handlers: HttpHandler[] = [
     const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
     const idx = mockReservations.findIndex(r => r.id === id);
     if (idx === -1) return new HttpResponse(null, { status: 404 });
-    mockReservations[idx] = { ...mockReservations[idx], ...safeData };
+    const prevReservation = { ...mockReservations[idx] };
+    const prevGuestIds = [...(mockReservations[idx].guestIds || [])];
+    // Add new guests if provided
+    let guestIds = Array.isArray(safeData.guestIds) ? [...safeData.guestIds] : [...(mockReservations[idx].guestIds || [])];
+    if (Array.isArray(safeData.newGuests)) {
+      safeData.newGuests.forEach((g: any) => {
+        const newGuestId = `guest-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        mockGuests.push({
+          id: newGuestId,
+          name: g.name,
+          email: g.email || '',
+          phone: g.phone || '',
+          status: 'booked',
+          roomId: safeData.rooms || mockReservations[idx].rooms,
+          reservationStart: (safeData.dates || mockReservations[idx].dates).split(' to ')[0],
+          reservationEnd: (safeData.dates || mockReservations[idx].dates).split(' to ')[1],
+          checkIn: '',
+          checkOut: '',
+          hotelConfigId: currentConfigId,
+          keepOpen: false,
+        });
+        guestIds.push(newGuestId);
+      });
+    }
+    // Update reservation guestIds if changed
+    mockReservations[idx] = { ...mockReservations[idx], ...safeData, guestIds };
+    // Update guests' reservation info if dates or room changed, but do not reassign if already assigned
+    if (safeData.dates || safeData.rooms) {
+      (mockReservations[idx].guestIds || []).forEach((gid: string) => {
+        const guest = mockGuests.find(g => g.id === gid);
+        if (guest) {
+          if (safeData.rooms && guest.roomId !== safeData.rooms) guest.roomId = safeData.rooms;
+          if (safeData.dates) {
+            const [start, end] = safeData.dates.split(' to ');
+            if (guest.reservationStart !== start) guest.reservationStart = start;
+            if (guest.reservationEnd !== end) guest.reservationEnd = end;
+          }
+        }
+      });
+    }
+    // Add to reservation history: reservation_edited, include all editable fields
+    reservationHistory.push({
+      id: `HIST-${Date.now()}`,
+      roomId: mockReservations[idx].rooms,
+      timestamp: new Date().toISOString(),
+      action: 'reservation_edited',
+      previousState: {
+        guestIds: prevGuestIds,
+        dates: prevReservation.dates,
+        price: prevReservation.price,
+        notes: prevReservation.notes,
+        status: prevReservation.status,
+        rooms: prevReservation.rooms,
+      },
+      newState: {
+        guestIds: mockReservations[idx].guestIds,
+        dates: mockReservations[idx].dates,
+        price: mockReservations[idx].price,
+        notes: mockReservations[idx].notes,
+        status: mockReservations[idx].status,
+        rooms: mockReservations[idx].rooms,
+      },
+      performedBy: 'system',
+      notes: 'Reservation edited via API',
+    });
     return HttpResponse.json(mockReservations[idx]);
   }),
   http.delete('/api/reservations/:id', ({ params }) => {
@@ -1474,8 +1467,10 @@ function recalculateRoomStatus(room: Room | undefined, performedBy: string = 'sy
   }
   // Log status change if it actually changed
   if (room.status !== prevStatus) {
-    addHistoryEntry({
+    reservationHistory.push({
+      id: `HIST-${Date.now()}`,
       roomId: room.id,
+      timestamp: new Date().toISOString(),
       action: 'status_change',
       previousState: { roomStatus: prevStatus },
       newState: { roomStatus: room.status },

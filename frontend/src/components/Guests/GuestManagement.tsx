@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { TableCell, TableRow, Radio, Box, Button } from '@mui/material';
 import { useGuests } from "../../hooks/useGuests";
 import { Guest } from "../../types";
+import { useQuery } from '@tanstack/react-query';
 
 const GuestManagement: React.FC = () => {
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
   const { guests, onDeleteGuest, onCheckIn, onCheckOut, onToggleKeepOpen } = useGuests();
   const selectedGuest = guests.find(g => g.id === selectedGuestId);
+  const { data: rooms = [] } = useQuery({ queryKey: ['rooms'], queryFn: async () => (await fetch('/api/rooms')).json() });
 
   return (
     <div>
@@ -48,6 +50,10 @@ const GuestManagement: React.FC = () => {
           {selectedGuest?.keepOpen ? "Close" : "Keep Open"}
         </Button>
       </Box>
+      <TableCell>{(() => {
+        const room = rooms.find((r: any) => r.id === selectedGuest?.roomId);
+        return room ? room.number : selectedGuest?.roomId;
+      })()}</TableCell>
     </div>
   );
 };

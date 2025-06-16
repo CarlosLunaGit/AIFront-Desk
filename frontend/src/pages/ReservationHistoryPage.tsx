@@ -37,16 +37,25 @@ interface ReservationHistoryEntry {
   id: string;
   roomId: string;
   timestamp: string;
-  action: 'status_change' | 'guest_assigned' | 'guest_removed' | 'guest_status_change';
+  action:
+    | 'status_change'
+    | 'guest_assigned'
+    | 'guest_removed'
+    | 'guest_status_change'
+    | 'reservation_created'
+    | 'reservation_edited'
+    | 'reservation_deleted';
   previousState: {
     roomStatus?: string;
     guestStatus?: string;
     guestId?: string;
+    guestIds?: string[];
   };
   newState: {
     roomStatus?: string;
     guestStatus?: string;
     guestId?: string;
+    guestIds?: string[];
   };
   performedBy: string;
   notes?: string;
@@ -68,6 +77,12 @@ const getActionColor = (action: ReservationHistoryEntry['action']) => {
       return 'error';
     case 'guest_status_change':
       return 'warning';
+    case 'reservation_created':
+      return 'info';
+    case 'reservation_edited':
+      return 'secondary';
+    case 'reservation_deleted':
+      return 'error';
     default:
       return 'default';
   }
@@ -83,6 +98,12 @@ const formatAction = (entry: ReservationHistoryEntry) => {
       return `Guest ${entry.previousState.guestId} removed from room`;
     case 'guest_status_change':
       return `Guest ${entry.newState.guestId} status changed from ${entry.previousState.guestStatus} to ${entry.newState.guestStatus}`;
+    case 'reservation_created':
+      return `Reservation created for guest(s): ${(entry.newState.guestIds || []).join(', ')}`;
+    case 'reservation_edited':
+      return `Reservation edited. New guest(s): ${(entry.newState.guestIds || []).join(', ')}`;
+    case 'reservation_deleted':
+      return `Reservation deleted for guest(s): ${(entry.previousState.guestIds || []).join(', ')}`;
     default:
       return entry.action;
   }
@@ -104,6 +125,8 @@ const ReservationHistoryPage: React.FC = () => {
     queryFn: fetchAllHistory,
     enabled: !!currentConfig,
   });
+
+  const { data: rooms = [] } = useQuery({ queryKey: ['rooms'], queryFn: async () => (await fetch('/api/rooms')).json() });
 
   const filteredHistory = history?.filter(entry => {
     const matchesSearch = 
@@ -221,6 +244,9 @@ const ReservationHistoryPage: React.FC = () => {
               <MenuItem value="guest_assigned">Guest Assignments</MenuItem>
               <MenuItem value="guest_removed">Guest Removals</MenuItem>
               <MenuItem value="guest_status_change">Guest Status Changes</MenuItem>
+              <MenuItem value="reservation_created">Reservation Created</MenuItem>
+              <MenuItem value="reservation_edited">Reservation Edited</MenuItem>
+              <MenuItem value="reservation_deleted">Reservation Deleted</MenuItem>
             </Select>
           </FormControl>
         </Grid>
@@ -297,7 +323,10 @@ const ReservationHistoryPage: React.FC = () => {
                 <TableCell>
                   {format(new Date(entry.timestamp), 'MMM d, yyyy HH:mm:ss')}
                 </TableCell>
-                <TableCell>{entry.roomId}</TableCell>
+                <TableCell>{(() => {
+                  const room = rooms.find((r: any) => r.id === entry.roomId);
+                  return room ? room.number : entry.roomId;
+                })()}</TableCell>
                 <TableCell>
                   <Chip
                     label={entry.action.replace('_', ' ')}
