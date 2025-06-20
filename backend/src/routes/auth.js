@@ -14,6 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const express_validator_1 = require("express-validator");
 const User_1 = require("../models/User");
 const logger_1 = require("../utils/logger");
@@ -45,7 +46,7 @@ router.post('/register', [
         });
         yield user.save();
         // Generate JWT
-        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET || 'fallback-secret', { expiresIn: '7d' });
+        const token = jsonwebtoken_1.default.sign({ userId: user._id }, process.env.JWT_SECRET || 'fallback-secret', { expiresIn: '7d' });
         res.status(201).json({
             token,
             user: {
@@ -82,7 +83,7 @@ router.post('/login', [
             return res.status(400).json({ message: 'Invalid credentials' });
         }
         // Generate JWT
-        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET || 'fallback-secret', { expiresIn: '7d' });
+        const token = jsonwebtoken_1.default.sign({ userId: user._id }, process.env.JWT_SECRET || 'fallback-secret', { expiresIn: '7d' });
         res.json({
             token,
             user: {
@@ -105,7 +106,7 @@ router.get('/me', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         if (!token) {
             return res.status(401).json({ message: 'No token provided' });
         }
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET || 'fallback-secret');
         const user = yield User_1.User.findById(decoded.userId).select('-password');
         if (!user) {
             return res.status(401).json({ message: 'User not found' });

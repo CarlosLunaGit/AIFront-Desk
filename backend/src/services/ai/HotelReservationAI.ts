@@ -3,6 +3,7 @@ import { OpenAIProvider } from './OpenAIProvider';
 import { Room } from '../../models/Room';
 import { Guest } from '../../models/Guest';
 import { Tenant } from '../../models/Tenant';
+import { MessageType, MessageChannel } from '../../models/Communication';
 import { logger } from '../../utils/logger';
 
 export enum ConversationState {
@@ -104,11 +105,20 @@ export class HotelReservationAI {
       return aiResponse;
     } catch (error) {
       logger.error('Reservation AI processing error:', error);
-      return {
-        content: "I apologize, but I'm having trouble processing your request right now. Please try again or call our front desk directly.",
-        confidence: 0.1,
-        metadata: { error: true }
-      };
+              // Check if it's a rate limiting error
+        if (error instanceof Error && error.message && error.message.includes('429')) {
+          return {
+            content: "Hello! I'm experiencing high demand right now. I'd be happy to help you with your hotel inquiry! Could you please tell me what you're looking for? For immediate assistance, you can also call our front desk.",
+            confidence: 0.7,
+            metadata: { rateLimited: true, fallback: true }
+          };
+        }
+        
+        return {
+          content: "I apologize, but I'm having trouble processing your request right now. Please try again or call our front desk directly.",
+          confidence: 0.1,
+          metadata: { error: true }
+        };
     }
   }
 
@@ -130,6 +140,12 @@ export class HotelReservationAI {
     message: string,
     tenant: any
   ): Promise<AIResponse> {
+    logger.info('Processing message with state:', {
+      state: session.state,
+      message: message.substring(0, 50) + '...',
+      tenant: tenant.name
+    });
+
     switch (session.state) {
       case ConversationState.GREETING:
         return this.handleGreeting(session, message, tenant);
@@ -158,6 +174,22 @@ export class HotelReservationAI {
   ): Promise<AIResponse> {
     const isReservationRequest = this.detectReservationIntent(message);
     
+    // Use OpenAI for the greeting response
+    const context: MessageContext = {
+      hotelId: session.tenantId,
+      messageType: MessageType.INBOUND,
+      channel: MessageChannel.WHATSAPP,
+      content: message,
+      metadata: { 
+        sessionState: session.state,
+        hotelName: tenant.name,
+        isReservationRequest,
+        conversationHistory: session.messages.slice(-3) // Last 3 messages for context
+      }
+    };
+
+    const aiResponse = await this.openaiProvider.processMessage(context);
+    
     if (isReservationRequest) {
       session.state = ConversationState.COLLECTING_DATES;
       
@@ -167,25 +199,21 @@ export class HotelReservationAI {
         session.reservationData = { ...session.reservationData, ...extractedDates };
         session.state = ConversationState.COLLECTING_GUESTS;
         
-        return {
-          content: `Great! I found availability for ${extractedDates.checkIn} to ${extractedDates.checkOut}. How many guests will be staying?`,
-          confidence: 0.9,
-          metadata: { nextState: ConversationState.COLLECTING_GUESTS }
+        // Enhance AI response with reservation flow info
+        aiResponse.metadata = { 
+          ...aiResponse.metadata, 
+          nextState: ConversationState.COLLECTING_GUESTS,
+          extractedDates 
+        };
+      } else {
+        aiResponse.metadata = { 
+          ...aiResponse.metadata, 
+          nextState: ConversationState.COLLECTING_DATES 
         };
       }
-      
-      return {
-        content: `Hello! Welcome to ${tenant.name}. I'd be happy to help you make a reservation. What dates are you looking to stay with us?`,
-        confidence: 0.9,
-        metadata: { nextState: ConversationState.COLLECTING_DATES }
-      };
     }
 
-    return {
-      content: `Hello! Welcome to ${tenant.name}. How can I assist you today? I can help you make reservations, answer questions about our amenities, or provide local recommendations.`,
-      confidence: 0.8,
-      metadata: { nextState: ConversationState.GREETING }
-    };
+    return aiResponse;
   }
 
   private async handleDateCollection(
@@ -195,6 +223,23 @@ export class HotelReservationAI {
   ): Promise<AIResponse> {
     const extractedDates = await this.extractDatesFromMessage(message);
     
+    // Use OpenAI for date collection response
+    const context: MessageContext = {
+      hotelId: session.tenantId,
+      messageType: MessageType.INBOUND,
+      channel: MessageChannel.WHATSAPP,
+      content: message,
+      metadata: { 
+        sessionState: session.state,
+        hotelName: tenant.name,
+        extractedDates,
+        conversationHistory: session.messages.slice(-3),
+        reservationData: session.reservationData
+      }
+    };
+
+    const aiResponse = await this.openaiProvider.processMessage(context);
+    
     if (extractedDates.checkIn && extractedDates.checkOut) {
       // Validate dates
       const checkIn = new Date(extractedDates.checkIn);
@@ -202,54 +247,29 @@ export class HotelReservationAI {
       const today = new Date();
       
       if (checkIn < today) {
-        return {
-          content: "I notice the check-in date is in the past. Could you please provide dates starting from today or later?",
-          confidence: 0.9,
-          metadata: { error: 'invalid_dates' }
-        };
+        aiResponse.content = "I notice the check-in date you mentioned is in the past. Could you please provide future dates for your stay?";
+        return aiResponse;
       }
       
       if (checkOut <= checkIn) {
-        return {
-          content: "The check-out date should be after the check-in date. Could you please clarify your dates?",
-          confidence: 0.9,
-          metadata: { error: 'invalid_dates' }
-        };
+        aiResponse.content = "The check-out date should be after the check-in date. Could you please clarify your dates?";
+        return aiResponse;
       }
 
-      // Check availability
-      const availability = await this.checkAvailability(
-        session.tenantId,
-        extractedDates.checkIn,
-        extractedDates.checkOut
-      );
-
-      if (availability.availableRooms.length === 0) {
-        return {
-          content: `I'm sorry, but we don't have any rooms available for ${extractedDates.checkIn} to ${extractedDates.checkOut}. Would you like to try different dates?`,
-          confidence: 0.9,
-          metadata: { availability: false }
-        };
-      }
-
-      session.reservationData = { ...session.reservationData, ...extractedDates };
+      // Update session with dates
+      session.reservationData.checkIn = extractedDates.checkIn;
+      session.reservationData.checkOut = extractedDates.checkOut;
       session.state = ConversationState.COLLECTING_GUESTS;
-
-      return {
-        content: `Perfect! I have rooms available from ${extractedDates.checkIn} to ${extractedDates.checkOut}. How many guests will be staying?`,
-        confidence: 0.9,
-        metadata: { 
-          nextState: ConversationState.COLLECTING_GUESTS,
-          availability: availability.availableRooms.length
-        }
+      
+      // Enhance AI response with next step
+      aiResponse.metadata = { 
+        ...aiResponse.metadata, 
+        nextState: ConversationState.COLLECTING_GUESTS,
+        validDates: true
       };
     }
 
-    return {
-      content: "I didn't quite catch those dates. Could you please tell me your check-in and check-out dates? For example: 'March 15 to March 18' or '3/15 to 3/18'.",
-      confidence: 0.7,
-      metadata: { needsClarification: true }
-    };
+    return aiResponse;
   }
 
   private async handleGuestCount(
@@ -281,14 +301,14 @@ export class HotelReservationAI {
       // Calculate pricing
       const recommendedRoom = suitableRooms[0];
       const nights = this.calculateNights(session.reservationData.checkIn!, session.reservationData.checkOut!);
-      const totalPrice = recommendedRoom.rate * nights;
+      const totalPrice = recommendedRoom.price * nights;
       
       session.reservationData.estimatedPrice = totalPrice;
       session.reservationData.roomId = recommendedRoom.id;
       session.state = ConversationState.COLLECTING_CONTACT;
 
       return {
-        content: `Excellent! I have a ${recommendedRoom.typeId} room available for ${guestCount} guest${guestCount > 1 ? 's' : ''} at $${recommendedRoom.rate}/night. Your total for ${nights} night${nights > 1 ? 's' : ''} would be $${totalPrice}.\n\nTo complete your reservation, I'll need your name and email address.`,
+        content: `Excellent! I have a ${recommendedRoom.type} room available for ${guestCount} guest${guestCount > 1 ? 's' : ''} at $${recommendedRoom.price}/night. Your total for ${nights} night${nights > 1 ? 's' : ''} would be $${totalPrice}.\n\nTo complete your reservation, I'll need your name and email address.`,
         confidence: 0.9,
         metadata: { 
           nextState: ConversationState.COLLECTING_CONTACT,
@@ -366,13 +386,18 @@ export class HotelReservationAI {
     message: string,
     tenant: any
   ): Promise<AIResponse> {
-    // Use OpenAI for general hotel inquiries
+    // Use OpenAI for general hotel inquiries with full context
     const context: MessageContext = {
       hotelId: session.tenantId,
-      messageType: 'text',
-      channel: 'whatsapp',
+      messageType: MessageType.INBOUND,
+      channel: MessageChannel.WHATSAPP,
       content: message,
-      metadata: { sessionState: session.state }
+      metadata: { 
+        sessionState: session.state,
+        hotelName: tenant.name,
+        conversationHistory: session.messages.slice(-5), // More context for general inquiries
+        reservationData: session.reservationData
+      }
     };
 
     return await this.openaiProvider.processMessage(context);

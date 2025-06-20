@@ -18,6 +18,7 @@ const HotelReservationAI_1 = require("../services/ai/HotelReservationAI");
 const PaymentService_1 = require("../services/payment/PaymentService");
 const EmailService_1 = require("../services/email/EmailService");
 const WhatsAppService_1 = require("../services/communication/WhatsAppService");
+const TwilioWhatsAppService_1 = require("../services/communication/TwilioWhatsAppService");
 const SMSService_1 = require("../services/communication/SMSService");
 const logger_1 = require("../utils/logger");
 const Tenant_1 = require("../models/Tenant");
@@ -28,6 +29,7 @@ const reservationAI = new HotelReservationAI_1.HotelReservationAI();
 const paymentService = new PaymentService_1.PaymentService();
 const emailService = new EmailService_1.EmailService();
 const whatsappService = new WhatsAppService_1.WhatsAppService();
+const twilioWhatsAppService = new TwilioWhatsAppService_1.TwilioWhatsAppService();
 const smsService = new SMSService_1.SMSService();
 // Initialize AI on startup
 (() => __awaiter(void 0, void 0, void 0, function* () {
@@ -39,6 +41,63 @@ const smsService = new SMSService_1.SMSService();
         logger_1.logger.error('Failed to initialize Reservation AI:', error);
     }
 }))();
+// 📱 Twilio WhatsApp Webhook - Receive messages from guests via Twilio
+router.post('/twilio/whatsapp/webhook', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        const { From, To, Body, MessageSid } = req.body;
+        if (!From || !Body) {
+            return res.status(200).send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
+        }
+        // Log incoming message
+        logger_1.logger.info('Twilio WhatsApp message received:', {
+            from: From,
+            to: To,
+            body: Body,
+            messageSid: MessageSid
+        });
+        // Extract phone number from whatsapp:+1234567890 format
+        const guestPhone = From.replace('whatsapp:', '');
+        const hotelPhone = To.replace('whatsapp:', '');
+        logger_1.logger.info('Processing Twilio WhatsApp webhook:', {
+            guestPhone,
+            hotelPhone,
+            body: Body
+        });
+        // Find tenant by hotel phone number (the "To" field from Twilio)
+        const tenant = yield findTenantByPhone(hotelPhone);
+        if (!tenant) {
+            logger_1.logger.error('No tenant found for Twilio WhatsApp phone:', hotelPhone);
+            // Send a generic response
+            yield twilioWhatsAppService.sendMessage(From, "Sorry, we couldn't process your message at this time. Please try again later.");
+            return res.status(200).send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
+        }
+        // Process the message with AI
+        const aiResponse = yield reservationAI.processReservationMessage(tenant._id.toString(), guestPhone, Body, 'whatsapp');
+        // Send AI response back to guest
+        yield twilioWhatsAppService.sendMessage(From, aiResponse.content);
+        // Check if we need to process payment
+        if ((_a = aiResponse.metadata) === null || _a === void 0 ? void 0 : _a.readyForPayment) {
+            logger_1.logger.info('Guest ready for payment processing via Twilio:', {
+                tenant: tenant.name,
+                phone: guestPhone
+            });
+        }
+        // Log the interaction
+        logger_1.logger.info('Twilio WhatsApp message processed:', {
+            tenant: tenant.name,
+            from: guestPhone,
+            message: Body,
+            aiConfidence: aiResponse.confidence
+        });
+        // Return empty TwiML response
+        res.status(200).send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
+    }
+    catch (error) {
+        logger_1.logger.error('Twilio WhatsApp webhook error:', error);
+        res.status(500).send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
+    }
+}));
 // 📱 WhatsApp Webhook - Receive messages from guests
 router.post('/whatsapp/webhook', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c, _d, _e;
@@ -308,6 +367,22 @@ router.post('/test/send-whatsapp', auth_1.auth, (req, res) => __awaiter(void 0, 
         res.status(500).json({ error: 'Failed to send WhatsApp message' });
     }
 }));
+router.post('/test/send-twilio-whatsapp', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { to, message } = req.body;
+        const success = yield twilioWhatsAppService.sendMessage(to, message);
+        res.json({
+            success,
+            message: success ? 'Twilio WhatsApp message sent' : 'Failed to send message',
+            to,
+            messageContent: message
+        });
+    }
+    catch (error) {
+        logger_1.logger.error('Test Twilio WhatsApp send error:', error);
+        res.status(500).json({ error: 'Failed to send Twilio WhatsApp message' });
+    }
+}));
 router.post('/test/send-sms', auth_1.auth, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { to, message } = req.body;
@@ -322,12 +397,42 @@ router.post('/test/send-sms', auth_1.auth, (req, res) => __awaiter(void 0, void 
 // Helper functions
 function findTenantByPhone(phoneNumber) {
     return __awaiter(this, void 0, void 0, function* () {
-        // In production, you'll have a phone number mapping table
-        // For now, we'll use a simple mapping or environment variable
-        const tenant = yield Tenant_1.Tenant.findOne({
-            'communicationChannels.whatsapp.phoneNumber': phoneNumber
-        });
-        return tenant;
+        try {
+            logger_1.logger.info('Looking up tenant for phone number:', { phoneNumber });
+            // Clean the phone number - remove whatsapp: prefix if present
+            const cleanPhoneNumber = phoneNumber.replace('whatsapp:', '');
+            logger_1.logger.info('Cleaned phone number:', { cleanPhoneNumber });
+            // Look for tenant by WhatsApp phone number
+            const tenant = yield Tenant_1.Tenant.findOne({
+                'communicationChannels.whatsapp.phoneNumber': cleanPhoneNumber
+            });
+            if (tenant) {
+                logger_1.logger.info('Found tenant:', {
+                    tenantId: tenant._id,
+                    tenantName: tenant.name,
+                    whatsappNumber: tenant.communicationChannels.whatsapp.phoneNumber
+                });
+                return tenant;
+            }
+            else {
+                logger_1.logger.warn('No tenant found for phone number:', { cleanPhoneNumber });
+                // For testing, let's return the first available tenant
+                // This simulates a default hotel for new guests
+                const defaultTenant = yield Tenant_1.Tenant.findOne({});
+                if (defaultTenant) {
+                    logger_1.logger.info('Using default tenant for new guest:', {
+                        tenantId: defaultTenant._id,
+                        tenantName: defaultTenant.name
+                    });
+                    return defaultTenant;
+                }
+                return null;
+            }
+        }
+        catch (error) {
+            logger_1.logger.error('Error finding tenant by phone:', error);
+            return null;
+        }
     });
 }
 function extractCreditCardInfo(message) {

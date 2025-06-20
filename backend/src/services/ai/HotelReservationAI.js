@@ -13,6 +13,7 @@ exports.HotelReservationAI = exports.ConversationState = void 0;
 const OpenAIProvider_1 = require("./OpenAIProvider");
 const Room_1 = require("../../models/Room");
 const Tenant_1 = require("../../models/Tenant");
+const Communication_1 = require("../../models/Communication");
 const logger_1 = require("../../utils/logger");
 var ConversationState;
 (function (ConversationState) {
@@ -94,6 +95,11 @@ class HotelReservationAI {
     }
     processStateBasedMessage(session, message, tenant) {
         return __awaiter(this, void 0, void 0, function* () {
+            logger_1.logger.info('Processing message with state:', {
+                state: session.state,
+                message: message.substring(0, 50) + '...',
+                tenant: tenant.name
+            });
             switch (session.state) {
                 case ConversationState.GREETING:
                     return this.handleGreeting(session, message, tenant);
@@ -113,6 +119,20 @@ class HotelReservationAI {
     handleGreeting(session, message, tenant) {
         return __awaiter(this, void 0, void 0, function* () {
             const isReservationRequest = this.detectReservationIntent(message);
+            // Use OpenAI for the greeting response
+            const context = {
+                hotelId: session.tenantId,
+                messageType: Communication_1.MessageType.INBOUND,
+                channel: Communication_1.MessageChannel.WHATSAPP,
+                content: message,
+                metadata: {
+                    sessionState: session.state,
+                    hotelName: tenant.name,
+                    isReservationRequest,
+                    conversationHistory: session.messages.slice(-3) // Last 3 messages for context
+                }
+            };
+            const aiResponse = yield this.openaiProvider.processMessage(context);
             if (isReservationRequest) {
                 session.state = ConversationState.COLLECTING_DATES;
                 // Try to extract dates from initial message
@@ -120,72 +140,55 @@ class HotelReservationAI {
                 if (extractedDates.checkIn && extractedDates.checkOut) {
                     session.reservationData = Object.assign(Object.assign({}, session.reservationData), extractedDates);
                     session.state = ConversationState.COLLECTING_GUESTS;
-                    return {
-                        content: `Great! I found availability for ${extractedDates.checkIn} to ${extractedDates.checkOut}. How many guests will be staying?`,
-                        confidence: 0.9,
-                        metadata: { nextState: ConversationState.COLLECTING_GUESTS }
-                    };
+                    // Enhance AI response with reservation flow info
+                    aiResponse.metadata = Object.assign(Object.assign({}, aiResponse.metadata), { nextState: ConversationState.COLLECTING_GUESTS, extractedDates });
                 }
-                return {
-                    content: `Hello! Welcome to ${tenant.name}. I'd be happy to help you make a reservation. What dates are you looking to stay with us?`,
-                    confidence: 0.9,
-                    metadata: { nextState: ConversationState.COLLECTING_DATES }
-                };
+                else {
+                    aiResponse.metadata = Object.assign(Object.assign({}, aiResponse.metadata), { nextState: ConversationState.COLLECTING_DATES });
+                }
             }
-            return {
-                content: `Hello! Welcome to ${tenant.name}. How can I assist you today? I can help you make reservations, answer questions about our amenities, or provide local recommendations.`,
-                confidence: 0.8,
-                metadata: { nextState: ConversationState.GREETING }
-            };
+            return aiResponse;
         });
     }
     handleDateCollection(session, message, tenant) {
         return __awaiter(this, void 0, void 0, function* () {
             const extractedDates = yield this.extractDatesFromMessage(message);
+            // Use OpenAI for date collection response
+            const context = {
+                hotelId: session.tenantId,
+                messageType: Communication_1.MessageType.INBOUND,
+                channel: Communication_1.MessageChannel.WHATSAPP,
+                content: message,
+                metadata: {
+                    sessionState: session.state,
+                    hotelName: tenant.name,
+                    extractedDates,
+                    conversationHistory: session.messages.slice(-3),
+                    reservationData: session.reservationData
+                }
+            };
+            const aiResponse = yield this.openaiProvider.processMessage(context);
             if (extractedDates.checkIn && extractedDates.checkOut) {
                 // Validate dates
                 const checkIn = new Date(extractedDates.checkIn);
                 const checkOut = new Date(extractedDates.checkOut);
                 const today = new Date();
                 if (checkIn < today) {
-                    return {
-                        content: "I notice the check-in date is in the past. Could you please provide dates starting from today or later?",
-                        confidence: 0.9,
-                        metadata: { error: 'invalid_dates' }
-                    };
+                    aiResponse.content = "I notice the check-in date you mentioned is in the past. Could you please provide future dates for your stay?";
+                    return aiResponse;
                 }
                 if (checkOut <= checkIn) {
-                    return {
-                        content: "The check-out date should be after the check-in date. Could you please clarify your dates?",
-                        confidence: 0.9,
-                        metadata: { error: 'invalid_dates' }
-                    };
+                    aiResponse.content = "The check-out date should be after the check-in date. Could you please clarify your dates?";
+                    return aiResponse;
                 }
-                // Check availability
-                const availability = yield this.checkAvailability(session.tenantId, extractedDates.checkIn, extractedDates.checkOut);
-                if (availability.availableRooms.length === 0) {
-                    return {
-                        content: `I'm sorry, but we don't have any rooms available for ${extractedDates.checkIn} to ${extractedDates.checkOut}. Would you like to try different dates?`,
-                        confidence: 0.9,
-                        metadata: { availability: false }
-                    };
-                }
-                session.reservationData = Object.assign(Object.assign({}, session.reservationData), extractedDates);
+                // Update session with dates
+                session.reservationData.checkIn = extractedDates.checkIn;
+                session.reservationData.checkOut = extractedDates.checkOut;
                 session.state = ConversationState.COLLECTING_GUESTS;
-                return {
-                    content: `Perfect! I have rooms available from ${extractedDates.checkIn} to ${extractedDates.checkOut}. How many guests will be staying?`,
-                    confidence: 0.9,
-                    metadata: {
-                        nextState: ConversationState.COLLECTING_GUESTS,
-                        availability: availability.availableRooms.length
-                    }
-                };
+                // Enhance AI response with next step
+                aiResponse.metadata = Object.assign(Object.assign({}, aiResponse.metadata), { nextState: ConversationState.COLLECTING_GUESTS, validDates: true });
             }
-            return {
-                content: "I didn't quite catch those dates. Could you please tell me your check-in and check-out dates? For example: 'March 15 to March 18' or '3/15 to 3/18'.",
-                confidence: 0.7,
-                metadata: { needsClarification: true }
-            };
+            return aiResponse;
         });
     }
     handleGuestCount(session, message, tenant) {
@@ -205,12 +208,12 @@ class HotelReservationAI {
                 // Calculate pricing
                 const recommendedRoom = suitableRooms[0];
                 const nights = this.calculateNights(session.reservationData.checkIn, session.reservationData.checkOut);
-                const totalPrice = recommendedRoom.rate * nights;
+                const totalPrice = recommendedRoom.price * nights;
                 session.reservationData.estimatedPrice = totalPrice;
                 session.reservationData.roomId = recommendedRoom.id;
                 session.state = ConversationState.COLLECTING_CONTACT;
                 return {
-                    content: `Excellent! I have a ${recommendedRoom.typeId} room available for ${guestCount} guest${guestCount > 1 ? 's' : ''} at $${recommendedRoom.rate}/night. Your total for ${nights} night${nights > 1 ? 's' : ''} would be $${totalPrice}.\n\nTo complete your reservation, I'll need your name and email address.`,
+                    content: `Excellent! I have a ${recommendedRoom.type} room available for ${guestCount} guest${guestCount > 1 ? 's' : ''} at $${recommendedRoom.price}/night. Your total for ${nights} night${nights > 1 ? 's' : ''} would be $${totalPrice}.\n\nTo complete your reservation, I'll need your name and email address.`,
                     confidence: 0.9,
                     metadata: {
                         nextState: ConversationState.COLLECTING_CONTACT,
@@ -273,13 +276,18 @@ class HotelReservationAI {
     }
     handleGeneral(session, message, tenant) {
         return __awaiter(this, void 0, void 0, function* () {
-            // Use OpenAI for general hotel inquiries
+            // Use OpenAI for general hotel inquiries with full context
             const context = {
                 hotelId: session.tenantId,
-                messageType: 'text',
-                channel: 'whatsapp',
+                messageType: Communication_1.MessageType.INBOUND,
+                channel: Communication_1.MessageChannel.WHATSAPP,
                 content: message,
-                metadata: { sessionState: session.state }
+                metadata: {
+                    sessionState: session.state,
+                    hotelName: tenant.name,
+                    conversationHistory: session.messages.slice(-5), // More context for general inquiries
+                    reservationData: session.reservationData
+                }
             };
             return yield this.openaiProvider.processMessage(context);
         });
