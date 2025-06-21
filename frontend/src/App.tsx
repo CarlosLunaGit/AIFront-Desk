@@ -7,10 +7,10 @@ import Layout from './components/Layout/Layout';
 import Dashboard from './components/Dashboard/Dashboard';
 import HotelConfigWizard from './components/HotelConfig/HotelConfigWizard';
 import Login from './components/Auth/Login';
-import CommunicationInterface from './components/Communications/CommunicationInterface';
+import { CommunicationsDashboard } from './components/Communications/CommunicationsDashboard';
 import RoomManagement from './components/Rooms/RoomManagement';
 import GuestManagement from './components/GuestManagement';
-import ReservationHistoryPage from './pages/ReservationHistoryPage';
+
 import ReservationsPage from './pages/ReservationsPage';
 import ActivityHistoryPage from './pages/ActivityHistoryPage';
 import ReservationsHistoryPage from './pages/ReservationsHistoryPage';
@@ -69,7 +69,7 @@ const router = createBrowserRouter(
       path: '/communications',
       element: (
         <Layout>
-          <CommunicationInterface />
+          <CommunicationsDashboard />
         </Layout>
       ),
     },
