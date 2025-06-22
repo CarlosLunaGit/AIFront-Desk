@@ -1,19 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
-import { Tenant, SubscriptionStatus } from '../models/Tenant';
+import { Hotel, SubscriptionStatus } from '../models/Hotel';
 import { logger } from '../utils/logger';
 
-// Extend Express Request type to include user and tenant
+// Extend Express Request type to include user and hotel
 export interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
     email: string;
     name: string;
     role: string;
-    tenantId: string;
+    hotelId: string;
   };
-  tenant?: {
+  hotel?: {
     id: string;
     name: string;
     slug: string;
@@ -26,7 +26,7 @@ export interface AuthenticatedRequest extends Request {
 // JWT token payload interface
 interface TokenPayload {
   userId: string;
-  tenantId: string;
+  hotelId: string;
   role: string;
   iat: number;
   exp: number;
@@ -54,35 +54,35 @@ export const authenticate = async (
     // Find user
     const user = await User.findById(decoded.userId)
       .select('-password')
-      .populate('tenantId');
+      .populate('hotelId');
 
     if (!user || !user.isActive) {
       return res.status(401).json({ message: 'Invalid or inactive user' });
     }
 
-    // Find tenant
-    const tenant = await Tenant.findById(decoded.tenantId);
+    // Find hotel
+    const hotel = await Hotel.findById(decoded.hotelId);
     
-    if (!tenant || !tenant.isActive) {
-      return res.status(401).json({ message: 'Invalid or inactive tenant' });
+    if (!hotel || !hotel.isActive) {
+      return res.status(401).json({ message: 'Invalid or inactive hotel' });
     }
 
-    // Attach user and tenant to request
+    // Attach user and hotel to request
     req.user = {
       id: user._id.toString(),
       email: user.email,
       name: user.name,
       role: user.role,
-      tenantId: tenant._id.toString(),
+      hotelId: hotel._id.toString(),
     };
 
-    req.tenant = {
-      id: tenant._id.toString(),
-      name: tenant.name,
-      slug: tenant.slug,
-      subscription: tenant.subscription,
-      settings: tenant.settings,
-      usage: tenant.usage,
+    req.hotel = {
+      id: hotel._id.toString(),
+      name: hotel.name,
+      slug: hotel.slug,
+      subscription: hotel.subscription,
+      settings: hotel.settings,
+      usage: hotel.usage,
     };
 
     next();
@@ -98,11 +98,11 @@ export const requireActiveSubscription = (
   res: Response,
   next: NextFunction
 ): void | Response => {
-  if (!req.tenant) {
+  if (!req.hotel) {
     return res.status(401).json({ message: 'Authentication required' });
   }
 
-  const { subscription } = req.tenant;
+  const { subscription } = req.hotel;
   
   // Check if subscription is active
   if (subscription.status !== SubscriptionStatus.ACTIVE && 
@@ -129,11 +129,11 @@ export const requireActiveSubscription = (
 // Feature access middleware factory
 export const requireFeature = (feature: string) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void | Response => {
-    if (!req.tenant) {
+    if (!req.hotel) {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    const { subscription } = req.tenant;
+    const { subscription } = req.hotel;
     const features = subscription.features;
 
     // Check feature access
@@ -181,38 +181,38 @@ export const requireFeature = (feature: string) => {
 // Usage limit middleware factory
 export const checkUsageLimit = (resource: 'rooms' | 'aiResponses' | 'users') => {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void | Response> => {
-    if (!req.tenant) {
+    if (!req.hotel) {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
     try {
       // Get current usage from database
-      const tenant = await Tenant.findById(req.tenant.id);
+      const hotel = await Hotel.findById(req.hotel.id);
       
-      if (!tenant) {
-        return res.status(404).json({ message: 'Tenant not found' });
+      if (!hotel) {
+        return res.status(404).json({ message: 'Hotel not found' });
       }
 
       // Check if within limits
-      const withinLimits = tenant.isWithinLimits(resource);
+      const withinLimits = hotel.isWithinLimits(resource);
       
       if (!withinLimits) {
-        const features = tenant.subscription.features;
+        const features = hotel.subscription.features;
         let limit;
         let current;
 
         switch (resource) {
           case 'rooms':
             limit = features.maxRooms;
-            current = tenant.usage.currentRooms;
+            current = hotel.usage.currentRooms;
             break;
           case 'aiResponses':
             limit = features.maxAIResponses;
-            current = tenant.usage.aiResponsesThisMonth;
+            current = hotel.usage.aiResponsesThisMonth;
             break;
           case 'users':
             limit = features.maxUsers;
-            current = tenant.usage.usersCount;
+            current = hotel.usage.usersCount;
             break;
         }
 
@@ -271,9 +271,9 @@ const extractToken = (req: Request): string | null => {
 };
 
 // Generate JWT token
-export const generateToken = (userId: string, tenantId: string, role: string): string => {
+export const generateToken = (userId: string, hotelId: string, role: string): string => {
   return jwt.sign(
-    { userId, tenantId, role },
+    { userId, hotelId, role },
     process.env.JWT_SECRET || 'fallback-secret',
     { expiresIn: '7d' }
   );
@@ -285,16 +285,16 @@ export const attachUserInfo = (
   res: Response,
   next: NextFunction
 ): void => {
-  if (req.user && req.tenant) {
+  if (req.user && req.hotel) {
     res.locals.user = req.user;
-    res.locals.tenant = {
-      ...req.tenant,
-      // Only send safe tenant info to frontend
+    res.locals.hotel = {
+      ...req.hotel,
+      // Only send safe hotel info to frontend
       subscription: {
-        tier: req.tenant.subscription.tier,
-        status: req.tenant.subscription.status,
-        features: req.tenant.subscription.features,
-        currentPeriodEnd: req.tenant.subscription.currentPeriodEnd,
+        tier: req.hotel.subscription.tier,
+        status: req.hotel.subscription.status,
+        features: req.hotel.subscription.features,
+        currentPeriodEnd: req.hotel.subscription.currentPeriodEnd,
       },
     };
   }

@@ -64,10 +64,10 @@ mongoose
 // Start server regardless of database connection (for testing)
 app.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
-});
+  });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (error: Error) => {
   logger.error('Unhandled Rejection:', error);
   process.exit(1);
-});
+}); 

@@ -7,7 +7,7 @@ import { WhatsAppService } from '../services/communication/WhatsAppService';
 import { TwilioWhatsAppService } from '../services/communication/TwilioWhatsAppService';
 import { SMSService } from '../services/communication/SMSService';
 import { logger } from '../utils/logger';
-import { Tenant } from '../models/Tenant';
+import { Hotel } from '../models/Hotel';
 import { Guest } from '../models/Guest';
 
 const router = express.Router();
@@ -58,9 +58,9 @@ router.post('/twilio/whatsapp/webhook', async (req: Request, res: Response) => {
     });
 
     // Find tenant by hotel phone number (the "To" field from Twilio)
-    const tenant = await findTenantByPhone(hotelPhone);
-    if (!tenant) {
-      logger.error('No tenant found for Twilio WhatsApp phone:', hotelPhone);
+    const hotel = await findHotelByPhone(hotelPhone);
+    if (!hotel) {
+      logger.error('No hotel found for Twilio WhatsApp phone:', hotelPhone);
       // Send a generic response
       await twilioWhatsAppService.sendMessage(From, 
         "Sorry, we couldn't process your message at this time. Please try again later.");
@@ -69,7 +69,7 @@ router.post('/twilio/whatsapp/webhook', async (req: Request, res: Response) => {
 
     // Process the message with AI
     const aiResponse = await reservationAI.processReservationMessage(
-      tenant._id.toString(),
+      hotel._id.toString(),
       guestPhone,
       Body,
       'whatsapp'
@@ -81,14 +81,14 @@ router.post('/twilio/whatsapp/webhook', async (req: Request, res: Response) => {
     // Check if we need to process payment
     if (aiResponse.metadata?.readyForPayment) {
       logger.info('Guest ready for payment processing via Twilio:', { 
-        tenant: tenant.name, 
+        hotel: hotel.name, 
         phone: guestPhone 
       });
     }
 
     // Log the interaction
     logger.info('Twilio WhatsApp message processed:', {
-      tenant: tenant.name,
+      hotel: hotel.name,
       from: guestPhone,
       message: Body,
       aiConfidence: aiResponse.confidence
@@ -124,15 +124,15 @@ router.post('/whatsapp/webhook', async (req: Request, res: Response) => {
     }
 
     // Find tenant by phone number (you'll need to set up phone mapping)
-    const tenant = await findTenantByPhone(message.to);
-    if (!tenant) {
-      logger.error('No tenant found for phone:', message.to);
+    const hotel = await findHotelByPhone(message.to);
+    if (!hotel) {
+      logger.error('No hotel found for phone:', message.to);
       return res.status(200).json({ status: 'ok' });
     }
 
     // Process the message with AI
     const aiResponse = await reservationAI.processReservationMessage(
-      tenant._id.toString(),
+      hotel._id.toString(),
       message.from,
       message.text.body,
       'whatsapp'
@@ -144,12 +144,12 @@ router.post('/whatsapp/webhook', async (req: Request, res: Response) => {
     // Check if we need to process payment
     if (aiResponse.metadata?.readyForPayment) {
       // Session is ready for payment processing
-      logger.info('Guest ready for payment processing:', { tenant: tenant.name, phone: message.from });
+      logger.info('Guest ready for payment processing:', { hotel: hotel.name, phone: message.from });
     }
 
     // Log the interaction
     logger.info('WhatsApp message processed:', {
-      tenant: tenant.name,
+      hotel: hotel.name,
       from: message.from,
       message: message.text.body,
       aiConfidence: aiResponse.confidence
@@ -181,15 +181,15 @@ router.post('/sms/webhook', async (req: Request, res: Response) => {
     const { From, To, Body } = req.body;
 
     // Find tenant by phone number
-    const tenant = await findTenantByPhone(To);
-    if (!tenant) {
-      logger.error('No tenant found for SMS phone:', To);
+    const hotel = await findHotelByPhone(To);
+    if (!hotel) {
+      logger.error('No hotel found for SMS phone:', To);
       return res.status(200).json({ status: 'ok' });
     }
 
     // Process the message with AI
     const aiResponse = await reservationAI.processReservationMessage(
-      tenant._id.toString(),
+      hotel._id.toString(),
       From,
       Body,
       'sms'
@@ -200,7 +200,7 @@ router.post('/sms/webhook', async (req: Request, res: Response) => {
 
     // Log the interaction
     logger.info('SMS message processed:', {
-      tenant: tenant.name,
+      hotel: hotel.name,
       from: From,
       message: Body,
       aiConfidence: aiResponse.confidence
@@ -216,10 +216,10 @@ router.post('/sms/webhook', async (req: Request, res: Response) => {
 // 💳 Payment Processing Endpoint
 router.post('/payment/process', async (req: Request, res: Response) => {
   try {
-    const { tenantId, guestPhone, paymentMethod } = req.body;
+    const { hotelId, guestPhone, paymentMethod } = req.body;
 
     // Get conversation session
-    const session = reservationAI.getSession(tenantId, guestPhone);
+    const session = reservationAI.getSession(hotelId, guestPhone);
     if (!session || session.state !== ConversationState.PAYMENT_PROCESSING) {
       return res.status(400).json({ error: 'Invalid session state' });
     }
@@ -231,7 +231,7 @@ router.post('/payment/process', async (req: Request, res: Response) => {
       {
         description: `Room reservation authorization for ${session.reservationData.guestName}`,
         metadata: {
-          tenantId: session.tenantId,
+          hotelId: session.hotelId,
           guestPhone: session.guestPhone,
           checkIn: session.reservationData.checkIn!,
           checkOut: session.reservationData.checkOut!
@@ -245,18 +245,18 @@ router.post('/payment/process', async (req: Request, res: Response) => {
         name: session.reservationData.guestName,
         email: session.reservationData.guestEmail,
         phone: session.guestPhone,
-        tenantId: session.tenantId,
+        hotelId: session.hotelId,
         paymentMethodId: paymentResult.paymentMethodId
       });
 
       // Update session state
-      reservationAI.updateSessionState(tenantId, guestPhone, ConversationState.CONFIRMED);
+      reservationAI.updateSessionState(hotelId, guestPhone, ConversationState.CONFIRMED);
 
       // Send confirmation email
       await emailService.sendReservationConfirmation({
         guestEmail: session.reservationData.guestEmail!,
         guestName: session.reservationData.guestName!,
-        hotelName: (await Tenant.findById(tenantId))?.name || 'Hotel',
+        hotelName: (await Hotel.findById(hotelId))?.name || 'Hotel',
         checkIn: session.reservationData.checkIn!,
         checkOut: session.reservationData.checkOut!,
         guests: session.reservationData.guests!,
@@ -305,10 +305,10 @@ router.post('/payment/process', async (req: Request, res: Response) => {
 // 💳 Process Credit Card via WhatsApp/SMS
 router.post('/payment/process-from-message', async (req: Request, res: Response) => {
   try {
-    const { tenantId, guestPhone, message, channel } = req.body;
+    const { hotelId, guestPhone, message, channel } = req.body;
 
     // Get conversation session
-    const session = reservationAI.getSession(tenantId, guestPhone);
+    const session = reservationAI.getSession(hotelId, guestPhone);
     if (!session || session.state !== ConversationState.PAYMENT_PROCESSING) {
       return res.status(400).json({ error: 'Invalid session state' });
     }
@@ -335,7 +335,7 @@ router.post('/payment/process-from-message', async (req: Request, res: Response)
       {
         description: `Room reservation authorization for ${session.reservationData.guestName}`,
         metadata: {
-          tenantId: session.tenantId,
+          hotelId: session.hotelId,
           guestPhone: session.guestPhone,
           checkIn: session.reservationData.checkIn!,
           checkOut: session.reservationData.checkOut!
@@ -349,16 +349,16 @@ router.post('/payment/process-from-message', async (req: Request, res: Response)
         name: session.reservationData.guestName,
         email: session.reservationData.guestEmail,
         phone: session.guestPhone,
-        tenantId: session.tenantId,
+        hotelId: session.hotelId,
         paymentMethodId: paymentResult.paymentMethodId
       });
 
-      reservationAI.updateSessionState(tenantId, guestPhone, ConversationState.CONFIRMED);
+      reservationAI.updateSessionState(hotelId, guestPhone, ConversationState.CONFIRMED);
 
       await emailService.sendReservationConfirmation({
         guestEmail: session.reservationData.guestEmail!,
         guestName: session.reservationData.guestName!,
-        hotelName: (await Tenant.findById(tenantId))?.name || 'Hotel',
+        hotelName: (await Hotel.findById(hotelId))?.name || 'Hotel',
         checkIn: session.reservationData.checkIn!,
         checkOut: session.reservationData.checkOut!,
         guests: session.reservationData.guests!,
@@ -394,10 +394,10 @@ router.post('/payment/process-from-message', async (req: Request, res: Response)
 });
 
 // 📊 Get conversation session (for hotel staff dashboard)
-router.get('/session/:tenantId/:guestPhone', auth, async (req: Request, res: Response) => {
+router.get('/session/:hotelId/:guestPhone', auth, async (req: Request, res: Response) => {
   try {
-    const { tenantId, guestPhone } = req.params;
-    const session = reservationAI.getSession(tenantId, guestPhone);
+    const { hotelId, guestPhone } = req.params;
+    const session = reservationAI.getSession(hotelId, guestPhone);
     
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
@@ -450,44 +450,44 @@ router.post('/test/send-sms', auth, async (req: Request, res: Response) => {
 });
 
 // Helper functions
-async function findTenantByPhone(phoneNumber: string): Promise<any> {
+async function findHotelByPhone(phoneNumber: string): Promise<any> {
   try {
-    logger.info('Looking up tenant for phone number:', { phoneNumber });
+    logger.info('Looking up hotel for phone number:', { phoneNumber });
     
     // Clean the phone number - remove whatsapp: prefix if present
     const cleanPhoneNumber = phoneNumber.replace('whatsapp:', '');
     logger.info('Cleaned phone number:', { cleanPhoneNumber });
     
-    // Look for tenant by WhatsApp phone number
-    const tenant = await Tenant.findOne({ 
+    // Look for hotel by WhatsApp phone number
+  const hotel = await Hotel.findOne({ 
       'communicationChannels.whatsapp.phoneNumber': cleanPhoneNumber 
     });
     
-    if (tenant) {
-      logger.info('Found tenant:', { 
-        tenantId: tenant._id, 
-        tenantName: tenant.name,
-        whatsappNumber: tenant.communicationChannels.whatsapp.phoneNumber 
-      });
-      return tenant;
+    if (hotel) {
+      logger.info('Found hotel:', { 
+        hotelId: hotel._id, 
+        hotelName: hotel.name,
+        whatsappNumber: hotel.communicationChannels.whatsapp.phoneNumber 
+  });
+  return hotel;
     } else {
-      logger.warn('No tenant found for phone number:', { cleanPhoneNumber });
+      logger.warn('No hotel found for phone number:', { cleanPhoneNumber });
       
-      // For testing, let's return the first available tenant
+      // For testing, let's return the first available hotel
       // This simulates a default hotel for new guests
-      const defaultTenant = await Tenant.findOne({});
-      if (defaultTenant) {
-        logger.info('Using default tenant for new guest:', { 
-          tenantId: defaultTenant._id, 
-          tenantName: defaultTenant.name 
+      const defaultHotel = await Hotel.findOne({});
+      if (defaultHotel) {
+        logger.info('Using default hotel for new guest:', { 
+          hotelId: defaultHotel._id, 
+          hotelName: defaultHotel.name 
         });
-        return defaultTenant;
+        return defaultHotel;
       }
       
       return null;
     }
   } catch (error) {
-    logger.error('Error finding tenant by phone:', error);
+    logger.error('Error finding hotel by phone:', error);
     return null;
   }
 }

@@ -195,10 +195,10 @@ export const CommunicationInterface: React.FC<CommunicationInterfaceProps> = ({
                   <Box display="flex" alignItems="center" gap={0.5}>
                     <Typography variant="body2">
                       {conversation.language ? getLanguageFlag(conversation.language.code) : '🌐'}
-                    </Typography>
+              </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {conversation.language ? conversation.language.name : 'Unknown'}
-                    </Typography>
+              </Typography>
                   </Box>
                 </Box>
               </Box>
@@ -258,8 +258,8 @@ export const CommunicationInterface: React.FC<CommunicationInterfaceProps> = ({
                   Takeover in: {countdown}s
                 </Typography>
               )}
-            </Box>
           </Box>
+        </Box>
         )}
       </AppBar>
 
@@ -317,7 +317,7 @@ export const CommunicationInterface: React.FC<CommunicationInterfaceProps> = ({
           // Regular message view
           <List>
             {(conversation.messages || []).map((message) => (
-              <ListItem
+                <ListItem
                 key={message.id}
                 sx={{
                   display: 'flex',
@@ -347,7 +347,7 @@ export const CommunicationInterface: React.FC<CommunicationInterfaceProps> = ({
                   <Box display="flex" justifyContent="space-between" alignItems="center" mt={0.5}>
                     <Typography 
                       variant="caption" 
-                      sx={{ 
+                    sx={{
                         opacity: 0.8,
                         textTransform: 'capitalize'
                       }}
@@ -361,12 +361,12 @@ export const CommunicationInterface: React.FC<CommunicationInterfaceProps> = ({
                       {message.confidence && (
                         <Typography variant="caption" sx={{ opacity: 0.8 }}>
                           ({Math.round(message.confidence * 100)}%)
-                        </Typography>
-                      )}
-                    </Box>
+                          </Typography>
+                          )}
+                        </Box>
                   </Box>
                 </Paper>
-              </ListItem>
+                </ListItem>
             ))}
           </List>
         )}
@@ -377,27 +377,27 @@ export const CommunicationInterface: React.FC<CommunicationInterfaceProps> = ({
       {conversation.channel !== 'call' && isStaffControlled && (
         <Box sx={{ borderTop: 1, borderColor: 'divider', p: 2 }}>
           <Box component="form" onSubmit={handleSendMessage} display="flex" gap={1}>
-            <TextField
-              fullWidth
+        <TextField
+          fullWidth
               size="small"
               value={messageInput}
               onChange={(e) => setMessageInput(e.target.value)}
               placeholder="Type your message..."
-              variant="outlined"
-            />
-            <IconButton
-              type="submit"
+          variant="outlined"
+        />
+        <IconButton
+          type="submit"
               disabled={!messageInput.trim()}
-              color="primary"
+          color="primary"
               sx={{ 
                 bgcolor: 'primary.main',
                 color: 'white',
                 '&:hover': { bgcolor: 'primary.dark' },
                 '&:disabled': { bgcolor: 'grey.300' }
               }}
-            >
+        >
               <SendIcon />
-            </IconButton>
+        </IconButton>
           </Box>
         </Box>
       )}
@@ -464,6 +464,6 @@ export const CommunicationInterface: React.FC<CommunicationInterfaceProps> = ({
           )}
         </DialogActions>
       </Dialog>
-    </Paper>
+      </Paper>
   );
-}; 
+};

@@ -1,10 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
-
-export enum SubscriptionTier {
-  BASIC = 'basic',
-  PROFESSIONAL = 'professional',
-  ENTERPRISE = 'enterprise'
-}
+import { SubscriptionTier } from './SubscriptionTier';
 
 export enum SubscriptionStatus {
   ACTIVE = 'active',
@@ -38,7 +33,7 @@ export interface ISubscription {
   monthlyPrice: number;
 }
 
-export interface ITenant extends Document {
+export interface IHotel extends Document {
   name: string; // Hotel name
   slug: string; // URL-friendly identifier
   description?: string;
@@ -83,7 +78,7 @@ export interface ITenant extends Document {
 
 // Define feature limits for each tier
 const TIER_FEATURES: Record<SubscriptionTier, IFeatureLimits> = {
-  [SubscriptionTier.BASIC]: {
+  [SubscriptionTier.STARTER]: {
     maxRooms: 50,
     maxAIResponses: 1000,
     maxUsers: 3,
@@ -119,12 +114,12 @@ const TIER_FEATURES: Record<SubscriptionTier, IFeatureLimits> = {
 };
 
 const TIER_PRICING = {
-  [SubscriptionTier.BASIC]: 29,
+  [SubscriptionTier.STARTER]: 29,
   [SubscriptionTier.PROFESSIONAL]: 99,
   [SubscriptionTier.ENTERPRISE]: 299,
 };
 
-const tenantSchema = new Schema<ITenant>(
+const hotelSchema = new Schema<IHotel>(
   {
     name: {
       type: String,
@@ -170,7 +165,7 @@ const tenantSchema = new Schema<ITenant>(
       tier: {
         type: String,
         enum: Object.values(SubscriptionTier),
-        default: SubscriptionTier.BASIC,
+        default: SubscriptionTier.STARTER,
       },
       status: {
         type: String,
@@ -194,13 +189,13 @@ const tenantSchema = new Schema<ITenant>(
       features: {
         type: Schema.Types.Mixed,
         default: function() {
-          return TIER_FEATURES[this.subscription?.tier || SubscriptionTier.BASIC];
+          return TIER_FEATURES[this.subscription?.tier || SubscriptionTier.STARTER];
         },
       },
       monthlyPrice: {
         type: Number,
         default: function() {
-          return TIER_PRICING[this.subscription?.tier || SubscriptionTier.BASIC];
+          return TIER_PRICING[this.subscription?.tier || SubscriptionTier.STARTER];
         },
       },
     },
@@ -260,17 +255,16 @@ const tenantSchema = new Schema<ITenant>(
 );
 
 // Indexes
-tenantSchema.index({ slug: 1 });
-tenantSchema.index({ 'subscription.tier': 1 });
-tenantSchema.index({ 'subscription.status': 1 });
-tenantSchema.index({ createdBy: 1 });
+hotelSchema.index({ 'subscription.tier': 1 });
+hotelSchema.index({ 'subscription.status': 1 });
+hotelSchema.index({ createdBy: 1 });
 
 // Methods
-tenantSchema.methods.canUseFeature = function(feature: keyof IFeatureLimits): boolean {
+hotelSchema.methods.canUseFeature = function(feature: keyof IFeatureLimits): boolean {
   return this.subscription.features[feature] === true || this.subscription.features[feature] > 0;
 };
 
-tenantSchema.methods.isWithinLimits = function(resource: 'rooms' | 'aiResponses' | 'users'): boolean {
+hotelSchema.methods.isWithinLimits = function(resource: 'rooms' | 'aiResponses' | 'users'): boolean {
   const limits = this.subscription.features;
   const usage = this.usage;
   
@@ -286,7 +280,7 @@ tenantSchema.methods.isWithinLimits = function(resource: 'rooms' | 'aiResponses'
   }
 };
 
-tenantSchema.methods.updateSubscription = function(tier: SubscriptionTier) {
+hotelSchema.methods.updateSubscription = function(tier: SubscriptionTier) {
   this.subscription.tier = tier;
   this.subscription.features = TIER_FEATURES[tier];
   this.subscription.monthlyPrice = TIER_PRICING[tier];
@@ -294,13 +288,13 @@ tenantSchema.methods.updateSubscription = function(tier: SubscriptionTier) {
 };
 
 // Static methods
-tenantSchema.statics.getTierFeatures = function(tier: SubscriptionTier): IFeatureLimits {
+hotelSchema.statics.getTierFeatures = function(tier: SubscriptionTier): IFeatureLimits {
   return TIER_FEATURES[tier];
 };
 
-tenantSchema.statics.getTierPrice = function(tier: SubscriptionTier): number {
+hotelSchema.statics.getTierPrice = function(tier: SubscriptionTier): number {
   return TIER_PRICING[tier];
 };
 
-export const Tenant = mongoose.model<ITenant>('Tenant', tenantSchema);
+export const Hotel = mongoose.model<IHotel>('Hotel', hotelSchema, 'hotels');
 export { TIER_FEATURES, TIER_PRICING }; 

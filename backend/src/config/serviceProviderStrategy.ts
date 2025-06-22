@@ -18,7 +18,7 @@ export interface ServiceProviderConfig {
   };
 }
 
-export interface TenantSubscription {
+export interface HotelSubscription {
   plan: 'starter' | 'professional' | 'enterprise';
   features: {
     ownTwilioAccount: boolean;
@@ -42,15 +42,15 @@ export interface TenantSubscription {
 }
 
 export class ServiceProviderFactory {
-  static createTwilioService(tenant: any): any {
-    const subscription = tenant.subscription as TenantSubscription;
+  static createTwilioService(hotel: any): any {
+    const subscription = hotel.subscription as HotelSubscription;
     
-    if (subscription.features.ownTwilioAccount && tenant.credentials?.twilio) {
+    if (subscription.features.ownTwilioAccount && hotel.credentials?.twilio) {
       // Use customer's Twilio account
       return new TwilioService({
-        accountSid: tenant.credentials.twilio.accountSid,
-        authToken: tenant.credentials.twilio.authToken,
-        phoneNumber: tenant.credentials.twilio.phoneNumber,
+        accountSid: hotel.credentials.twilio.accountSid,
+        authToken: hotel.credentials.twilio.authToken,
+        phoneNumber: hotel.credentials.twilio.phoneNumber,
         isShared: false
       });
     } else {
@@ -64,25 +64,25 @@ export class ServiceProviderFactory {
     }
   }
 
-  static createStripeService(tenant: any): any {
+  static createStripeService(hotel: any): any {
     // Stripe always uses customer's account via Connect
-    if (!tenant.credentials?.stripe?.accountId) {
+    if (!hotel.credentials?.stripe?.accountId) {
       throw new Error('Customer must connect their Stripe account');
     }
 
     return new StripeService({
       secretKey: process.env.STRIPE_SECRET_KEY!,
-      accountId: tenant.credentials.stripe.accountId,
+      accountId: hotel.credentials.stripe.accountId,
       isConnect: true
     });
   }
 
-  static createOpenAIService(tenant: any): any {
+  static createOpenAIService(hotel: any): any {
     // Always use platform account with usage tracking
     return new OpenAIService({
       apiKey: process.env.PLATFORM_OPENAI_API_KEY!,
       organizationId: process.env.PLATFORM_OPENAI_ORG_ID,
-      tenantId: tenant._id.toString(),
+      hotelId: hotel._id.toString(),
       isShared: true
     });
   }

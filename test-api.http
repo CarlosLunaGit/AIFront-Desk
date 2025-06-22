@@ -1,0 +1,25 @@
+### Create Development User
+POST https://7264-90-149-ngrok-free.app/api/auth/create-dev-user
+Content-Type: application/json
+
+{
+  "email": "dev@aifront-desk.com",
+  "password": "dev123456",
+  "hotelName": "Grand Plaza Hotel (Dev)"
+}
+
+### Test Login with Development User
+POST https://7264-90-149-ngrok-free.app/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "dev@aifront-desk.com",
+  "password": "dev123456"
+}
+
+### Get Current User (use token from login response)
+GET https://7264-90-149-ngrok-free.app/api/auth/me
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+### Test API Health
+GET https://7264-90-149-ngrok-free.app/api/health 

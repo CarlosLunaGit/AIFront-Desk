@@ -2,7 +2,7 @@ import { IAIProvider, MessageContext, AIResponse } from './IAIProvider';
 import { OpenAIProvider } from './OpenAIProvider';
 import { Room } from '../../models/Room';
 import { Guest } from '../../models/Guest';
-import { Tenant } from '../../models/Tenant';
+import { Hotel } from '../../models/Hotel';
 import { MessageType, MessageChannel } from '../../models/Communication';
 import { logger } from '../../utils/logger';
 
@@ -32,7 +32,7 @@ export interface ReservationData {
 
 export interface ConversationSession {
   id: string;
-  tenantId: string;
+  hotelId: string;
   guestPhone: string;
   state: ConversationState;
   reservationData: ReservationData;
@@ -60,18 +60,18 @@ export class HotelReservationAI {
   }
 
   async processReservationMessage(
-    tenantId: string,
+    hotelId: string,
     guestPhone: string,
     message: string,
     channel: 'whatsapp' | 'sms'
   ): Promise<AIResponse> {
     try {
       // Get or create conversation session
-      const sessionId = `${tenantId}-${guestPhone}`;
+      const sessionId = `${hotelId}-${guestPhone}`;
       let session = conversationSessions.get(sessionId);
       
       if (!session) {
-        session = this.createNewSession(tenantId, guestPhone);
+        session = this.createNewSession(hotelId, guestPhone);
         conversationSessions.set(sessionId, session);
       }
 
@@ -83,13 +83,13 @@ export class HotelReservationAI {
       });
 
       // Get hotel information
-      const tenant = await Tenant.findById(tenantId);
-      if (!tenant) {
+      const hotel = await Hotel.findById(hotelId);
+      if (!hotel) {
         throw new Error('Hotel not found');
       }
 
       // Process message based on current state
-      const aiResponse = await this.processStateBasedMessage(session, message, tenant);
+      const aiResponse = await this.processStateBasedMessage(session, message, hotel);
 
       // Add AI response to session
       session.messages.push({
@@ -114,18 +114,18 @@ export class HotelReservationAI {
           };
         }
         
-        return {
-          content: "I apologize, but I'm having trouble processing your request right now. Please try again or call our front desk directly.",
-          confidence: 0.1,
-          metadata: { error: true }
-        };
+      return {
+        content: "I apologize, but I'm having trouble processing your request right now. Please try again or call our front desk directly.",
+        confidence: 0.1,
+        metadata: { error: true }
+      };
     }
   }
 
-  private createNewSession(tenantId: string, guestPhone: string): ConversationSession {
+  private createNewSession(hotelId: string, guestPhone: string): ConversationSession {
     return {
-      id: `${tenantId}-${guestPhone}-${Date.now()}`,
-      tenantId,
+      id: `${hotelId}-${guestPhone}-${Date.now()}`,
+      hotelId,
       guestPhone,
       state: ConversationState.GREETING,
       reservationData: {},
@@ -138,51 +138,51 @@ export class HotelReservationAI {
   private async processStateBasedMessage(
     session: ConversationSession,
     message: string,
-    tenant: any
+    hotel: any
   ): Promise<AIResponse> {
     logger.info('Processing message with state:', {
       state: session.state,
       message: message.substring(0, 50) + '...',
-      tenant: tenant.name
+      hotel: hotel.name
     });
 
     switch (session.state) {
       case ConversationState.GREETING:
-        return this.handleGreeting(session, message, tenant);
+        return this.handleGreeting(session, message, hotel);
       
       case ConversationState.COLLECTING_DATES:
-        return this.handleDateCollection(session, message, tenant);
+        return this.handleDateCollection(session, message, hotel);
       
       case ConversationState.COLLECTING_GUESTS:
-        return this.handleGuestCount(session, message, tenant);
+        return this.handleGuestCount(session, message, hotel);
       
       case ConversationState.COLLECTING_PREFERENCES:
-        return this.handlePreferences(session, message, tenant);
+        return this.handlePreferences(session, message, hotel);
       
       case ConversationState.COLLECTING_CONTACT:
-        return this.handleContactCollection(session, message, tenant);
+        return this.handleContactCollection(session, message, hotel);
       
       default:
-        return this.handleGeneral(session, message, tenant);
+        return this.handleGeneral(session, message, hotel);
     }
   }
 
   private async handleGreeting(
     session: ConversationSession,
     message: string,
-    tenant: any
+    hotel: any
   ): Promise<AIResponse> {
     const isReservationRequest = this.detectReservationIntent(message);
     
     // Use OpenAI for the greeting response
     const context: MessageContext = {
-      hotelId: session.tenantId,
+      hotelId: session.hotelId,
       messageType: MessageType.INBOUND,
       channel: MessageChannel.WHATSAPP,
       content: message,
       metadata: { 
         sessionState: session.state,
-        hotelName: tenant.name,
+        hotelName: hotel.name,
         isReservationRequest,
         conversationHistory: session.messages.slice(-3) // Last 3 messages for context
       }
@@ -209,7 +209,7 @@ export class HotelReservationAI {
         aiResponse.metadata = { 
           ...aiResponse.metadata, 
           nextState: ConversationState.COLLECTING_DATES 
-        };
+      };
       }
     }
 
@@ -219,19 +219,19 @@ export class HotelReservationAI {
   private async handleDateCollection(
     session: ConversationSession,
     message: string,
-    tenant: any
+    hotel: any
   ): Promise<AIResponse> {
     const extractedDates = await this.extractDatesFromMessage(message);
     
     // Use OpenAI for date collection response
     const context: MessageContext = {
-      hotelId: session.tenantId,
+      hotelId: session.hotelId,
       messageType: MessageType.INBOUND,
       channel: MessageChannel.WHATSAPP,
       content: message,
       metadata: { 
         sessionState: session.state,
-        hotelName: tenant.name,
+        hotelName: hotel.name,
         extractedDates,
         conversationHistory: session.messages.slice(-3),
         reservationData: session.reservationData
@@ -260,11 +260,11 @@ export class HotelReservationAI {
       session.reservationData.checkIn = extractedDates.checkIn;
       session.reservationData.checkOut = extractedDates.checkOut;
       session.state = ConversationState.COLLECTING_GUESTS;
-      
+
       // Enhance AI response with next step
       aiResponse.metadata = { 
         ...aiResponse.metadata, 
-        nextState: ConversationState.COLLECTING_GUESTS,
+          nextState: ConversationState.COLLECTING_GUESTS,
         validDates: true
       };
     }
@@ -275,7 +275,7 @@ export class HotelReservationAI {
   private async handleGuestCount(
     session: ConversationSession,
     message: string,
-    tenant: any
+    hotel: any
   ): Promise<AIResponse> {
     const guestCount = this.extractGuestCount(message);
     
@@ -284,7 +284,7 @@ export class HotelReservationAI {
       
       // Find suitable rooms
       const suitableRooms = await this.findSuitableRooms(
-        session.tenantId,
+        session.hotelId,
         session.reservationData.checkIn!,
         session.reservationData.checkOut!,
         guestCount
@@ -327,7 +327,7 @@ export class HotelReservationAI {
   private async handleContactCollection(
     session: ConversationSession,
     message: string,
-    tenant: any
+    hotel: any
   ): Promise<AIResponse> {
     // Extract contact information
     const contactInfo = await this.extractContactInfo(message);
@@ -369,7 +369,7 @@ export class HotelReservationAI {
   private async handlePreferences(
     session: ConversationSession,
     message: string,
-    tenant: any
+    hotel: any
   ): Promise<AIResponse> {
     session.reservationData.specialRequests = message;
     session.state = ConversationState.COLLECTING_CONTACT;
@@ -384,17 +384,17 @@ export class HotelReservationAI {
   private async handleGeneral(
     session: ConversationSession,
     message: string,
-    tenant: any
+    hotel: any
   ): Promise<AIResponse> {
     // Use OpenAI for general hotel inquiries with full context
     const context: MessageContext = {
-      hotelId: session.tenantId,
+      hotelId: session.hotelId,
       messageType: MessageType.INBOUND,
       channel: MessageChannel.WHATSAPP,
       content: message,
       metadata: { 
         sessionState: session.state,
-        hotelName: tenant.name,
+        hotelName: hotel.name,
         conversationHistory: session.messages.slice(-5), // More context for general inquiries
         reservationData: session.reservationData
       }
@@ -454,18 +454,18 @@ export class HotelReservationAI {
     return dateStr;
   }
 
-  private async checkAvailability(tenantId: string, checkIn: string, checkOut: string) {
+  private async checkAvailability(hotelId: string, checkIn: string, checkOut: string) {
     const availableRooms = await Room.find({
-      hotelConfigId: tenantId, // Note: might need to adjust based on your schema
+      hotelConfigId: hotelId, // Note: might need to adjust based on your schema
       status: 'available'
     });
 
     return { availableRooms };
   }
 
-  private async findSuitableRooms(tenantId: string, checkIn: string, checkOut: string, guests: number) {
+  private async findSuitableRooms(hotelId: string, checkIn: string, checkOut: string, guests: number) {
     return await Room.find({
-      hotelConfigId: tenantId,
+      hotelConfigId: hotelId,
       capacity: { $gte: guests },
       status: 'available'
     }).sort({ rate: 1 }); // Sort by price, cheapest first
@@ -479,13 +479,13 @@ export class HotelReservationAI {
   }
 
   // Get session for external access
-  getSession(tenantId: string, guestPhone: string): ConversationSession | undefined {
-    return conversationSessions.get(`${tenantId}-${guestPhone}`);
+  getSession(hotelId: string, guestPhone: string): ConversationSession | undefined {
+    return conversationSessions.get(`${hotelId}-${guestPhone}`);
   }
 
   // Update session state
-  updateSessionState(tenantId: string, guestPhone: string, newState: ConversationState): void {
-    const sessionId = `${tenantId}-${guestPhone}`;
+  updateSessionState(hotelId: string, guestPhone: string, newState: ConversationState): void {
+    const sessionId = `${hotelId}-${guestPhone}`;
     const session = conversationSessions.get(sessionId);
     if (session) {
       session.state = newState;
