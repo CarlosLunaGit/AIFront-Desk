@@ -47,3 +47,9 @@ backend/logs/
 
 *.log
 
+# Build directories
+
+build/
+
+frontend/build/
+
