@@ -7,7 +7,7 @@ import reportWebVitals from './reportWebVitals';
 // Initialize MSW
 async function enableMocking() {
   // Check if mocking is enabled via environment variable
-  const shouldMock = import.meta.env?.VITE_ENABLE_MOCK_API === 'true' || process.env.NODE_ENV === 'development';
+  const shouldMock = process.env.NODE_ENV === 'development';
   
   if (!shouldMock) {
     console.log('Mock API is disabled. Using real API endpoints.');

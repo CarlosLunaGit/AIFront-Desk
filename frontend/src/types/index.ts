@@ -1,6 +1,9 @@
 export type GuestStatus = 'booked' | 'checked-in' | 'checked-out';
 export type RoomStatus = 'available' | 'reserved' | 'partially-reserved' | 'occupied' | 'partially-occupied' | 'cleaning' | 'maintenance';
 
+// Re-export communication types
+export * from './communication';
+
 export interface Guest {
   id: string;
   roomId: string;
