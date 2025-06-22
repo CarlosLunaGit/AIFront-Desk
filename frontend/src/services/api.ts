@@ -1,46 +1,14 @@
 import axios from 'axios';
 
-// Get environment variables with fallbacks
-const getEnvVar = (key: keyof ImportMetaEnv, fallback: string): string => {
-  try {
-    // Check if we're in a browser environment
-    if (typeof window === 'undefined') {
-      return fallback;
-    }
-
-    // Try to get the environment variable
-    const value = import.meta.env?.[key];
-    if (value === undefined || value === '') {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn(`Environment variable ${key} is not defined or empty, using fallback: ${fallback}`);
-      }
-      return fallback;
-    }
-
-    return value;
-  } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn(`Error accessing environment variable ${key}, using fallback: ${fallback}`, error);
-    }
-    return fallback;
-  }
-};
-
-// Default configuration
-const DEFAULT_CONFIG = {
+// Configuration for Create React App
+const CONFIG = {
   API_URL: 'http://localhost:3001',
-  ENABLE_MOCK_API: 'true',
-  APP_NAME: 'Hotel AI Front Desk',
-  APP_VERSION: '1.0.0',
+  ENABLE_MOCK_API: process.env.NODE_ENV === 'development', // Use MSW in development
 } as const;
-
-// Check if we're in mock mode - default to true in development
-const isMockMode = process.env.NODE_ENV === 'development' && 
-  (getEnvVar('VITE_ENABLE_MOCK_API', DEFAULT_CONFIG.ENABLE_MOCK_API) === 'true');
 
 // Create axios instance with default config
 export const api = axios.create({
-  baseURL: isMockMode ? '' : getEnvVar('VITE_API_URL', DEFAULT_CONFIG.API_URL),
+  baseURL: CONFIG.ENABLE_MOCK_API ? '' : CONFIG.API_URL, // Empty baseURL for MSW
   headers: {
     'Content-Type': 'application/json',
   },
@@ -60,7 +28,7 @@ api.interceptors.request.use((config) => {
       baseURL: config.baseURL,
       headers: config.headers,
       data: config.data,
-      mockMode: isMockMode,
+      mockMode: CONFIG.ENABLE_MOCK_API,
     });
   }
 
@@ -74,7 +42,7 @@ api.interceptors.response.use(
     if (process.env.NODE_ENV === 'development') {
       console.log(`✅ [${response.status}] ${response.config.url}`, {
         data: response.data,
-        mockMode: isMockMode,
+        mockMode: CONFIG.ENABLE_MOCK_API,
       });
     }
     return response;
@@ -85,7 +53,7 @@ api.interceptors.response.use(
       console.error(`❌ [${error.response?.status || 'NO RESPONSE'}] ${error.config?.url}`, {
         error: error.message,
         response: error.response?.data,
-        mockMode: isMockMode,
+        mockMode: CONFIG.ENABLE_MOCK_API,
       });
     }
 
@@ -97,10 +65,10 @@ api.interceptors.response.use(
 
     // Provide more helpful error messages in development
     if (process.env.NODE_ENV === 'development' && !error.response) {
-      if (isMockMode) {
+      if (CONFIG.ENABLE_MOCK_API) {
         console.warn('⚠️ No response received. Make sure the mock service worker is running.');
       } else {
-        console.warn('⚠️ No response received. Make sure the backend server is running at:', getEnvVar('VITE_API_URL', DEFAULT_CONFIG.API_URL));
+        console.warn('⚠️ No response received. Make sure the backend server is running at:', CONFIG.API_URL);
       }
     }
 

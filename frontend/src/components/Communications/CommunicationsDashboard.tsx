@@ -3,7 +3,6 @@ import {
   Box,
   Typography,
   Grid,
-  Paper,
   Card,
   CardContent,
   List,
@@ -13,10 +12,10 @@ import {
   Avatar,
   Chip,
   CircularProgress,
-  Badge,
-  Divider,
   useTheme,
   useMediaQuery,
+  Paper,
+  Divider,
 } from '@mui/material';
 import {
   WhatsApp as WhatsAppIcon,

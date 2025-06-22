@@ -1,8 +1,8 @@
 import { http, HttpResponse } from 'msw';
 import type { HttpHandler } from 'msw';
-import type { Room, RoomAction, RoomStats, RoomStatus, RoomType } from '../types/room';
-import type { HotelConfiguration, HotelConfigDocument, HotelConfigFormData } from '../types/hotel';
-import type { GuestStatus, Guest } from '../types/guest';
+import type { Room, RoomAction, RoomStats, RoomStatus } from '../types/room';
+import type { HotelConfigDocument, HotelConfigFormData } from '../types/hotel';
+import type { Guest } from '../types/guest';
 // Communication types are used in mock data structure
 
 // Type definitions for our API
