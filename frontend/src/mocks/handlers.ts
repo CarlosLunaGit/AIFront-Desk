@@ -19,6 +19,97 @@ interface LoginRequest {
 
 // Mock data
 
+// Mock Hotels (matching backend structure)
+// NEW USER ONBOARDING: Start with empty array to simulate new user experience
+// Toggle this for testing different scenarios:
+// - Empty array = New user onboarding flow  
+// - With data = Existing user with hotel data
+const SIMULATE_NEW_USER = process.env.REACT_APP_SIMULATE_NEW_USER === 'true';
+
+const mockHotelsData = [
+  {
+    _id: '65b000000000000000000001',
+    name: 'AI Front Desk Hotel',
+    slug: 'ai-front-desk-hotel',
+    isActive: true,
+    subscription: {
+      tier: 'starter',
+      status: 'active'
+    },
+    settings: {
+      timezone: 'America/Los_Angeles',
+      currency: 'USD',
+      language: 'en'
+    },
+    contactInfo: {
+      email: 'contact@aifrontdesk.com',
+      phone: '+1-555-0123',
+      address: '123 Hotel St, City, ST 12345'
+    },
+    createdBy: '65b000000000000000000011',
+    createdAt: new Date('2024-01-01T00:00:00Z').toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    _id: '65b000000000000000000002', 
+    name: 'Seaside Resort',
+    slug: 'seaside-resort',
+    isActive: true,
+    subscription: {
+      tier: 'professional',
+      status: 'active'
+    },
+    settings: {
+      timezone: 'America/New_York',
+      currency: 'USD',
+      language: 'en'
+    },
+    contactInfo: {
+      email: 'contact@seasideresort.com',
+      phone: '+1-555-0456',
+      address: '456 Beach Ave, Coastal City, FL 33101'
+    },
+    createdBy: '65b000000000000000000012',
+    createdAt: new Date('2024-01-15T00:00:00Z').toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+];
+
+// Use empty array for new user simulation, full data for existing user
+const mockHotels: any[] = SIMULATE_NEW_USER ? [] : mockHotelsData;
+
+// Debug logging for development
+if (process.env.NODE_ENV === 'development') {
+  console.log(`🏨 MSW Hotel Mode: ${SIMULATE_NEW_USER ? 'NEW USER ONBOARDING' : 'EXISTING USER WITH DATA'}`);
+  console.log(`📊 Mock Hotels Count: ${mockHotels.length}`);
+}
+
+// Mock Communications (matching backend structure)
+const mockCommunications: any[] = [
+  {
+    _id: '65c000000000000000000001',
+    guestId: 'guest-1',
+    hotelId: '65b000000000000000000001',
+    content: 'Hello, I would like to check in early',
+    channel: 'whatsapp',
+    type: 'inbound',
+    status: 'read',
+    createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+    updatedAt: new Date(Date.now() - 1000 * 60 * 30).toISOString()
+  },
+  {
+    _id: '65c000000000000000000002',
+    guestId: 'guest-1',
+    hotelId: '65b000000000000000000001',
+    content: 'Of course! We can accommodate early check-in at 1 PM. Would that work for you?',
+    channel: 'whatsapp',
+    type: 'outbound',
+    status: 'delivered',
+    createdAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
+    updatedAt: new Date(Date.now() - 1000 * 60 * 25).toISOString()
+  }
+];
+
 const mockMessages = [
   {
     id: '1',
@@ -1158,9 +1249,24 @@ export const handlers: HttpHandler[] = [
   // Auth endpoints
   http.post('/api/auth/login', async ({ request }) => {
     const body = await request.json() as LoginRequest;
+    
+    // Accept the same credentials that work with the backend
+    if (body.email === 'owner1@aifrontdesk.com' && body.password === 'password123') {
+      return HttpResponse.json({
+        token: 'mock-jwt-token-owner1',
+        user: {
+          id: '65b000000000000000000011',
+          name: 'Hotel Owner',
+          email: body.email,
+          role: 'subscription_owner'
+        }
+      });
+    }
+    
+    // Also keep demo credentials for backward compatibility
     if (body.email === 'demo@hotel.com' && body.password === 'demo123') {
       return HttpResponse.json({
-        token: 'mock-jwt-token',
+        token: 'mock-jwt-token-demo',
         user: {
           id: '1',
           name: 'Hotel Staff',
@@ -1169,16 +1275,18 @@ export const handlers: HttpHandler[] = [
         }
       });
     }
+    
     return new HttpResponse(null, { status: 401 });
   }),
 
   http.get('/api/auth/me', () => {
     return HttpResponse.json({
-      id: '1',
-      email: 'demo@hotel.com',
-      name: 'Demo Hotel',
-      hotelName: 'Demo Hotel',
-      subscriptionTier: 'premium',
+      id: '65b000000000000000000011',
+      email: 'owner1@aifrontdesk.com',
+      name: 'Hotel Owner',
+      hotelName: 'AI Front Desk Hotel',
+      subscriptionTier: 'starter',
+      role: 'subscription_owner'
     });
   }),
 
@@ -1732,9 +1840,290 @@ export const handlers: HttpHandler[] = [
     return new HttpResponse(null, { status: 204 });
   }),
 
+  // NEW USER ONBOARDING: Hotel endpoints that handle empty state
+  http.get('/api/hotel', () => {
+    // Return empty array for new users - triggers onboarding flow in frontend
+    return HttpResponse.json(mockHotels);
+  }),
 
+  // Get current hotel (matches backend GET /api/hotel/current)
+  http.get('/api/hotel/current', () => {
+    // Return 404 for new users with no hotels - triggers hotel setup wizard
+    if (mockHotels.length === 0) {
+      return new HttpResponse(
+        JSON.stringify({ 
+          message: 'No hotel found. Please complete hotel setup.',
+          code: 'NO_HOTEL_FOUND',
+          action: 'SETUP_HOTEL'
+        }), 
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    // Return first active hotel for existing users
+    const activeHotel = mockHotels.find((h: any) => h.isActive) || mockHotels[0];
+    return HttpResponse.json(activeHotel);
+  }),
+
+  // Create hotel (matches backend POST /api/hotel)
+  http.post('/api/hotel', async ({ request }) => {
+    const newHotel = await request.json() as any;
+    const hotel = {
+      _id: `65b00000000000000000000${mockHotels.length + 1}`,
+      ...newHotel,
+      slug: newHotel.name?.toLowerCase().replace(/\s+/g, '-') || 'new-hotel',
+      isActive: true,
+      createdBy: '65b000000000000000000011',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockHotels.push(hotel);
+    return HttpResponse.json(hotel, { status: 201 });
+  }),
+
+  // Update hotel (matches backend PATCH /api/hotel/:id)
+  http.patch('/api/hotel/:id', async ({ params, request }) => {
+    const hotelId = params.id as string;
+    const updates = await request.json() as any;
+    const hotelIndex = mockHotels.findIndex((h: any) => h._id === hotelId);
+    
+    if (hotelIndex === -1) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    
+    mockHotels[hotelIndex] = {
+      ...mockHotels[hotelIndex],
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    
+    return HttpResponse.json(mockHotels[hotelIndex]);
+  }),
+
+  // Hotel stats (matches backend GET /api/hotel/stats)
+  http.get('/api/hotel/stats', () => {
+    // For new users with no hotel, return empty stats
+    if (mockHotels.length === 0) {
+      return HttpResponse.json({
+        totalRooms: 0,
+        availableRooms: 0,
+        occupiedRooms: 0,
+        totalGuests: 0,
+        checkedInGuests: 0,
+        occupancyRate: 0,
+        isNewUser: true
+      });
+    }
+    
+    const totalRooms = mockRooms.length;
+    const availableRooms = mockRooms.filter(r => r.status === 'available').length;
+    const totalGuests = mockGuests.length;
+    const checkedInGuests = mockGuests.filter(g => g.status === 'checked-in').length;
+    
+    return HttpResponse.json({
+      totalRooms,
+      availableRooms,
+      occupiedRooms: totalRooms - availableRooms,
+      totalGuests,
+      checkedInGuests,
+      occupancyRate: totalRooms > 0 ? ((totalRooms - availableRooms) / totalRooms) * 100 : 0,
+      isNewUser: false
+    });
+  }),
+
+  // Hotel guests endpoints (matches backend /api/hotel/guests)
+  http.get('/api/hotel/guests', () => {
+    // Return empty array for new users - they'll add guests after hotel setup
+    return HttpResponse.json(mockHotels.length === 0 ? [] : mockGuests);
+  }),
+
+  http.post('/api/hotel/guests', async ({ request }) => {
+    const newGuest = await request.json() as any;
+    const guest = {
+      id: `guest-${mockGuests.length + 1}`,
+      ...newGuest,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockGuests.push(guest);
+    return HttpResponse.json(guest, { status: 201 });
+  }),
+
+  http.patch('/api/hotel/guests/:id', async ({ params, request }) => {
+    const guestId = params.id as string;
+    const updates = await request.json() as any;
+    const guestIndex = mockGuests.findIndex(g => g.id === guestId);
+    
+    if (guestIndex === -1) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    
+    mockGuests[guestIndex] = {
+      ...mockGuests[guestIndex],
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    
+    return HttpResponse.json(mockGuests[guestIndex]);
+  }),
+
+  http.delete('/api/hotel/guests/:id', ({ params }) => {
+    const guestId = params.id as string;
+    const guestIndex = mockGuests.findIndex(g => g.id === guestId);
+    
+    if (guestIndex === -1) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    
+    mockGuests.splice(guestIndex, 1);
+    return HttpResponse.json({ message: 'Guest deleted successfully' });
+  }),
+
+  // Hotel rooms endpoints (matches backend /api/hotel/rooms)
+  http.get('/api/hotel/rooms', () => {
+    // Return empty array for new users - they'll add rooms after hotel setup
+    return HttpResponse.json(mockHotels.length === 0 ? [] : mockRooms);
+  }),
+
+  http.post('/api/hotel/rooms', async ({ request }) => {
+    const newRoom = await request.json() as any;
+    const room = {
+      id: `room-${mockRooms.length + 1}`,
+      ...newRoom,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockRooms.push(room);
+    return HttpResponse.json(room, { status: 201 });
+  }),
+
+  http.patch('/api/hotel/rooms/:id', async ({ params, request }) => {
+    const roomId = params.id as string;
+    const updates = await request.json() as any;
+    const roomIndex = mockRooms.findIndex(r => r.id === roomId);
+    
+    if (roomIndex === -1) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    
+    mockRooms[roomIndex] = {
+      ...mockRooms[roomIndex],
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    
+    return HttpResponse.json(mockRooms[roomIndex]);
+  }),
+
+  http.delete('/api/hotel/rooms/:id', ({ params }) => {
+    const roomId = params.id as string;
+    const roomIndex = mockRooms.findIndex(r => r.id === roomId);
+    
+    if (roomIndex === -1) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    
+    mockRooms.splice(roomIndex, 1);
+    return HttpResponse.json({ message: 'Room deleted successfully' });
+  }),
+
+  // Communication endpoints (matches backend /api/communications/*)
+  http.get('/api/communications/guest/:guestId', ({ params }) => {
+    const guestId = params.guestId as string;
+    const communications = mockCommunications.filter((c: any) => c.guestId === guestId);
+    return HttpResponse.json(communications);
+  }),
+
+  http.post('/api/communications/send', async ({ request }) => {
+    const body = await request.json() as any;
+    const communication = {
+      _id: `65c00000000000000000000${mockCommunications.length + 1}`,
+      guestId: body.guestId,
+      hotelId: body.hotelId || (mockHotels.length > 0 ? mockHotels[0]._id : 'no-hotel'),
+      content: body.content,
+      channel: body.channel,
+      type: 'outbound',
+      status: 'sent',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockCommunications.push(communication);
+    return HttpResponse.json(communication, { status: 201 });
+  }),
+
+  http.get('/api/communications/stats', () => {
+    const totalMessages = mockCommunications.length;
+    const todayMessages = mockCommunications.filter((c: any) => 
+      new Date(c.createdAt).toDateString() === new Date().toDateString()
+    ).length;
+    const pendingMessages = mockCommunications.filter((c: any) => c.status === 'pending').length;
+    
+    return HttpResponse.json({
+      totalMessages,
+      todayMessages,
+      pendingMessages,
+      averageResponseTime: 0
+    });
+  }),
+
+  // Subscription plans (matches backend GET /api/subscription/plans)
+  http.get('/api/subscription/plans', () => {
+    return HttpResponse.json([
+      {
+        id: 'basic',
+        name: 'Basic',
+        price: 29,
+        features: [
+          'Up to 50 rooms',
+          'Basic AI responses', 
+          'WhatsApp integration',
+          'Email support'
+        ],
+        limits: {
+          rooms: 50,
+          aiResponses: 1000,
+          channels: ['whatsapp']
+        }
+      },
+      {
+        id: 'professional',
+        name: 'Professional',
+        price: 99,
+        features: [
+          'Up to 200 rooms',
+          'Advanced AI responses',
+          'Multi-channel communication',
+          'Priority support',
+          'Analytics dashboard'
+        ],
+        limits: {
+          rooms: 200,
+          aiResponses: 5000,
+          channels: ['whatsapp', 'email', 'sms']
+        }
+      },
+      {
+        id: 'enterprise',
+        name: 'Enterprise',
+        price: 299,
+        features: [
+          'Unlimited rooms',
+          'Custom AI training',
+          'All communication channels',
+          '24/7 phone support',
+          'Custom integrations',
+          'White-label solution'
+        ],
+        limits: {
+          rooms: -1,
+          aiResponses: -1,
+          channels: ['whatsapp', 'email', 'sms', 'phone']
+        }
+      }
+    ]);
+  }),
 
 ];
+// REMOVED DUPLICATE ENDPOINTS - they were duplicated during the sync process
 
 // Utility functions
 function ensureRoomDefaults(room: any) {

@@ -18,6 +18,8 @@ import {
   Select,
   MenuItem,
   SelectChangeEvent,
+  Avatar,
+  Tooltip,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -32,11 +34,12 @@ import {
   History as HistoryIcon,
   Event as EventIcon,
   EventNote as EventNoteIcon,
+  Logout as LogoutIcon,
 } from '@mui/icons-material';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { hotelConfigService } from '../../services/hotelConfigService';
+import { useAllConfigs, useCurrentConfig, useSetCurrentConfig } from '../../services/hooks/useHotel';
 import type { HotelConfiguration } from '../../types/hotel';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Create a context for the selected hotel configuration
 export const HotelConfigContext = React.createContext<{
@@ -76,28 +79,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const queryClient = useQueryClient();
   const [selectedConfigId, setSelectedConfigId] = useState<string>('');
+  const { logout, user } = useAuth();
 
   // Fetch all hotel configurations
-  const { data: hotelConfigs = [], isLoading: configsLoading } = useQuery({
-    queryKey: ['hotelConfigs'],
-    queryFn: hotelConfigService.getAllConfigs,
-  });
+  const { data: hotelConfigs = [], isLoading: configsLoading } = useAllConfigs();
 
   // Fetch current hotel configuration
-  const { data: currentConfig, refetch: refetchCurrentConfig, isLoading: currentConfigLoading } = useQuery({
-    queryKey: ['hotelConfig', selectedConfigId],
-    queryFn: () => hotelConfigService.getCurrentConfig(),
-  });
+  const { data: currentConfig, isLoading: currentConfigLoading } = useCurrentConfig();
 
   // Set current configuration mutation
-  const setCurrentConfigMutation = useMutation({
-    mutationFn: (configId: string) => hotelConfigService.setCurrentConfig(configId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['hotelConfig'] });
-    },
-  });
+  const setCurrentConfigMutation = useSetCurrentConfig();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -106,22 +98,28 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const handleConfigChange = (event: SelectChangeEvent<string>) => {
     const newConfigId = event.target.value;
     setSelectedConfigId(newConfigId);
-    hotelConfigService.setCurrentConfig(newConfigId).then(() => {
-      refetchCurrentConfig();
-    });
+    setCurrentConfigMutation.mutate(newConfigId);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   useEffect(() => {
     if (
-      hotelConfigs && hotelConfigs.length > 0 &&
-      (!selectedConfigId || !hotelConfigs.some(cfg => cfg.id === selectedConfigId))
+      hotelConfigs && 
+      Array.isArray(hotelConfigs) && 
+      hotelConfigs.length > 0 &&
+      (!selectedConfigId || !hotelConfigs.some((cfg: any) => cfg?.id === selectedConfigId))
     ) {
-      setSelectedConfigId(hotelConfigs[0].id);
-      hotelConfigService.setCurrentConfig(hotelConfigs[0].id).then(() => {
-        refetchCurrentConfig();
-      });
+      const firstConfig = hotelConfigs[0];
+      if (firstConfig && firstConfig.id) {
+        setSelectedConfigId(firstConfig.id);
+        setCurrentConfigMutation.mutate(firstConfig.id);
+      }
     }
-  }, [selectedConfigId, hotelConfigs, refetchCurrentConfig]);
+  }, [selectedConfigId, hotelConfigs, setCurrentConfigMutation]);
 
   const drawer = (
     <div>
@@ -131,10 +129,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </Typography>
       </Toolbar>
       <List>
-        {menuItems.map((item) => (
+        {menuItems.map((item, index) => (
           <ListItem
             button
-            key={item.text}
+            key={`${item.text}-${index}`}
             component={Link}
             to={item.path}
             selected={location.pathname === item.path}
@@ -190,12 +188,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <FormControl sx={{ minWidth: 200, ml: 2 }}>
                 <InputLabel>Hotel Configuration</InputLabel>
                 <Select<string>
-                  value={selectedConfigId || hotelConfigs[0]?.id || ''}
+                  value={selectedConfigId || (hotelConfigs && hotelConfigs.length > 0 ? hotelConfigs[0]?.id : '') || ''}
                   onChange={handleConfigChange}
                   label="Hotel Configuration"
                   size="small"
                 >
-                  {hotelConfigs.map((config) => (
+                  {hotelConfigs?.map((config: any) => (
                     <MenuItem key={config.id} value={config.id}>
                       {config.name}
                     </MenuItem>
@@ -203,6 +201,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </Select>
               </FormControl>
             )}
+            {user && (
+              <Tooltip title={user.email}>
+                <Box sx={{ display: 'flex', alignItems: 'center', ml: 2, mr: 1 }}>
+                  <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', mr: 1 }}>
+                    {user.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase() : user.email[0].toUpperCase()}
+                  </Avatar>
+                  <Typography variant="subtitle1" color="inherit" sx={{ fontWeight: 500 }}>
+                    {user.name}
+                  </Typography>
+                </Box>
+              </Tooltip>
+            )}
+            <IconButton color="inherit" onClick={handleLogout} title="Logout">
+              <LogoutIcon />
+            </IconButton>
           </Toolbar>
         </AppBar>
         <Box

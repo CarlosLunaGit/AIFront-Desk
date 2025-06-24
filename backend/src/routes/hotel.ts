@@ -4,14 +4,11 @@ import { Room } from '../models/Room';
 import { Guest } from '../models/Guest';
 import { logger } from '../utils/logger';
 import { createError } from '../middleware/errorHandler';
-
+import { Hotel } from '../models/Hotel';
 const router = express.Router();
 
-// Authentication middleware (simplified for now)
-const auth = (req: Request, res: Response, next: any) => {
-  // TODO: Implement proper JWT authentication
-  next();
-};
+// Simple auth middleware that just passes through for now
+const auth = (req: any, res: any, next: any) => next();
 
 // Get all rooms
 router.get('/rooms', auth, async (req: Request, res: Response) => {
@@ -216,5 +213,55 @@ router.get('/stats', auth, async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+// Add a helper for async route handlers
+function asyncHandler(fn) {
+  return function (req, res, next) {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+}
+
+// Add a type for req.user (quick fix for now)
+// In production, use proper authentication middleware to populate req.user
+
+// Get all hotels from database
+router.get('/', asyncHandler(async (req, res) => {
+  try {
+    const hotels = await Hotel.find({ isActive: true });
+    res.json(hotels);
+  } catch (error) {
+    logger.error('Error fetching hotels:', error);
+    res.status(500).json({ message: 'Error fetching hotels' });
+  }
+}));
+
+// Get current hotel from database
+router.get('/current', asyncHandler(async (req, res) => {
+  try {
+    // For now, return the first active hotel
+    // In production, this should be based on user context
+    const hotel = await Hotel.findOne({ isActive: true });
+    if (!hotel) {
+      return res.status(404).json({ message: 'No active hotel found' });
+    }
+    res.json(hotel);
+  } catch (error) {
+    logger.error('Error fetching current hotel:', error);
+    res.status(500).json({ message: 'Error fetching current hotel' });
+  }
+}));
+
+router.post('/', asyncHandler(async (req, res) => {
+  const userId = (req.user && (req.user._id || req.user.id)) || undefined;
+  const hotel = new Hotel({ ...req.body, owner: userId });
+  await hotel.save();
+  res.status(201).json(hotel);
+}));
+
+router.patch('/:id', asyncHandler(async (req, res) => {
+  const hotel = await Hotel.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  if (!hotel) return res.status(404).json({ message: 'Hotel config not found' });
+  res.json(hotel);
+}));
 
 export default router; 

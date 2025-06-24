@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import { User } from '../models/User';
 import { Hotel, SubscriptionStatus } from '../models/Hotel';
 import { logger } from '../utils/logger';
@@ -69,15 +70,15 @@ export const authenticate = async (
 
     // Attach user and hotel to request
     req.user = {
-      id: user._id.toString(),
+      id: (user._id as mongoose.Types.ObjectId).toString(),
       email: user.email,
       name: user.name,
       role: user.role,
-      hotelId: hotel._id.toString(),
+      hotelId: (hotel._id as mongoose.Types.ObjectId).toString(),
     };
 
     req.hotel = {
-      id: hotel._id.toString(),
+      id: (hotel._id as mongoose.Types.ObjectId).toString(),
       name: hotel.name,
       slug: hotel.slug,
       subscription: hotel.subscription,

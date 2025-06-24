@@ -4,8 +4,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { Dayjs } from 'dayjs';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getReservations, createReservation, updateReservation, deleteReservation, getGuests, getRooms } from '../services/api';
+import { useQueryClient } from '@tanstack/react-query';
 import Autocomplete from '@mui/material/Autocomplete';
 import { HotelConfigContext } from '../components/Layout/Layout';
 import SearchIcon from '@mui/icons-material/Search';
@@ -15,26 +14,20 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import Tooltip from '@mui/material/Tooltip';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import { useReservations, useCreateReservation, useUpdateReservation } from '../services/hooks/useReservations';
+import { useGuests } from '../services/hooks/useGuests';
+import { useRooms } from '../services/hooks/useRooms';
 
 const ReservationsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { selectedConfigId, currentConfig } = useContext(HotelConfigContext);
   const { enqueueSnackbar } = useSnackbar();
   // Fetch reservations
-  const { data: reservations = [], isLoading: loadingReservations } = useQuery({
-    queryKey: ['reservations'],
-    queryFn: getReservations,
-  });
+  const { data: reservations = [], isLoading: loadingReservations } = useReservations();
   // Fetch guests
-  const { data: guests = [], isLoading: loadingGuests } = useQuery({
-    queryKey: ['guests'],
-    queryFn: getGuests,
-  });
+  const { data: guests = [], isLoading: loadingGuests } = useGuests();
   // Fetch rooms
-  const { data: rooms = [], isLoading: loadingRooms } = useQuery({
-    queryKey: ['rooms'],
-    queryFn: getRooms,
-  });
+  const { data: rooms = [], isLoading: loadingRooms } = useRooms();
 
   // Only show reservations for rooms in the current hotel config, using room ID
   const roomIdsForConfig = rooms.filter((r: any) => r.hotelConfigId === selectedConfigId).map((r: any) => r.id);
@@ -62,18 +55,8 @@ const ReservationsPage: React.FC = () => {
   const availableRooms = rooms.filter((r: any) => (r.status === 'available' || r.status === 'partially-reserved') && r.hotelConfigId === selectedConfigId);
 
   // Mutations
-  const createMutation = useMutation({
-    mutationFn: createReservation,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['reservations'] }),
-  });
-  const updateMutation = useMutation({
-    mutationFn: ({ id, ...data }: any) => updateReservation(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['reservations'] }),
-  });
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteReservation(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['reservations'] }),
-  });
+  const createMutation = useCreateReservation();
+  const updateMutation = useUpdateReservation();
 
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -114,7 +97,6 @@ const ReservationsPage: React.FC = () => {
 
   const handleConfirmDelete = async () => {
     if (pendingDeleteId) {
-      await deleteReservation(pendingDeleteId);
       enqueueSnackbar('Reservation deleted and guests released.', { variant: 'success' });
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
       queryClient.invalidateQueries({ queryKey: ['guests'] });

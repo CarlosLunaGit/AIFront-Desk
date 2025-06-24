@@ -28,7 +28,7 @@ import {
 } from '@mui/icons-material';
 import type { Room } from '../../types/room';
 import type { RoomType, Floor, HotelFeature } from '../../types/hotel';
-import { useCreateRoomAction, useUpdateRoom } from '../../services/roomService';
+import { useCreateRoomAction, useUpdateRoom } from '../../services/hooks/useRooms';
 import Tooltip from '@mui/material/Tooltip';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';

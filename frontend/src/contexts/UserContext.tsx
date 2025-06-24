@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { api } from '../services/api';
+import { useLogin, useRegister, useMe } from '../services/hooks/useAuth';
 
 // Types
 export interface User {
@@ -89,40 +89,32 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const loginMutation = useLogin();
+  const registerMutation = useRegister();
+  const meQuery = useMe();
 
   // Check if user is authenticated
   const isAuthenticated = !!user && !!tenant;
 
   // Initialize user session on app load
   useEffect(() => {
-    const initializeAuth = async () => {
-      const token = localStorage.getItem('auth_token');
-      
-      if (token) {
-        try {
-          await refreshUserData();
-        } catch (error) {
-          console.error('Failed to restore session:', error);
-          logout();
-        }
-      }
-      
-      setIsLoading(false);
-    };
-
-    initializeAuth();
-  }, []);
+    const token = localStorage.getItem('auth_token');
+    if (token && meQuery.data) {
+      setUser(meQuery.data.user);
+      setTenant(meQuery.data.tenant);
+    } else if (!token) {
+      setUser(null);
+      setTenant(null);
+    }
+    setIsLoading(false);
+  }, [meQuery.data]);
 
   // Login function
   const login = async (email: string, password: string): Promise<void> => {
     try {
-      const response = await api.post('/api/auth/login', { email, password });
-      const { token, user: userData, tenant: tenantData } = response.data;
-
-      // Store token
+      const data = await loginMutation.mutateAsync({ email, password });
+      const { token, user: userData, tenant: tenantData } = data;
       localStorage.setItem('auth_token', token);
-
-      // Set user and tenant data
       setUser(userData);
       setTenant(tenantData);
     } catch (error: any) {
@@ -133,13 +125,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   // Register function
   const register = async (userData: RegisterData): Promise<void> => {
     try {
-      const response = await api.post('/api/auth/register', userData);
-      const { token, user: newUser, tenant: newTenant } = response.data;
-
-      // Store token
+      const data = await registerMutation.mutateAsync(userData);
+      const { token, user: newUser, tenant: newTenant } = data;
       localStorage.setItem('auth_token', token);
-
-      // Set user and tenant data
       setUser(newUser);
       setTenant(newTenant);
     } catch (error: any) {
@@ -157,7 +145,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   // Refresh user data
   const refreshUserData = async (): Promise<void> => {
     try {
-      const response = await api.get('/api/auth/me');
+      const response = await useMe();
       const { user: userData, tenant: tenantData } = response.data;
 
       setUser(userData);

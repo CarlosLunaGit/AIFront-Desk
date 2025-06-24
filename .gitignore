@@ -29,7 +29,6 @@ yarn-error.log*
 # Ignore node_modules
 node_modules/
 
-
 # Ignore .env files
 .env
 
@@ -37,19 +36,15 @@ node_modules/
 .env.local
 backend/.env
 
-
-
 # Ignore log files
-
 logs/
-
 backend/logs/
-
 *.log
 
 # Build directories
-
 build/
-
 frontend/build/
+
+# Database dumps (development reference only)
+db-dump/
 

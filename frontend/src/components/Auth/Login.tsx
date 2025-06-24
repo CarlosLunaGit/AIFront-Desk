@@ -3,7 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Box, Paper, Typography, TextField, Button, Container } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 
+console.log('Login component loaded');
+
 const Login: React.FC = () => {
+
+  console.log('Login component rendering');
+  
   const navigate = useNavigate();
   const { login } = useAuth();
   const [email, setEmail] = React.useState('');

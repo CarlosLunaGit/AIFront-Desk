@@ -7,7 +7,8 @@ import reportWebVitals from './reportWebVitals';
 // Initialize MSW
 async function enableMocking() {
   // Check if mocking is enabled via environment variable
-  const shouldMock = process.env.NODE_ENV === 'development';
+  const shouldMock = process.env.REACT_APP_ENABLE_MOCK_API === 'true';
+  console.log('shouldMock:', shouldMock, process.env.REACT_APP_ENABLE_MOCK_API);
   
   if (!shouldMock) {
     console.log('Mock API is disabled. Using real API endpoints.');
@@ -35,6 +36,9 @@ enableMocking().then(() => {
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
+
+console.log('Rendering App...');
+
 root.render(
   <React.StrictMode>
     <App />

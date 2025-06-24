@@ -5,7 +5,7 @@ const logFormat = winston.format.combine(
   winston.format.errors({ stack: true }),
   winston.format.colorize(),
   winston.format.printf(({ level, message, timestamp, stack }) => {
-    return `${timestamp} [${level}]: ${stack || message}`;
+    return `${timestamp} ${level}: ${stack || message}`;
   })
 );
 

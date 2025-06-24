@@ -37,27 +37,33 @@ export interface IHotel extends Document {
   name: string; // Hotel name
   slug: string; // URL-friendly identifier
   description?: string;
-  address?: string;
-      contactInfo: {
-      phone?: string;
-      email?: string;
-      website?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+  };
+  contactInfo: {
+    phone?: string;
+    email?: string;
+    website?: string;
+  };
+  communicationChannels?: {
+    whatsapp?: {
+      phoneNumber: string;
+      verified: boolean;
+      businessAccountId?: string;
     };
-    communicationChannels?: {
-      whatsapp?: {
-        phoneNumber: string;
-        verified: boolean;
-        businessAccountId?: string;
-      };
-      sms?: {
-        phoneNumber: string;
-        verified: boolean;
-      };
-      email?: {
-        address: string;
-        verified: boolean;
-      };
+    sms?: {
+      phoneNumber: string;
+      verified: boolean;
     };
+    email?: {
+      address: string;
+      verified: boolean;
+    };
+  };
   subscription: ISubscription;
   settings: {
     timezone: string;
@@ -138,8 +144,11 @@ const hotelSchema = new Schema<IHotel>(
       trim: true,
     },
     address: {
-      type: String,
-      trim: true,
+      street: { type: String, trim: true },
+      city: { type: String, trim: true },
+      state: { type: String, trim: true },
+      zipCode: { type: String, trim: true },
+      country: { type: String, trim: true },
     },
     contactInfo: {
       phone: { type: String, trim: true },

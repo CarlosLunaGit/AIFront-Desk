@@ -31,20 +31,15 @@ import LoginIcon from '@mui/icons-material/Login';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import Tooltip from '@mui/material/Tooltip';
 import { HotelConfigContext } from './Layout/Layout';
-import { api } from '../services/api';
-import { useRooms } from '../services/roomService';
-
-const fetchGuests = async () => {
-  const res = await fetch('/api/guests');
-  if (!res.ok) throw new Error('Failed to fetch guests');
-  return res.json();
-};
+import { useGuests } from '../services/hooks/useGuests';
+import { useRooms } from '../services/hooks/useRooms';
+import { createGuest, updateGuest, deleteGuest, checkInGuest, checkOutGuest, toggleKeepOpen } from '../services/api/guest';
 
 const GuestManagement: React.FC = () => {
   const { selectedConfigId, currentConfig } = useContext(HotelConfigContext);
   const { data: guests, isLoading, error, refetch } = useQuery({
     queryKey: ['guests', currentConfig?.id],
-    queryFn: fetchGuests,
+    queryFn: useGuests,
     enabled: !!currentConfig,
   });
 
@@ -64,7 +59,11 @@ const GuestManagement: React.FC = () => {
   // Fetch available rooms for assignment
   const { data: rooms = [] } = useRooms({ hotelConfigId: currentConfig?.id });
   // Only rooms that are available or partially-reserved (not occupied/maintenance/cleaning/reserved/checked-in)
-  const availableRooms = rooms.filter((room: any) => (room.status === 'available' || room.status === 'partially-reserved') && !guests?.some((g: any) => g.roomId === room.id && g.status === 'checked-in'));
+  const availableRooms = rooms.filter(
+    (room: any) =>
+      (room.status === 'available' || room.status === 'partially-reserved') &&
+      (Array.isArray(guests) ? !guests.some((g: any) => g.roomId === room.id && g.status === 'checked-in') : true)
+  );
 
   // Filter guests by search
   const filteredGuests = Array.isArray(guests)
@@ -81,7 +80,7 @@ const GuestManagement: React.FC = () => {
   const handleEditSave = async () => {
     if (!editGuest) return;
     try {
-      await api.patch(`/api/guests/${editGuest.id}`, editGuest);
+      await updateGuest(editGuest.id, editGuest);
       setEditGuest(null);
       refetch();
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
@@ -94,7 +93,7 @@ const GuestManagement: React.FC = () => {
   const handleDelete = async () => {
     if (!deleteGuest) return;
     try {
-      await api.delete(`/api/guests/${deleteGuest.id}`);
+      await deleteGuest(deleteGuest.id);
       setDeleteGuest(null);
       refetch();
     } catch (err) {
@@ -105,7 +104,7 @@ const GuestManagement: React.FC = () => {
   // Handler for Add Guest (POST to API)
   const handleAddGuest = async () => {
     try {
-      await api.post('/api/guests', {
+      await createGuest({
         ...newGuest,
         status: newGuest.status,
         roomId: newGuest.roomId,
@@ -126,7 +125,7 @@ const GuestManagement: React.FC = () => {
   // Handler for check-in action
   const handleCheckIn = async (guest: any) => {
     try {
-      await api.patch(`/api/guests/${guest.id}`, { status: 'checked-in', checkIn: new Date().toISOString() });
+      await checkInGuest(guest.id);
       refetch();
     } catch (err) {
       alert('Failed to check in guest');
@@ -136,7 +135,7 @@ const GuestManagement: React.FC = () => {
   // Handler for check-out action
   const handleCheckout = async (guest: any) => {
     try {
-      await api.patch(`/api/guests/${guest.id}`, { status: 'checked-out', checkOut: new Date().toISOString() });
+      await checkOutGuest(guest.id);
       refetch();
     } catch (err) {
       alert('Failed to check out guest');
@@ -146,7 +145,7 @@ const GuestManagement: React.FC = () => {
   // Handler for toggle keepOpen
   const handleToggleKeepOpen = async (guest: any) => {
     try {
-      await api.patch(`/api/guests/${guest.id}`, { keepOpen: !guest.keepOpen });
+      await toggleKeepOpen(guest.id, !guest.keepOpen);
       refetch();
     } catch (err) {
       alert('Failed to update keepOpen');

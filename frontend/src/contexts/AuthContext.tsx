@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { api } from '../services/api';
+import { useLogin, useMe } from '../services/hooks/useAuth';
 
 interface User {
   id: string;
@@ -27,38 +27,38 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const loginMutation = useLogin();
+  const meQuery = useMe();
 
   const login = useCallback(async (email: string, password: string) => {
     try {
-      const response = await api.post('/api/auth/login', { email, password });
-      const { token, user } = response.data;
+      const data = await loginMutation.mutateAsync({ email, password });
+      const { token, user } = data;
       localStorage.setItem('auth_token', token);
       setUser(user);
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
     }
-  }, []);
+  }, [loginMutation]);
 
   const logout = useCallback(() => {
     localStorage.removeItem('auth_token');
     setUser(null);
   }, []);
 
-  // Check for existing session on mount
   React.useEffect(() => {
     const token = localStorage.getItem('auth_token');
-    if (token) {
-      api.get('/api/auth/me')
-        .then(response => {
-          setUser(response.data);
-        })
-        .catch(() => {
-          localStorage.removeItem('auth_token');
-          setUser(null);
-        });
+    if (typeof window !== 'undefined' && window.location.pathname === '/login') {
+      setUser(null);
+      return;
     }
-  }, []);
+    if (token && meQuery.data) {
+      setUser(meQuery.data);
+    } else if (!token) {
+      setUser(null);
+    }
+  }, [meQuery.data]);
 
   const value = {
     user,

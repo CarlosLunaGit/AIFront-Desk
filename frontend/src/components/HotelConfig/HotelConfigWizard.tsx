@@ -19,8 +19,8 @@ import {
   Tab,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { hotelConfigService } from '../../services/hotelConfigService';
+import { useMutation } from '@tanstack/react-query';
+import { createConfig, updateConfig } from '../../services/api/hotel';
 import { HotelConfigContext } from '../Layout/Layout';
 import BasicInfoStep from './steps/BasicInfoStep';
 import FeaturesStep from './steps/FeaturesStep';
@@ -118,35 +118,18 @@ const HotelConfigWizard: React.FC = () => {
   }, []);
 
   const createConfigMutation = useMutation({
-    mutationFn: (data: HotelConfigFormData) => hotelConfigService.createConfig(data),
+    mutationFn: (data: HotelConfigFormData) => createConfig(data),
     onSuccess: () => {
       navigate('/dashboard');
     },
   });
 
   const updateConfigMutation = useMutation({
-    mutationFn: (data: HotelConfigFormData) => 
-      hotelConfigService.updateConfig(currentConfig?.id || '', data),
+    mutationFn: (data: HotelConfigFormData) => updateConfig(currentConfig?.id || '', data),
     onSuccess: () => {
       navigate('/dashboard');
     },
   });
-
-  const handleNext = useCallback(() => {
-    if (activeStep === steps.length - 1) {
-      handleSubmit();
-    } else {
-      setActiveStep((prevStep) => prevStep + 1);
-    }
-  }, [activeStep]);
-
-  const handleBack = useCallback(() => {
-    setActiveStep((prevStep) => prevStep - 1);
-  }, []);
-
-  const handleStepComplete = useCallback((stepData: Partial<HotelConfigFormData>) => {
-    setFormData((prev) => ({ ...prev, ...stepData }));
-  }, []);
 
   const validateStep = useCallback((step: number): boolean => {
     switch (step) {
@@ -177,6 +160,22 @@ const HotelConfigWizard: React.FC = () => {
       updateConfigMutation.mutate(formData as HotelConfigFormData);
     }
   }, [activeStep, formData, validateStep, createConfigMutation, updateConfigMutation, mode]);
+
+  const handleNext = useCallback(() => {
+    if (activeStep === steps.length - 1) {
+      handleSubmit();
+    } else {
+      setActiveStep((prevStep) => prevStep + 1);
+    }
+  }, [activeStep, handleSubmit]);
+
+  const handleBack = useCallback(() => {
+    setActiveStep((prevStep) => prevStep - 1);
+  }, []);
+
+  const handleStepComplete = useCallback((stepData: Partial<HotelConfigFormData>) => {
+    setFormData((prev) => ({ ...prev, ...stepData }));
+  }, []);
 
   const handleExit = useCallback(() => {
     setShowExitDialog(true);

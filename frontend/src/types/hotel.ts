@@ -1,5 +1,74 @@
 import { RoomStatus } from './room';
 
+// MongoDB Hotel document structure (actual backend data)
+export interface Hotel {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+  };
+  contactInfo: {
+    phone?: string;
+    email?: string;
+    website?: string;
+  };
+  communicationChannels?: {
+    whatsapp?: {
+      phoneNumber: string;
+      verified: boolean;
+      businessAccountId?: string;
+    };
+    sms?: {
+      phoneNumber: string;
+      verified: boolean;
+    };
+    email?: {
+      address: string;
+      verified: boolean;
+    };
+  };
+  subscription: {
+    tier: string;
+    status: string;
+    currentPeriodStart: string | Date;
+    currentPeriodEnd: string | Date;
+    cancelAtPeriodEnd: boolean;
+    features: {
+      maxRooms: number;
+      maxAIResponses: number;
+      maxUsers: number;
+      channels: string[];
+      hasVoiceCalls: boolean;
+      hasAdvancedAnalytics: boolean;
+      hasCustomAI: boolean;
+      hasWhiteLabel: boolean;
+      hasAPIAccess: boolean;
+    };
+    monthlyPrice: number;
+  };
+  settings: {
+    timezone: string;
+    currency: string;
+    language: string;
+    checkInTime: string;
+    checkOutTime: string;
+  };
+  isActive: boolean;
+  createdBy: string;
+  usage: {
+    currentRooms: number;
+    aiResponsesThisMonth: number;
+    usersCount: number;
+    lastReset: string | Date;
+  };
+}
+
 export interface HotelFeature {
   id: string;
   name: string;

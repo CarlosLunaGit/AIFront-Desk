@@ -49,7 +49,12 @@
     "eject": "react-scripts eject",
     "lint": "eslint src --ext .ts,.tsx",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
-    "mock": "msw init public/ --save"
+    "mock": "msw init public/ --save",
+    "validate-msw-sync": "node scripts/validate-msw-sync.js",
+    "msw-mode": "echo REACT_APP_ENABLE_MOCK_API=true > .env.local && echo Switched to MSW mode for isolated frontend development",
+    "backend-mode": "echo REACT_APP_ENABLE_MOCK_API=false > .env.local && echo REACT_APP_API_URL=http://localhost:3001 >> .env.local && echo Switched to backend mode for integration testing",
+    "new-user-mode": "echo REACT_APP_ENABLE_MOCK_API=true > .env.local && echo REACT_APP_SIMULATE_NEW_USER=true >> .env.local && echo Switched to new user onboarding mode",
+    "existing-user-mode": "echo REACT_APP_ENABLE_MOCK_API=true > .env.local && echo REACT_APP_SIMULATE_NEW_USER=false >> .env.local && echo Switched to existing user mode with data"
   },
   "eslintConfig": {
     "extends": [

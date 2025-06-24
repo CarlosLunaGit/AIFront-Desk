@@ -54,10 +54,32 @@ export interface IUser extends Document {
   
   // Development/testing
   isDevelopmentUser?: boolean;
+  
+  // Methods
+  comparePassword(candidatePassword: string): Promise<boolean>;
+  isSubscriptionActive(): boolean;
+  getSubscriptionLimits(): ISubscriptionLimits | null;
 }
 
-// Define subscription limits
-const SUBSCRIPTION_LIMITS = {
+// Interface for subscription limits
+export interface ISubscriptionLimits {
+  monthlyPrice: number;
+  maxHotels: number;
+  maxRoomsPerHotel: number;
+  maxAIResponses: number;
+  maxUsersPerHotel: number;
+  channels: string[];
+  features: {
+    hasVoiceCalls: boolean;
+    hasAdvancedAnalytics: boolean;
+    hasCustomAI: boolean;
+    hasWhiteLabel: boolean;
+    hasAPIAccess: boolean;
+  };
+}
+
+// Define subscription limits with proper typing
+const SUBSCRIPTION_LIMITS: Record<SubscriptionTier, ISubscriptionLimits> = {
   [SubscriptionTier.STARTER]: {
     monthlyPrice: 49,
     maxHotels: 1,
@@ -266,7 +288,7 @@ userSchema.methods.isSubscriptionActive = function (): boolean {
 };
 
 // Get subscription limits
-userSchema.methods.getSubscriptionLimits = function () {
+userSchema.methods.getSubscriptionLimits = function (this: IUser): ISubscriptionLimits | null {
   if (this.role !== UserRole.SUBSCRIPTION_OWNER || !this.subscription) {
     return null;
   }

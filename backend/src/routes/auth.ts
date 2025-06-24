@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { body, validationResult } from 'express-validator';
+import mongoose from 'mongoose';
 import { User, UserRole, SubscriptionStatus } from '../models/User';
 import { Hotel } from '../models/Hotel';
 import { generateToken, authenticate, AuthenticatedRequest } from '../middleware/auth';
@@ -18,11 +19,12 @@ router.post('/register',
     body('name').trim().isLength({ min: 1 }),
     body('hotelName').optional().trim().isLength({ min: 1 }),
   ],
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response): Promise<void> => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+        res.status(400).json({ errors: errors.array() });
+        return;
       }
 
       const { email, password, name, hotelName } = req.body;
@@ -30,7 +32,8 @@ router.post('/register',
       // Check if user already exists
       const existingUser = await User.findOne({ email });
       if (existingUser) {
-        return res.status(400).json({ message: 'User already exists' });
+        res.status(400).json({ message: 'User already exists' });
+        return;
       }
 
       // First create a basic hotel if hotel name provided
@@ -89,13 +92,13 @@ router.post('/register',
         emailVerified: false,
       });
 
+      await user.save();
+
       // Set createdBy after user is saved
       if (hotel) {
-        hotel.createdBy = user._id;
+        hotel.createdBy = user._id as mongoose.Types.ObjectId;
         await hotel.save();
       }
-
-      await user.save();
 
       // Generate JWT
       const token = jwt.sign(
@@ -139,30 +142,34 @@ router.post('/login',
     body('email').isEmail().normalizeEmail(),
     body('password').exists(),
   ],
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response): Promise<void> => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+        res.status(400).json({ errors: errors.array() });
+        return;
       }
 
       const { email, password } = req.body;
 
-      // Find user
-      const user = await User.findOne({ email }).populate('hotel');
+      // Find user and populate hotel
+      const user = await User.findOne({ email }).populate('hotelId');
       if (!user) {
-        return res.status(400).json({ message: 'Invalid credentials' });
+        res.status(400).json({ message: 'Invalid credentials' });
+        return;
       }
 
       // Check password
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
-        return res.status(400).json({ message: 'Invalid credentials' });
+        res.status(400).json({ message: 'Invalid credentials' });
+        return;
       }
 
       // Check if user is active
       if (!user.isActive) {
-        return res.status(400).json({ message: 'Account is deactivated' });
+        res.status(400).json({ message: 'Account is deactivated' });
+        return;
       }
 
       // Update last login
@@ -190,7 +197,7 @@ router.post('/login',
           name: user.name,
           role: user.role,
           hotelId: user.hotelId,
-          hotel: user.hotel,
+          hotel: user.hotelId ? user.hotelId : null,
           lastLogin: user.lastLogin,
         },
       });
@@ -202,20 +209,22 @@ router.post('/login',
 );
 
 // Get current user
-router.get('/me', async (req: Request, res: Response) => {
+router.get('/me', async (req: Request, res: Response): Promise<void> => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) {
-      return res.status(401).json({ message: 'No token provided' });
+      res.status(401).json({ message: 'No token provided' });
+      return;
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
     const user = await User.findById(decoded.userId)
       .select('-password')
-      .populate('hotel', 'name slug isActive subscription.tier subscription.status');
+      .populate('hotelId', 'name slug isActive subscription.tier subscription.status');
     
     if (!user) {
-      return res.status(401).json({ message: 'User not found' });
+      res.status(401).json({ message: 'User not found' });
+      return;
     }
 
     res.json({
@@ -225,7 +234,7 @@ router.get('/me', async (req: Request, res: Response) => {
         name: user.name,
         role: user.role,
         hotelId: user.hotelId,
-        hotel: user.hotel,
+        hotel: user.hotelId ? user.hotelId : null,
         isActive: user.isActive,
         emailVerified: user.emailVerified,
         lastLogin: user.lastLogin,
@@ -238,13 +247,14 @@ router.get('/me', async (req: Request, res: Response) => {
 });
 
 // Create development user (for testing)
-router.post('/create-dev-user', async (req: Request, res: Response) => {
+router.post('/create-dev-user', async (req: Request, res: Response): Promise<void> => {
   try {
     logger.info('Create dev user endpoint called');
 
     // Only allow in development
     if (process.env.NODE_ENV === 'production') {
-      return res.status(403).json({ message: 'Not allowed in production' });
+      res.status(403).json({ message: 'Not allowed in production' });
+      return;
     }
 
     const devEmail = 'dev@aifront-desk.com';
@@ -252,13 +262,14 @@ router.post('/create-dev-user', async (req: Request, res: Response) => {
     // Check if dev user already exists
     const existingUser = await User.findOne({ email: devEmail });
     if (existingUser) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         message: 'Development user already exists',
         user: {
           email: existingUser.email,
           role: existingUser.role
         }
       });
+      return;
     }
 
     // Create development user with subscription
@@ -285,12 +296,13 @@ router.post('/create-dev-user', async (req: Request, res: Response) => {
 
     // After user is created:
     const allHotels = await Hotel.find({});
-    devUser.ownedHotels = allHotels.map(h => h._id);
+    devUser.ownedHotels = allHotels.map(h => h._id as mongoose.Types.ObjectId);
     await devUser.save();
+    
     // Set createdBy for all hotels if not already set
     for (const hotel of allHotels) {
-      if (!hotel.createdBy || hotel.createdBy.toString() !== devUser._id.toString()) {
-        hotel.createdBy = devUser._id;
+      if (!hotel.createdBy || hotel.createdBy.toString() !== (devUser._id as mongoose.Types.ObjectId).toString()) {
+        hotel.createdBy = devUser._id as mongoose.Types.ObjectId;
         await hotel.save();
       }
     }

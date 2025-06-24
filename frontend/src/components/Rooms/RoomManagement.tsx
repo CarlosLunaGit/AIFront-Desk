@@ -1,15 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Grid,
   Paper,
   Typography,
-  Card,
-  CardContent,
-  CardActions,
   Button,
-  Chip,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -27,43 +22,28 @@ import {
 } from '@mui/material';
 import {
   Edit as EditIcon,
-  Delete as DeleteIcon,
-  Add as AddIcon,
   Hotel as HotelIcon,
-  Wifi as WifiIcon,
   LocalBar as MinibarIcon,
-  Balcony as BalconyIcon,
-  Visibility as ViewIcon,
-  Build as BuildIcon,
   CleaningServices as CleaningIcon,
   CheckCircle as CheckInIcon,
   Cancel as CheckOutIcon,
   DeleteForever as DeleteForeverIcon,
 } from '@mui/icons-material';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { hotelConfigService } from '../../services/hotelConfigService';
-import type { RoomTemplate, RoomType, Floor, HotelFeature } from '../../types/hotel';
-import { RoomStatus, RoomFilter } from '../../types/room';
-import RoomFilters from './RoomFilters';
-import RoomGrid from './RoomGrid';
-import { useRooms, useUpdateRoom } from '../../services/roomService';
+import { useRooms as useRoomsHook } from '../../services/hooks/useRooms';
 import type { Room } from '../../types/room';
 import { HotelConfigContext } from '../Layout/Layout';
 import { Circle as CircleIcon } from '@mui/icons-material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import { bulkCreateRooms, updateRoomStatus, requestMaintenance, requestCleaning } from '../../services/api/room';
+import { checkInGuest, checkOutGuest, deleteGuest } from '../../services/api/guest';
+import RoomGrid from './RoomGrid';
+import BuildIcon from '@mui/icons-material/Build';
+import { useQueryClient } from '@tanstack/react-query';
+import { useUpdateRoom } from '../../services/hooks/useRooms';
 
 const RoomManagement: React.FC = () => {
-  const queryClient = useQueryClient();
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<RoomFilter>({
-    status: [],
-    type: [],
-    floor: [],
-    features: [],
-  });
-  const [showRoomDialog, setShowRoomDialog] = useState(false);
-  const [dialogMode, setDialogMode] = useState<'edit' | 'view'>('view');
   const [view, setView] = useState<'grid' | 'map'>('grid');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterType, setFilterType] = useState<string>('');
@@ -93,11 +73,12 @@ const RoomManagement: React.FC = () => {
     isLoading: roomsLoading,
     isFetching: roomsFetching,
     refetch: refetchRooms
-  } = useRooms({ hotelConfigId: selectedConfigId });
+  } = useRoomsHook({ hotelConfigId: selectedConfigId });
   const isLoading = !currentConfig || roomsLoading || roomsFetching;
   const [editRoom, setEditRoom] = useState<Room | null>(null);
   const [viewRoom, setViewRoom] = useState<Room | null>(null);
   const [editRoomState, setEditRoomState] = useState<Room | null>(null);
+  const queryClient = useQueryClient();
   const updateRoom = useUpdateRoom();
 
   React.useEffect(() => {
@@ -153,11 +134,7 @@ const RoomManagement: React.FC = () => {
         rate: bulkRate === '' ? undefined : bulkRate,
         status: 'available',
       }));
-      await fetch('/api/rooms/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      await bulkCreateRooms(payload);
       setBulkLoading(false);
       setBulkDialogOpen(false);
       setBulkFloor(''); setBulkType(''); setBulkNumbers(''); setBulkFeatures([]); setBulkCapacity(''); setBulkRate('');
@@ -203,14 +180,10 @@ const RoomManagement: React.FC = () => {
     if (!selectedRoom) return;
     if (selectedRoom.status === 'maintenance') {
       // Unset maintenance
-      await fetch(`/api/rooms/${selectedRoom.id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'available' }),
-      });
+      await updateRoomStatus(selectedRoom.id, 'available');
     } else if (['available', 'cleaning'].includes(selectedRoom.status)) {
       // Set to maintenance
-      await fetch(`/api/rooms/${selectedRoom.id}/maintenance`, { method: 'PATCH' });
+      await requestMaintenance(selectedRoom.id);
     }
     setSelectedRoomId(null);
     queryClient.invalidateQueries({ queryKey: ['rooms'] });
@@ -220,14 +193,10 @@ const RoomManagement: React.FC = () => {
     if (!selectedRoom) return;
     if (selectedRoom.status === 'cleaning') {
       // Unset cleaning
-      await fetch(`/api/rooms/${selectedRoom.id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'available' }),
-      });
+      await updateRoomStatus(selectedRoom.id, 'available');
     } else {
       // Request cleaning
-      await fetch(`/api/rooms/${selectedRoom.id}/cleaning`, { method: 'PATCH' });
+      await requestCleaning(selectedRoom.id);
     }
     setSelectedRoomId(null);
     queryClient.invalidateQueries({ queryKey: ['rooms'] });
@@ -235,37 +204,20 @@ const RoomManagement: React.FC = () => {
 
   const handleCheckInOut = async () => {
     if (!selectedRoom || !selectedRoom.assignedGuests.length) return;
-    const now = new Date().toISOString();
     if (["reserved", "partially-reserved", "partially-occupied"].includes(selectedRoom.status)) {
       // Check In: set all assigned guests to checked-in
       await Promise.all(selectedRoom.assignedGuests.map(guestId =>
-        fetch(`/api/guests/${guestId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ checkIn: now, status: 'checked-in' }),
-        })
+        checkInGuest(guestId)
       ));
       // Set room to occupied
-      await fetch(`/api/rooms/${selectedRoom.id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'occupied' }),
-      });
+      await updateRoomStatus(selectedRoom.id, 'occupied');
     } else if (selectedRoom.status === 'occupied') {
       // Check Out: set all assigned guests to checked-out
       await Promise.all(selectedRoom.assignedGuests.map(guestId =>
-        fetch(`/api/guests/${guestId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ checkOut: now, status: 'checked-out' }),
-        })
+        checkOutGuest(guestId)
       ));
       // Set room to cleaning
-      await fetch(`/api/rooms/${selectedRoom.id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'cleaning' }),
-      });
+      await updateRoomStatus(selectedRoom.id, 'cleaning');
     }
     setSelectedRoomId(null);
     queryClient.invalidateQueries({ queryKey: ['rooms'] });
@@ -274,7 +226,7 @@ const RoomManagement: React.FC = () => {
   const handleTerminateReservation = async () => {
     if (!selectedRoom || !selectedRoom.assignedGuests.length) return;
     await Promise.all(selectedRoom.assignedGuests.map(guestId =>
-      fetch(`/api/guests/${guestId}`, { method: 'DELETE' })
+      deleteGuest(guestId)
     ));
     setSelectedRoomId(null);
     queryClient.invalidateQueries({ queryKey: ['rooms'] });
@@ -296,7 +248,7 @@ const RoomManagement: React.FC = () => {
   const handleToggleKeepOpen = async () => {
     if (!selectedRoom || !selectedRoom.assignedGuests.length) return;
     // Fetch all guests and filter to those assigned to this room
-    const res = await fetch(`/api/guests`);
+    const res = await fetch('/api/guests');
     if (!res.ok) return;
     const allGuests = await res.json();
     const roomGuests = allGuests.filter((g: any) => g.roomId === selectedRoom.id);

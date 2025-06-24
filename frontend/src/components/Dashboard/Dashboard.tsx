@@ -6,14 +6,12 @@ import {
   Paper,
   Alert,
   CircularProgress,
-  LinearProgress,
   List,
   ListItem,
   ListItemText,
-  Divider,
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
-import { hotelConfigService } from '../../services/hotelConfigService';
+import { getDashboardStats } from '../../services/api/dashboard';
 import { HotelConfigContext } from '../Layout/Layout';
 
 // Helper functions for SVG pie chart
@@ -40,7 +38,7 @@ const Dashboard: React.FC = () => {
   const { currentConfig } = React.useContext(HotelConfigContext);
   const { data: stats, isLoading: isLoadingStats } = useQuery({
     queryKey: ['dashboardStats', currentConfig?.id],
-    queryFn: () => hotelConfigService.getDashboardStats(),
+    queryFn: () => getDashboardStats(),
     enabled: !!currentConfig,
   });
 

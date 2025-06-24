@@ -6,7 +6,7 @@
 
 #### **What's Been Implemented:**
 - **Express.js API server** with TypeScript
-- **MongoDB integration** with Mongoose models  
+- **MongoDB integration** with Mongoose models
 - **Authentication system** with JWT
 - **RESTful API endpoints** for all major entities
 - **Error handling middleware** and Winston logging
