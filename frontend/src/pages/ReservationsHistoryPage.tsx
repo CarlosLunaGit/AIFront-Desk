@@ -54,18 +54,7 @@ const getActionColor = (action: ReservationHistoryEntry['action']) => {
   }
 };
 
-const formatAction = (entry: ReservationHistoryEntry) => {
-  switch (entry.action) {
-    case 'reservation_created':
-      return `Reservation created for guest(s): ${(entry.newState.guestIds || []).join(', ')}`;
-    case 'reservation_edited':
-      return `Reservation edited. New guest(s): ${(entry.newState.guestIds || []).join(', ')}`;
-    case 'reservation_deleted':
-      return `Reservation deleted for guest(s): ${(entry.previousState.guestIds || []).join(', ')}`;
-    default:
-      return entry.action;
-  }
-};
+// Removed unused formatAction function
 
 const ReservationsHistoryPage: React.FC = () => {
   const { selectedConfigId } = useContext(HotelConfigContext);
@@ -269,8 +258,6 @@ const ReservationsHistoryPage: React.FC = () => {
               {(() => {
                 const prevGuests = (selectedEntry?.previousState.guestIds || []).slice().sort();
                 const nextGuests = (selectedEntry?.newState.guestIds || []).slice().sort();
-                const added = nextGuests.filter(gid => !prevGuests.includes(gid));
-                const removed = prevGuests.filter(gid => !nextGuests.includes(gid));
                 if (prevGuests.length === nextGuests.length && prevGuests.every((gid, i) => gid === nextGuests[i])) {
                   return <Typography variant="body2" sx={{ color: 'text.disabled' }}><b>Guests:</b> {prevGuests.map(gid => guests.find((g: any) => g.id === gid)?.name || gid).join(', ') || '—'}</Typography>;
                 } else {

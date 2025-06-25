@@ -11,7 +11,6 @@ import {
   TableRow,
   CircularProgress,
   Alert,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -21,29 +20,16 @@ import {
   Checkbox,
   FormControlLabel,
 } from '@mui/material';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import LogoutIcon from '@mui/icons-material/Logout';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import LoginIcon from '@mui/icons-material/Login';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import Tooltip from '@mui/material/Tooltip';
 import { HotelConfigContext } from './Layout/Layout';
-import { useGuests } from '../services/hooks/useGuests';
+import { useGuests, useCreateGuest, useUpdateGuest, useDeleteGuest, useCheckInGuest, useCheckOutGuest, useToggleKeepOpen } from '../services/hooks/useGuests';
 import { useRooms } from '../services/hooks/useRooms';
-import { createGuest, updateGuest, deleteGuest, checkInGuest, checkOutGuest, toggleKeepOpen } from '../services/api/guest';
 
 const GuestManagement: React.FC = () => {
-  const { selectedConfigId, currentConfig } = useContext(HotelConfigContext);
-  const { data: guests, isLoading, error, refetch } = useQuery({
-    queryKey: ['guests', currentConfig?.id],
-    queryFn: useGuests,
-    enabled: !!currentConfig,
-  });
-
-  const queryClient = useQueryClient();
+  const { currentConfig } = useContext(HotelConfigContext);
+  const { data: guests, isLoading, error } = useGuests();
 
   // Modal state for viewing guest details
   const [viewGuest, setViewGuest] = useState<any | null>(null);
@@ -57,7 +43,7 @@ const GuestManagement: React.FC = () => {
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
 
   // Fetch available rooms for assignment
-  const { data: rooms = [] } = useRooms({ hotelConfigId: currentConfig?.id });
+  const { data: rooms = [] } = useRooms({ hotelConfigId: (currentConfig as any)?._id });
   // Only rooms that are available or partially-reserved (not occupied/maintenance/cleaning/reserved/checked-in)
   const availableRooms = rooms.filter(
     (room: any) =>
@@ -76,14 +62,19 @@ const GuestManagement: React.FC = () => {
 
   const selectedGuest = filteredGuests.find((g: any) => g.id === selectedGuestId) || null;
 
+  const { mutate: addGuest } = useCreateGuest();
+  const { mutate: updateGuestMutation } = useUpdateGuest();
+  const { mutate: removeGuest } = useDeleteGuest();
+  const { mutate: checkInGuestMutation } = useCheckInGuest();
+  const { mutate: checkOutGuestMutation } = useCheckOutGuest();
+  const { mutate: toggleKeepOpenMutation } = useToggleKeepOpen();
+
   // Handler for edit (now actually saves to backend)
   const handleEditSave = async () => {
     if (!editGuest) return;
     try {
-      await updateGuest(editGuest.id, editGuest);
+      updateGuestMutation({ id: editGuest.id, ...editGuest });
       setEditGuest(null);
-      refetch();
-      queryClient.invalidateQueries({ queryKey: ['rooms'] });
     } catch (err) {
       alert('Failed to save guest');
     }
@@ -93,9 +84,8 @@ const GuestManagement: React.FC = () => {
   const handleDelete = async () => {
     if (!deleteGuest) return;
     try {
-      await deleteGuest(deleteGuest.id);
+      removeGuest(deleteGuest.id);
       setDeleteGuest(null);
-      refetch();
     } catch (err) {
       alert('Failed to delete guest');
     }
@@ -104,7 +94,7 @@ const GuestManagement: React.FC = () => {
   // Handler for Add Guest (POST to API)
   const handleAddGuest = async () => {
     try {
-      await createGuest({
+      addGuest({
         ...newGuest,
         status: newGuest.status,
         roomId: newGuest.roomId,
@@ -116,7 +106,6 @@ const GuestManagement: React.FC = () => {
       });
       setAddGuestOpen(false);
       setNewGuest({ name: '', email: '', phone: '', status: 'booked', roomId: '', reservationStart: '', reservationEnd: '', keepOpen: false });
-      refetch();
     } catch (err) {
       alert('Failed to add guest');
     }
@@ -125,8 +114,7 @@ const GuestManagement: React.FC = () => {
   // Handler for check-in action
   const handleCheckIn = async (guest: any) => {
     try {
-      await checkInGuest(guest.id);
-      refetch();
+      checkInGuestMutation(guest.id);
     } catch (err) {
       alert('Failed to check in guest');
     }
@@ -135,8 +123,7 @@ const GuestManagement: React.FC = () => {
   // Handler for check-out action
   const handleCheckout = async (guest: any) => {
     try {
-      await checkOutGuest(guest.id);
-      refetch();
+      checkOutGuestMutation(guest.id);
     } catch (err) {
       alert('Failed to check out guest');
     }
@@ -145,8 +132,7 @@ const GuestManagement: React.FC = () => {
   // Handler for toggle keepOpen
   const handleToggleKeepOpen = async (guest: any) => {
     try {
-      await toggleKeepOpen(guest.id, !guest.keepOpen);
-      refetch();
+      toggleKeepOpenMutation({ id: guest.id, keepOpen: !guest.keepOpen });
     } catch (err) {
       alert('Failed to update keepOpen');
     }

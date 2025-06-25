@@ -10,6 +10,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { logger } from './utils/logger';
 import authRoutes from './routes/auth';
 import hotelRoutes from './routes/hotel';
+import roomTypesRoutes from './routes/roomTypes';
 import communicationRoutes from './routes/communication';
 import communicationsRoutes from './routes/communications';
 import subscriptionRoutes from './routes/subscription';
@@ -43,6 +44,7 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/hotel', hotelRoutes);
+app.use('/api', roomTypesRoutes);
 app.use('/api/communication', communicationRoutes);
 app.use('/api/communications', communicationsRoutes);
 app.use('/api/subscription', subscriptionRoutes);

@@ -2,6 +2,40 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as hotelApi from '../api/hotel';
 import type { HotelConfigFormData } from '../../types/hotel';
 
+// NEW: Proper hotel business hooks (use these instead of config hooks)
+export const useCurrentHotel = () => {
+  return useQuery({
+    queryKey: ['hotel', 'current'],
+    queryFn: hotelApi.getCurrentHotel,
+  });
+};
+
+export const useAllHotels = () => {
+  return useQuery({
+    queryKey: ['hotel', 'all'],
+    queryFn: hotelApi.getAllHotels,
+  });
+};
+
+export const useDashboardStats = () => {
+  return useQuery({
+    queryKey: ['dashboard', 'stats'],
+    queryFn: hotelApi.getDashboardStats,
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+};
+
+// NEW: Hook for unified dashboard data (hotel + roomTypes + stats)
+export const useHotelDashboardData = (hotelId: string | undefined) => {
+  return useQuery({
+    queryKey: ['hotel', 'dashboardData', hotelId],
+    queryFn: () => hotelApi.getHotelDashboardData(hotelId!),
+    enabled: !!hotelId,
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+};
+
+// OLD: Legacy config hooks (deprecated - use hotel hooks above)
 export const useCurrentConfig = () => {
   return useQuery({
     queryKey: ['hotelConfig', 'current'],
@@ -23,7 +57,7 @@ export const useSetCurrentConfig = () => {
 export const useAllConfigs = () => {
   return useQuery({
     queryKey: ['hotelConfig', 'all'],
-    queryFn: hotelApi.getAllConfigs,
+    queryFn: hotelApi.getConfigs,
   });
 };
 

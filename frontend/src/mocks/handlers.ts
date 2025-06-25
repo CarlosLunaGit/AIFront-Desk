@@ -31,22 +31,193 @@ const mockHotelsData = [
     _id: '65b000000000000000000001',
     name: 'AI Front Desk Hotel',
     slug: 'ai-front-desk-hotel',
-    isActive: true,
+    description: 'A modern AI-powered hotel in the heart of downtown, offering personalized guest experiences through cutting-edge technology.',
+    address: {
+      street: '123 Hotel Street',
+      city: 'Los Angeles',
+      state: 'CA',
+      zipCode: '90210',
+      country: 'USA'
+    },
+    contactInfo: {
+      phone: '+1-555-0123',
+      email: 'contact@aifrontdesk.com',
+      website: 'https://www.aifrontdesk.com'
+    },
+    // Hotel amenity features for guests
+    features: [
+      {
+        id: 'feature-1',
+        name: 'Free WiFi',
+        description: 'High-speed wireless internet throughout the property',
+        icon: 'wifi',
+        type: 'feature' as const,
+        category: 'technology'
+      },
+      {
+        id: 'feature-2',
+        name: 'Swimming Pool',
+        description: 'Outdoor heated swimming pool with pool deck',
+        icon: 'pool',
+        type: 'amenity' as const,
+        category: 'recreation'
+      },
+      {
+        id: 'feature-3',
+        name: 'Air Conditioning',
+        description: 'Individual climate control in all rooms',
+        icon: 'ac_unit',
+        type: 'feature' as const,
+        category: 'technology'
+      },
+      {
+        id: 'feature-4',
+        name: 'Room Service',
+        description: '24/7 in-room dining service',
+        icon: 'room_service',
+        type: 'feature' as const,
+        category: 'service'
+      },
+      {
+        id: 'feature-5',
+        name: 'Fitness Center',
+        description: 'Fully equipped gym with modern equipment',
+        icon: 'fitness_center',
+        type: 'amenity' as const,
+        category: 'recreation'
+      },
+      {
+        id: 'feature-6',
+        name: 'Spa Services',
+        description: 'Full-service spa with massage and treatments',
+        icon: 'spa',
+        type: 'amenity' as const,
+        category: 'wellness'
+      },
+      {
+        id: 'feature-7',
+        name: 'Restaurant',
+        description: 'On-site restaurant serving international cuisine',
+        icon: 'restaurant',
+        type: 'amenity' as const,
+        category: 'dining'
+      },
+      {
+        id: 'feature-8',
+        name: 'Business Center',
+        description: 'Computers, printers, and meeting facilities',
+        icon: 'business_center',
+        type: 'feature' as const,
+        category: 'business'
+      },
+      {
+        id: 'feature-9',
+        name: 'Concierge Service',
+        description: '24/7 concierge assistance',
+        icon: 'support_agent',
+        type: 'amenity',
+        category: 'service'
+      },
+      {
+        id: 'feature-10',
+        name: 'Valet Parking',
+        description: 'Complimentary valet parking service',
+        icon: 'local_parking',
+        type: 'feature' as const,
+        category: 'transport'
+      },
+      {
+        id: 'feature-11',
+        name: 'Pet Friendly',
+        description: 'Pets welcome with special amenities',
+        icon: 'pets',
+        type: 'feature' as const,
+        category: 'policies'
+      },
+      {
+        id: 'feature-12',
+        name: 'Airport Shuttle',
+        description: 'Complimentary shuttle to/from airport',
+        icon: 'airport_shuttle',
+        type: 'feature' as const,
+        category: 'transport'
+      },
+      {
+        id: 'feature-13',
+        name: 'Balcony/Terrace',
+        description: 'Private balcony or terrace',
+        icon: 'deck',
+        type: 'feature',
+        category: 'room'
+      },
+      {
+        id: 'feature-14',
+        name: 'Minibar',
+        description: 'In-room minibar with beverages and snacks',
+        icon: 'kitchen',
+        type: 'feature' as const,
+        category: 'room'
+      },
+      {
+        id: 'feature-15',
+        name: 'Safe',
+        description: 'In-room safe for valuables',
+        icon: 'security',
+        type: 'feature' as const,
+        category: 'security'
+      }
+    ],
+    communicationChannels: {
+      whatsapp: {
+        phoneNumber: '+1-555-0123',
+        verified: true,
+        businessAccountId: 'whatsapp_business_001'
+      },
+      sms: {
+        phoneNumber: '+1-555-0123',
+        verified: true
+      },
+      email: {
+        address: 'contact@aifrontdesk.com',
+        verified: true
+      }
+    },
     subscription: {
       tier: 'starter',
-      status: 'active'
+      status: 'active',
+      stripeCustomerId: 'cus_mock_customer_001',
+      stripeSubscriptionId: 'sub_mock_subscription_001',
+      currentPeriodStart: new Date('2024-01-01T00:00:00Z').toISOString(),
+      currentPeriodEnd: new Date('2024-02-01T00:00:00Z').toISOString(),
+      cancelAtPeriodEnd: false,
+      features: {
+        maxRooms: 50,
+        maxAIResponses: 1000,
+        maxUsers: 3,
+        channels: ['whatsapp', 'email'],
+        hasVoiceCalls: false,
+        hasAdvancedAnalytics: false,
+        hasCustomAI: false,
+        hasWhiteLabel: false,
+        hasAPIAccess: false
+      },
+      monthlyPrice: 29
     },
     settings: {
       timezone: 'America/Los_Angeles',
       currency: 'USD',
-      language: 'en'
+      language: 'en',
+      checkInTime: '15:00',
+      checkOutTime: '11:00'
     },
-    contactInfo: {
-      email: 'contact@aifrontdesk.com',
-      phone: '+1-555-0123',
-      address: '123 Hotel St, City, ST 12345'
-    },
+    isActive: true,
     createdBy: '65b000000000000000000011',
+    usage: {
+      currentRooms: 7,
+      aiResponsesThisMonth: 245,
+      usersCount: 2,
+      lastReset: new Date('2024-01-01T00:00:00Z').toISOString()
+    },
     createdAt: new Date('2024-01-01T00:00:00Z').toISOString(),
     updatedAt: new Date().toISOString()
   },
@@ -54,22 +225,137 @@ const mockHotelsData = [
     _id: '65b000000000000000000002', 
     name: 'Seaside Resort',
     slug: 'seaside-resort',
-    isActive: true,
+    description: 'A luxurious beachfront resort offering premium amenities and AI-enhanced guest services with stunning ocean views.',
+    address: {
+      street: '456 Beach Avenue',
+      city: 'Miami Beach',
+      state: 'FL',
+      zipCode: '33139',
+      country: 'USA'
+    },
+    contactInfo: {
+      phone: '+1-555-0456',
+      email: 'contact@seasideresort.com',
+      website: 'https://www.seasideresort.com'
+    },
+    // Hotel amenity features for guests (beach/resort specific)
+    features: [
+      {
+        id: 'feature-1',
+        name: 'Free WiFi',
+        description: 'High-speed wireless internet throughout the property',
+        icon: 'wifi',
+        type: 'amenity',
+        category: 'technology'
+      },
+      {
+        id: 'feature-2',
+        name: 'Swimming Pool',
+        description: 'Outdoor heated swimming pool with ocean views',
+        icon: 'pool',
+        type: 'amenity' as const,
+        category: 'recreation'
+      },
+      {
+        id: 'feature-3',
+        name: 'Air Conditioning',
+        description: 'Individual climate control in all rooms',
+        icon: 'ac_unit',
+        type: 'feature' as const,
+        category: 'technology'
+      },
+      {
+        id: 'feature-4',
+        name: 'Spa Services',
+        description: 'Full-service spa with ocean-inspired treatments',
+        icon: 'spa',
+        type: 'amenity' as const,
+        category: 'wellness'
+      },
+      {
+        id: 'feature-5',
+        name: 'Restaurant',
+        description: 'Beachfront restaurant with fresh seafood',
+        icon: 'restaurant',
+        type: 'amenity' as const,
+        category: 'dining'
+      },
+      {
+        id: 'feature-6',
+        name: 'Beach Access',
+        description: 'Direct access to private beach',
+        icon: 'beach_access',
+        type: 'amenity' as const,
+        category: 'recreation'
+      },
+      {
+        id: 'feature-7',
+        name: 'Water Sports',
+        description: 'Kayaking, snorkeling, and water activities',
+        icon: 'kayaking',
+        type: 'amenity' as const,
+        category: 'recreation'
+      },
+      {
+        id: 'feature-8',
+        name: 'Ocean Views',
+        description: 'Stunning ocean views from all rooms',
+        icon: 'visibility',
+        type: 'feature' as const,
+        category: 'view'
+      }
+    ],
+    communicationChannels: {
+      whatsapp: {
+        phoneNumber: '+1-555-0456',
+        verified: true,
+        businessAccountId: 'whatsapp_business_002'
+      },
+      sms: {
+        phoneNumber: '+1-555-0456',
+        verified: true
+      },
+      email: {
+        address: 'contact@seasideresort.com',
+        verified: true
+      }
+    },
     subscription: {
       tier: 'professional',
-      status: 'active'
+      status: 'active',
+      stripeCustomerId: 'cus_mock_customer_002',
+      stripeSubscriptionId: 'sub_mock_subscription_002',
+      currentPeriodStart: new Date('2024-01-15T00:00:00Z').toISOString(),
+      currentPeriodEnd: new Date('2024-02-15T00:00:00Z').toISOString(),
+      cancelAtPeriodEnd: false,
+      features: {
+        maxRooms: 200,
+        maxAIResponses: 5000,
+        maxUsers: 10,
+        channels: ['whatsapp', 'email', 'sms'],
+        hasVoiceCalls: true,
+        hasAdvancedAnalytics: true,
+        hasCustomAI: false,
+        hasWhiteLabel: false,
+        hasAPIAccess: true
+      },
+      monthlyPrice: 99
     },
     settings: {
       timezone: 'America/New_York',
       currency: 'USD',
-      language: 'en'
+      language: 'en',
+      checkInTime: '16:00',
+      checkOutTime: '12:00'
     },
-    contactInfo: {
-      email: 'contact@seasideresort.com',
-      phone: '+1-555-0456',
-      address: '456 Beach Ave, Coastal City, FL 33101'
-    },
+    isActive: true,
     createdBy: '65b000000000000000000012',
+    usage: {
+      currentRooms: 6,
+      aiResponsesThisMonth: 1250,
+      usersCount: 5,
+      lastReset: new Date('2024-01-15T00:00:00Z').toISOString()
+    },
     createdAt: new Date('2024-01-15T00:00:00Z').toISOString(),
     updatedAt: new Date().toISOString()
   }
@@ -310,6 +596,97 @@ const mockRooms = [
   }
 ];
 
+// Mock room types for the new backend schema
+const mockRoomTypes = [
+  // Grand Plaza Hotel room types
+  {
+    _id: 'type-1',
+    name: 'Standard Room',
+    description: 'Comfortable standard room with essential amenities',
+    baseRate: 150,
+    capacity: {
+      adults: 2,
+      children: 1,
+      total: 3
+    },
+    features: ['wifi', 'tv', 'ac'],
+    amenities: ['towels', 'soap', 'coffee'],
+    hotelId: '65b000000000000000000001', // Grand Plaza Hotel ID
+    isActive: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z'
+  },
+  {
+    _id: 'type-2', 
+    name: 'Deluxe Room',
+    description: 'Spacious deluxe room with premium amenities',
+    baseRate: 400,
+    capacity: {
+      adults: 2,
+      children: 2,
+      total: 4
+    },
+    features: ['wifi', 'tv', 'ac', 'minibar', 'balcony'],
+    amenities: ['towels', 'soap', 'coffee', 'robes', 'slippers'],
+    hotelId: '65b000000000000000000001',
+    isActive: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z'
+  },
+  {
+    _id: 'type-3',
+    name: 'Family Suite',
+    description: 'Large family suite with separate living area',
+    baseRate: 600,
+    capacity: {
+      adults: 4,
+      children: 2,
+      total: 6
+    },
+    features: ['wifi', 'tv', 'ac', 'minibar', 'balcony', 'kitchenette'],
+    amenities: ['towels', 'soap', 'coffee', 'robes', 'slippers', 'kitchen-supplies'],
+    hotelId: '65b000000000000000000001',
+    isActive: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z'
+  },
+  // Seaside Resort room types
+  {
+    _id: 'type-4',
+    name: 'Ocean View Room',
+    description: 'Room with beautiful ocean views',
+    baseRate: 300,
+    capacity: {
+      adults: 2,
+      children: 1,
+      total: 3
+    },
+    features: ['wifi', 'tv', 'ac', 'ocean-view'],
+    amenities: ['towels', 'soap', 'coffee', 'beach-towels'],
+    hotelId: '65b000000000000000000002', // Seaside Resort ID
+    isActive: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z'
+  },
+  {
+    _id: 'type-5',
+    name: 'Ocean Suite',
+    description: 'Luxury suite with panoramic ocean views',
+    baseRate: 600,
+    capacity: {
+      adults: 4,
+      children: 2,
+      total: 6
+    },
+    features: ['wifi', 'tv', 'ac', 'ocean-view', 'balcony', 'jacuzzi'],
+    amenities: ['towels', 'soap', 'coffee', 'robes', 'slippers', 'beach-towels', 'champagne'],
+    hotelId: '65b000000000000000000002',
+    isActive: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z'
+  }
+];
+
 const mockRoomActions: RoomAction[] = [
   {
     id: '1',
@@ -358,33 +735,33 @@ interface SetCurrentConfigRequest {
 }
 
 // Mock hotel configurations for testing
-const mockHotelConfigs: HotelConfigDocument[] = [
+const mockHotelConfigs: any[] = SIMULATE_NEW_USER ? [] : [
   {
-    id: 'mock-hotel-1',
-    name: 'Grand Plaza Hotel',
-    description: 'A luxurious hotel in the heart of New York City',
-    address: '123 Main Street, New York, NY 10001, USA',
+    _id: '65d000000000000000000001',
+    name: 'AI Front Desk Hotel Configuration',
+    description: 'Complete setup for AI Front Desk Hotel',
+    address: '123 Hotel Street, Los Angeles, CA 90210',
     contactInfo: {
-      phone: '+1 (555) 123-4567',
-      email: 'info@grandplazahotel.com',
-      website: 'www.grandplazahotel.com',
+      phone: '+1-555-0123',
+      email: 'contact@aifrontdesk.com',
+      website: 'https://www.aifrontdesk.com'
     },
     features: [
       {
         id: 'feature-1',
-        name: 'Swimming Pool',
-        description: 'Outdoor swimming pool with temperature control',
-        icon: 'pool',
+        name: 'Free WiFi',
+        description: 'High-speed wireless internet throughout the property',
+        icon: 'wifi',
         type: 'amenity',
-        category: 'common',
+        category: 'technology'
       },
       {
         id: 'feature-2',
-        name: 'Free WiFi',
-        description: 'High-speed internet access throughout the hotel',
-        icon: 'wifi',
+        name: 'Swimming Pool',
+        description: 'Outdoor heated swimming pool with pool deck',
+        icon: 'pool',
         type: 'amenity',
-        category: 'service',
+        category: 'recreation'
       },
       {
         id: 'feature-3',
@@ -392,184 +769,188 @@ const mockHotelConfigs: HotelConfigDocument[] = [
         description: 'Individual climate control in all rooms',
         icon: 'ac_unit',
         type: 'feature',
-        category: 'room',
-      },
-    ],
-    floors: [
-      {
-        id: 'floor-1',
-        number: 1,
-        name: 'Ground Floor',
-        description: 'Lobby and public areas',
-        isActive: true,
+        category: 'room'
       },
       {
-        id: 'floor-2',
-        number: 2,
-        name: 'Executive Floor',
-        description: 'Business rooms and suites',
-        isActive: true,
+        id: 'feature-4',
+        name: 'Room Service',
+        description: '24/7 in-room dining service',
+        icon: 'room_service',
+        type: 'amenity',
+        category: 'service'
       },
+      {
+        id: 'feature-5',
+        name: 'Fitness Center',
+        description: 'Fully equipped gym with modern equipment',
+        icon: 'fitness_center',
+        type: 'amenity',
+        category: 'recreation'
+      },
+      {
+        id: 'feature-6',
+        name: 'Spa Services',
+        description: 'Full-service spa with massage and treatments',
+        icon: 'spa',
+        type: 'amenity',
+        category: 'wellness'
+      },
+      {
+        id: 'feature-7',
+        name: 'Restaurant',
+        description: 'On-site restaurant serving international cuisine',
+        icon: 'restaurant',
+        type: 'amenity',
+        category: 'dining'
+      },
+      {
+        id: 'feature-8',
+        name: 'Business Center',
+        description: 'Computers, printers, and meeting facilities',
+        icon: 'business_center',
+        type: 'amenity',
+        category: 'business'
+      },
+      {
+        id: 'feature-9',
+        name: 'Concierge Service',
+        description: '24/7 concierge assistance',
+        icon: 'support_agent',
+        type: 'amenity',
+        category: 'service'
+      },
+      {
+        id: 'feature-10',
+        name: 'Valet Parking',
+        description: 'Complimentary valet parking service',
+        icon: 'local_parking',
+        type: 'amenity',
+        category: 'transport'
+      },
+      {
+        id: 'feature-11',
+        name: 'Pet Friendly',
+        description: 'Pets welcome with special amenities',
+        icon: 'pets',
+        type: 'feature',
+        category: 'policies'
+      },
+      {
+        id: 'feature-12',
+        name: 'Airport Shuttle',
+        description: 'Complimentary shuttle to/from airport',
+        icon: 'airport_shuttle',
+        type: 'amenity',
+        category: 'transport'
+      },
+      {
+        id: 'feature-13',
+        name: 'Balcony/Terrace',
+        description: 'Private balcony or terrace',
+        icon: 'deck',
+        type: 'feature',
+        category: 'room'
+      },
+      {
+        id: 'feature-14',
+        name: 'Minibar',
+        description: 'In-room minibar with beverages and snacks',
+        icon: 'kitchen',
+        type: 'feature',
+        category: 'room'
+      },
+      {
+        id: 'feature-15',
+        name: 'Safe',
+        description: 'In-room electronic safe',
+        icon: 'security',
+        type: 'feature',
+        category: 'room'
+      }
     ],
     roomTypes: [
       {
         id: 'type-1',
         name: 'Standard Room',
-        description: 'Comfortable room with essential amenities',
+        description: 'Comfortable standard room',
         baseRate: 150,
         defaultCapacity: 2,
         features: ['feature-3'],
-        amenities: ['feature-1', 'feature-2'],
+        amenities: ['feature-1']
       },
       {
         id: 'type-2',
         name: 'Deluxe Room',
-        description: 'Spacious room with premium amenities',
+        description: 'Spacious deluxe room with city view',
         baseRate: 250,
         defaultCapacity: 2,
         features: ['feature-3'],
-        amenities: ['feature-1', 'feature-2'],
+        amenities: ['feature-1', 'feature-4']
       },
       {
         id: 'type-3',
-        name: 'Executive Suite',
+        name: 'Suite',
         description: 'Luxury suite with separate living area',
-        baseRate: 400,
+        baseRate: 450,
         defaultCapacity: 4,
         features: ['feature-3'],
-        amenities: ['feature-1', 'feature-2'],
-      },
-    ],
-    roomTemplates: [
-      {
-        id: 'template-1',
-        typeId: 'type-1',
-        floorId: 'floor-1',
-        name: 'Standard Double',
-        capacity: 2,
-        features: ['feature-3'],
-        rate: 150,
-        notes: 'Corner room with extra space',
-      },
-      {
-        id: 'template-2',
-        typeId: 'type-2',
-        floorId: 'floor-1',
-        name: 'Deluxe King',
-        capacity: 2,
-        features: ['feature-3'],
-        rate: 250,
-        notes: 'Recently renovated',
-      },
-      {
-        id: 'template-3',
-        typeId: 'type-3',
-        floorId: 'floor-2',
-        name: 'Executive Suite',
-        capacity: 4,
-        features: ['feature-3'],
-        rate: 400,
-        notes: 'Panoramic city view',
-      },
-    ],
-    settings: {
-      roomNumberingFormat: 'numeric',
-      defaultStatus: 'available',
-      currency: 'USD',
-      timezone: 'America/New_York',
-      checkInTime: '15:00',
-      checkOutTime: '11:00',
-    },
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-01-01'),
-    ownerId: 'owner-1',
-    isActive: true,
-  },
-  {
-    id: 'mock-hotel-2',
-    name: 'Seaside Resort',
-    description: 'A beautiful beachfront resort in Miami',
-    address: '456 Ocean Drive, Miami, FL 33139, USA',
-    contactInfo: {
-      phone: '+1 (555) 987-6543',
-      email: 'info@seasideresort.com',
-      website: 'www.seasideresort.com',
-    },
-    features: [
-      {
-        id: 'feature-4',
-        name: 'Private Beach',
-        description: 'Exclusive beach access for guests',
-        icon: 'beach_access',
-        type: 'amenity',
-        category: 'common',
-      },
-      {
-        id: 'feature-5',
-        name: 'Spa',
-        description: 'Full-service spa and wellness center',
-        icon: 'spa',
-        type: 'amenity',
-        category: 'service',
-      },
+        amenities: ['feature-1', 'feature-4']
+      }
     ],
     floors: [
       {
-        id: 'floor-3',
+        id: 'floor-1',
+        name: 'Ground Floor',
         number: 1,
-        name: 'Beach Level',
-        description: 'Beach access and pool area',
-        isActive: true,
+        description: 'Main floor with lobby and reception',
+        isActive: true
       },
       {
-        id: 'floor-4',
+        id: 'floor-2',
+        name: 'Second Floor',
         number: 2,
-        name: 'Ocean View',
-        description: 'Rooms with ocean views',
-        isActive: true,
-      },
-    ],
-    roomTypes: [
-      {
-        id: 'type-4',
-        name: 'Ocean View Room',
-        description: 'Room with stunning ocean views',
-        baseRate: 300,
-        defaultCapacity: 2,
-        features: ['feature-4'],
-        amenities: ['feature-5'],
+        description: 'Guest rooms and amenities',
+        isActive: true
       },
       {
-        id: 'type-5',
-        name: 'Beachfront Suite',
-        description: 'Luxury suite with private beach access',
-        baseRate: 600,
-        defaultCapacity: 4,
-        features: ['feature-4'],
-        amenities: ['feature-5'],
-      },
+        id: 'floor-3',
+        name: 'Third Floor',
+        number: 3,
+        description: 'Premium rooms and suites',
+        isActive: true
+      }
     ],
     roomTemplates: [
       {
-        id: 'template-4',
-        typeId: 'type-4',
-        floorId: 'floor-4',
-        name: 'Ocean View King',
+        id: 'template-101',
+        typeId: 'type-1',
+        floorId: 'floor-1',
+        name: 'Standard Room 101',
         capacity: 2,
-        features: ['feature-4'],
-        rate: 300,
-        notes: 'Panoramic ocean view',
+        features: ['feature-3'],
+        rate: 150,
+        notes: 'Near lobby, easy access'
       },
       {
-        id: 'template-5',
-        typeId: 'type-5',
-        floorId: 'floor-3',
-        name: 'Beachfront Suite',
-        capacity: 4,
-        features: ['feature-4'],
-        rate: 600,
-        notes: 'Private beach access',
+        id: 'template-201',
+        typeId: 'type-2',
+        floorId: 'floor-2',
+        name: 'Deluxe Room 201',
+        capacity: 2,
+        features: ['feature-3'],
+        rate: 250,
+        notes: 'City view, balcony'
       },
+      {
+        id: 'template-301',
+        typeId: 'type-3',
+        floorId: 'floor-3',
+        name: 'Premium Suite 301',
+        capacity: 4,
+        features: ['feature-3'],
+        rate: 450,
+        notes: 'Corner suite, panoramic view'
+      }
     ],
     settings: {
       roomNumberingFormat: 'numeric',
@@ -589,11 +970,11 @@ const mockHotelConfigs: HotelConfigDocument[] = [
 // Track the current configuration
 let currentConfigId = 'mock-hotel-1';
 
-// Mock guest data
+// Mock guest data  
 const mockGuests = [
-  // Grand Plaza Hotel (mock-hotel-1)
+  // Grand Plaza Hotel (65b000000000000000000001)
   {
-    id: 'guest-1',
+    _id: 'guest-1',
     name: 'Alice Johnson',
     email: 'alice.johnson@example.com',
     phone: '+1 (555) 111-2222',
@@ -601,13 +982,15 @@ const mockGuests = [
     roomId: 'room-101',
     reservationStart: '2024-07-01T15:00:00',
     reservationEnd: '2024-07-05T11:00:00',
-    checkIn: '',
-    checkOut: '',
-    hotelConfigId: 'mock-hotel-1',
+    checkIn: null,
+    checkOut: null,
+    hotelId: '65b000000000000000000001',
     keepOpen: true,
+    createdAt: '2024-06-01T00:00:00Z',
+    updatedAt: '2024-06-01T00:00:00Z'
   },
   {
-    id: 'guest-1a',
+    _id: 'guest-1a',
     name: 'Liam (Room 101)',
     email: 'liam@example.com',
     phone: '+1 (555) 111-2223',
@@ -615,13 +998,15 @@ const mockGuests = [
     roomId: 'room-101',
     reservationStart: '2024-07-01T15:00:00',
     reservationEnd: '2024-07-05T11:00:00',
-    checkIn: '',
-    checkOut: '',
-    hotelConfigId: 'mock-hotel-1',
+    checkIn: null,
+    checkOut: null,
+    hotelId: '65b000000000000000000001',
     keepOpen: false,
+    createdAt: '2024-06-01T00:00:00Z',
+    updatedAt: '2024-06-01T00:00:00Z'
   },
   {
-    id: 'guest-2',
+    _id: 'guest-2',
     name: 'Bob Smith',
     email: 'bob.smith@example.com',
     phone: '+1 (555) 333-4444',
@@ -630,12 +1015,14 @@ const mockGuests = [
     reservationStart: '2024-06-10T15:00:00',
     reservationEnd: '2024-06-15T11:00:00',
     checkIn: '2024-06-10T16:00:00',
-    checkOut: '',
-    hotelConfigId: 'mock-hotel-1',
+    checkOut: null,
+    hotelId: '65b000000000000000000001',
     keepOpen: true,
+    createdAt: '2024-06-10T00:00:00Z',
+    updatedAt: '2024-06-10T16:00:00Z'
   },
   {
-    id: 'guest-3',
+    _id: 'guest-3',
     name: 'Charlie Brown',
     email: 'charlie.brown@example.com',
     phone: '+1 (555) 777-8888',
@@ -645,12 +1032,14 @@ const mockGuests = [
     reservationEnd: '2024-05-25T11:00:00',
     checkIn: '2024-05-20T15:30:00',
     checkOut: '2024-05-25T10:00:00',
-    hotelConfigId: 'mock-hotel-1',
+    hotelId: '65b000000000000000000001',
     keepOpen: false,
+    createdAt: '2024-05-20T00:00:00Z',
+    updatedAt: '2024-05-25T10:00:00Z'
   },
-  // Seaside Resort (mock-hotel-2)
+  // Seaside Resort (65b000000000000000000002)
   {
-    id: 'guest-4',
+    _id: 'guest-4',
     name: 'Diana Prince',
     email: 'diana.prince@example.com',
     phone: '+1 (555) 222-3333',
@@ -658,13 +1047,15 @@ const mockGuests = [
     roomId: 'room-301',
     reservationStart: '2024-08-01T15:00:00',
     reservationEnd: '2024-08-05T11:00:00',
-    checkIn: '',
-    checkOut: '',
-    hotelConfigId: 'mock-hotel-2',
+    checkIn: null,
+    checkOut: null,
+    hotelId: '65b000000000000000000002',
     keepOpen: true,
+    createdAt: '2024-07-01T00:00:00Z',
+    updatedAt: '2024-07-01T00:00:00Z'
   },
   {
-    id: 'guest-4a',
+    _id: 'guest-4a',
     name: 'Liam (Room 301)',
     email: 'liam2@example.com',
     phone: '+1 (555) 222-3334',
@@ -672,13 +1063,15 @@ const mockGuests = [
     roomId: 'room-301',
     reservationStart: '2024-08-01T15:00:00',
     reservationEnd: '2024-08-05T11:00:00',
-    checkIn: '',
-    checkOut: '',
-    hotelConfigId: 'mock-hotel-2',
+    checkIn: null,
+    checkOut: null,
+    hotelId: '65b000000000000000000002',
     keepOpen: false,
+    createdAt: '2024-07-01T00:00:00Z',
+    updatedAt: '2024-07-01T00:00:00Z'
   },
   {
-    id: 'guest-5',
+    _id: 'guest-5',
     name: 'Evan Lee',
     email: 'evan.lee@example.com',
     phone: '+1 (555) 444-5555',
@@ -687,12 +1080,14 @@ const mockGuests = [
     reservationStart: '2024-07-10T15:00:00',
     reservationEnd: '2024-07-15T11:00:00',
     checkIn: '2024-07-10T16:00:00',
-    checkOut: '',
-    hotelConfigId: 'mock-hotel-2',
+    checkOut: null,
+    hotelId: '65b000000000000000000002',
     keepOpen: true,
+    createdAt: '2024-07-10T00:00:00Z',
+    updatedAt: '2024-07-10T16:00:00Z'
   },
   {
-    id: 'guest-6',
+    _id: 'guest-6',
     name: 'Fiona Green',
     email: 'fiona.green@example.com',
     phone: '+1 (555) 666-7777',
@@ -702,11 +1097,13 @@ const mockGuests = [
     reservationEnd: '2024-06-25T11:00:00',
     checkIn: '2024-06-20T15:30:00',
     checkOut: '2024-06-25T10:00:00',
-    hotelConfigId: 'mock-hotel-2',
+    hotelId: '65b000000000000000000002',
     keepOpen: false,
+    createdAt: '2024-06-20T00:00:00Z',
+    updatedAt: '2024-06-25T10:00:00Z'
   },
   {
-    id: 'guest-6a',
+    _id: 'guest-6a',
     name: 'Liam (Room 401)',
     email: 'liam3@example.com',
     phone: '+1 (555) 666-7778',
@@ -714,13 +1111,15 @@ const mockGuests = [
     roomId: 'room-401',
     reservationStart: '2024-06-20T15:00:00',
     reservationEnd: '2024-06-25T11:00:00',
-    checkIn: '',
-    checkOut: '',
-    hotelConfigId: 'mock-hotel-2',
+    checkIn: null,
+    checkOut: null,
+    hotelId: '65b000000000000000000002',
     keepOpen: false,
+    createdAt: '2024-06-20T00:00:00Z',
+    updatedAt: '2024-06-20T00:00:00Z'
   },
   {
-    id: 'guest-7',
+    _id: 'guest-7',
     name: 'George Wilson',
     email: 'george.wilson@example.com',
     phone: '+1 (555) 888-9999',
@@ -728,13 +1127,15 @@ const mockGuests = [
     roomId: 'room-202',
     reservationStart: '2024-07-15T15:00:00',
     reservationEnd: '2024-07-20T11:00:00',
-    checkIn: '',
-    checkOut: '',
-    hotelConfigId: 'mock-hotel-1',
+    checkIn: null,
+    checkOut: null,
+    hotelId: '65b000000000000000000001',
     keepOpen: true,
+    createdAt: '2024-07-01T00:00:00Z',
+    updatedAt: '2024-07-01T00:00:00Z'
   },
   {
-    id: 'guest-8',
+    _id: 'guest-8',
     name: 'Hannah Miller',
     email: 'hannah.miller@example.com',
     phone: '+1 (555) 999-0000',
@@ -743,12 +1144,14 @@ const mockGuests = [
     reservationStart: '2024-06-25T15:00:00',
     reservationEnd: '2024-06-30T11:00:00',
     checkIn: '2024-06-25T16:00:00',
-    checkOut: '',
-    hotelConfigId: 'mock-hotel-1',
+    checkOut: null,
+    hotelId: '65b000000000000000000001',
     keepOpen: true,
+    createdAt: '2024-06-25T00:00:00Z',
+    updatedAt: '2024-06-25T16:00:00Z'
   },
   {
-    id: 'guest-9',
+    _id: 'guest-9',
     name: 'Ian Thompson',
     email: 'ian.thompson@example.com',
     phone: '+1 (555) 000-1111',
@@ -756,13 +1159,15 @@ const mockGuests = [
     roomId: 'room-302',
     reservationStart: '2024-08-10T15:00:00',
     reservationEnd: '2024-08-15T11:00:00',
-    checkIn: '',
-    checkOut: '',
-    hotelConfigId: 'mock-hotel-1',
+    checkIn: null,
+    checkOut: null,
+    hotelId: '65b000000000000000000001',
     keepOpen: true,
+    createdAt: '2024-08-01T00:00:00Z',
+    updatedAt: '2024-08-01T00:00:00Z'
   },
   {
-    id: 'guest-10',
+    _id: 'guest-10',
     name: 'Julia Anderson',
     email: 'julia.anderson@example.com',
     phone: '+1 (555) 111-2222',
@@ -770,13 +1175,15 @@ const mockGuests = [
     roomId: 'room-501',
     reservationStart: '2024-08-20T15:00:00',
     reservationEnd: '2024-08-25T11:00:00',
-    checkIn: '',
-    checkOut: '',
-    hotelConfigId: 'mock-hotel-2',
+    checkIn: null,
+    checkOut: null,
+    hotelId: '65b000000000000000000002',
     keepOpen: true,
+    createdAt: '2024-08-01T00:00:00Z',
+    updatedAt: '2024-08-01T00:00:00Z'
   },
   {
-    id: 'guest-11',
+    _id: 'guest-11',
     name: 'Kevin Martinez',
     email: 'kevin.martinez@example.com',
     phone: '+1 (555) 222-3333',
@@ -785,27 +1192,33 @@ const mockGuests = [
     reservationStart: '2024-07-20T15:00:00',
     reservationEnd: '2024-07-25T11:00:00',
     checkIn: '2024-07-20T16:00:00',
-    checkOut: '',
-    hotelConfigId: 'mock-hotel-2',
+    checkOut: null,
+    hotelId: '65b000000000000000000002',
     keepOpen: true,
+    createdAt: '2024-07-20T00:00:00Z',
+    updatedAt: '2024-07-20T16:00:00Z'
   }
 ];
 
 // Sync assignedGuests for all rooms on startup
 mockRooms.forEach(room => {
-  room.assignedGuests = mockGuests.filter(g => g.roomId === room.id && g.hotelConfigId === room.hotelConfigId).map(g => g.id);
+        room.assignedGuests = mockGuests.filter(g => g.roomId === room.id && g.hotelId === room.hotelConfigId).map(g => g._id);
 });
 
+// Initialize mock arrays for reservations and history
+const mockReservations: any[] = [];
+const reservationHistory: any[] = [];
+
 // Generate aligned mockReservations and reservationHistory from mockGuests and mockRooms
-function generateMockReservationsAndHistory() {
-  const reservations: any[] = [];
-  const history: any[] = [];
+// Only run this if we have rooms and guests but no reservations yet
+if (mockReservations.length === 0 && mockRooms.length > 0 && mockGuests.length > 0) {
   let reservationCount = 1;
-  // For each room, collect all guests assigned to it by roomId and hotelConfigId
+  
+  // For each room, collect all guests assigned to it by roomId and hotelId
   mockRooms.forEach(room => {
-    const guests = mockGuests.filter(g => g.roomId === room.id && g.hotelConfigId === room.hotelConfigId);
+    const guests = mockGuests.filter(g => g.roomId === room.id && g.hotelId === room.hotelConfigId);
     if (guests.length === 0) return;
-    const guestIds = guests.map(g => g.id);
+    const guestIds = guests.map(g => g._id);
     const startDates = guests.map(g => g.reservationStart);
     const endDates = guests.map(g => g.reservationEnd);
     const getEarliestDate = (dates: string[]) => dates.filter(Boolean).sort()[0] || '';
@@ -820,9 +1233,9 @@ function generateMockReservationsAndHistory() {
       notes: '',
       hotelConfigId: room.hotelConfigId,
     };
-    reservations.push(reservation);
+    mockReservations.push(reservation);
     // Add a reservation_created action for this reservation
-    history.push({
+    reservationHistory.push({
       id: `mock-history-${reservation.id}`,
       roomId: room.id,
       timestamp: new Date().toISOString(),
@@ -833,10 +1246,7 @@ function generateMockReservationsAndHistory() {
       notes: '',
     });
   });
-  return { reservations, history };
 }
-
-const { reservations: mockReservations, history: reservationHistory } = generateMockReservationsAndHistory();
 
 // Mock handlers
 export const handlers: HttpHandler[] = [
@@ -1256,7 +1666,7 @@ export const handlers: HttpHandler[] = [
         token: 'mock-jwt-token-owner1',
         user: {
           id: '65b000000000000000000011',
-          name: 'Hotel Owner',
+          name: 'Alice Owner',
           email: body.email,
           role: 'subscription_owner'
         }
@@ -1283,7 +1693,7 @@ export const handlers: HttpHandler[] = [
     return HttpResponse.json({
       id: '65b000000000000000000011',
       email: 'owner1@aifrontdesk.com',
-      name: 'Hotel Owner',
+      name: 'Alice Owner',
       hotelName: 'AI Front Desk Hotel',
       subscriptionTier: 'starter',
       role: 'subscription_owner'
@@ -1295,7 +1705,7 @@ export const handlers: HttpHandler[] = [
     // For each room, recalculate status and keepOpen, then log keepOpen
     const rooms = mockRooms.filter(r => r.hotelConfigId === currentConfigId).map(room => {
       recalculateRoomStatus(room); // Ensure status and keepOpen are up-to-date
-      const guests = mockGuests.filter(g => g.roomId === room.id && g.hotelConfigId === room.hotelConfigId);
+      const guests = mockGuests.filter(g => g.roomId === room.id && g.hotelId === room.hotelConfigId);
       const keepOpen = guests.length > 0 && guests.every(g => g.keepOpen === true);
       const roomWithKeepOpen = { ...room, keepOpen };
       console.log('DEBUG /api/rooms:', room.id, 'keepOpen:', keepOpen, 'status:', room.status);
@@ -1517,64 +1927,58 @@ export const handlers: HttpHandler[] = [
     return HttpResponse.json(createdRooms, { status: 201 });
   }),
 
-  // Guest endpoints
-  http.get('/api/guests', () => {
-    return HttpResponse.json(mockGuests.filter(g => g.hotelConfigId === currentConfigId));
+  // Guests endpoints
+  http.get('/api/hotel/guests', () => {
+    return HttpResponse.json(mockGuests.filter(g => g.hotelId === currentConfigId));
   }),
-  http.get('/api/guests/:id', ({ params }: any) => {
-    const guest = mockGuests.find(g => g.id === params.id && g.hotelConfigId === currentConfigId);
-    if (!guest) return new HttpResponse(null, { status: 404 });
-    return HttpResponse.json(guest);
-  }),
-  http.post('/api/guests', async ({ request }) => {
-    const data = await request.json();
-    const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
-    const newGuest = ensureGuestDefaults({
-      id: `guest-${Date.now()}`,
-      hotelConfigId: currentConfigId,
-      name: safeData.name || '',
-      email: safeData.email || '',
-      phone: safeData.phone || '',
-      status: safeData.status || 'booked',
-      roomId: safeData.roomId || '',
-      reservationStart: safeData.reservationStart || '',
-      reservationEnd: safeData.reservationEnd || '',
-      checkIn: safeData.checkIn || '',
-      checkOut: safeData.checkOut || '',
-      keepOpen: typeof safeData.keepOpen === 'boolean' ? safeData.keepOpen : false,
-    });
-    mockGuests.push(newGuest);
-    // Log guest assignment if roomId is present
-    if (newGuest.roomId) {
-      recalculateRoomStatus(mockRooms.find(r => r.id === newGuest.roomId && r.hotelConfigId === newGuest.hotelConfigId), 'system', 'Triggered by guest assignment');
-    }
-    return HttpResponse.json(newGuest, { status: 201 });
-  }),
-  http.patch('/api/guests/:id', async ({ params, request }) => {
-    const guest = mockGuests.find(g => g.id === params.id);
+  http.get('/api/hotel/guests/:id', ({ params }) => {
+    const guest = mockGuests.find(g => g._id === params.id && g.hotelId === currentConfigId);
     if (!guest) {
       return new HttpResponse(null, { status: 404 });
     }
-    const body = await request.json() as Partial<Guest>;
-    if (!body) {
-      return new HttpResponse('Invalid request body', { status: 400 });
-    }
-    Object.assign(guest, ensureGuestDefaults(body));
-    // Always recalculate room status after guest update
-    if (guest.roomId) {
-      recalculateRoomStatus(mockRooms.find(r => r.id === guest.roomId && r.hotelConfigId === guest.hotelConfigId), 'system', 'Triggered by guest status change');
-    }
     return HttpResponse.json(guest);
   }),
-  http.delete('/api/guests/:id', ({ params }) => {
-    const idx = mockGuests.findIndex(g => g.id === params.id);
-    if (idx === -1) return new HttpResponse(null, { status: 404 });
-    // Remove guest from any reservation
-    mockReservations.forEach(r => {
-      if (Array.isArray(r.guestIds)) {
-        r.guestIds = r.guestIds.filter((gid: string) => gid !== params.id);
-      }
-    });
+  http.post('/api/hotel/guests', async ({ request }) => {
+    const guestData = await request.json() as any;
+    const newGuest = {
+      _id: `guest-${Date.now()}`,
+      ...guestData,
+      hotelId: currentConfigId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockGuests.push(newGuest);
+    
+    // Update room status based on new guest assignment
+    recalculateRoomStatus(mockRooms.find(r => r.id === newGuest.roomId && r.hotelConfigId === currentConfigId), 'system', 'Triggered by guest assignment');
+    
+    return HttpResponse.json(newGuest);
+  }),
+  http.patch('/api/hotel/guests/:id', async ({ params, request }) => {
+    const updates = await request.json() as any;
+    const guest = mockGuests.find(g => g._id === params.id);
+    if (!guest) {
+      return new HttpResponse(null, { status: 404 });
+    }
+
+    Object.assign(guest, updates, { updatedAt: new Date().toISOString() });
+    
+    // Update room status based on guest status change
+    recalculateRoomStatus(mockRooms.find(r => r.id === guest.roomId && r.hotelConfigId === currentConfigId), 'system', 'Triggered by guest status change');
+    
+    return HttpResponse.json(guest);
+  }),
+  http.delete('/api/hotel/guests/:id', ({ params }) => {
+    const idx = mockGuests.findIndex(g => g._id === params.id);
+    if (idx === -1) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    
+         // Remove guest from rooms before deleting
+     mockRooms.forEach(r => {
+       r.assignedGuests = r.assignedGuests.filter((gid: string) => gid !== params.id);
+     });
+    
     mockGuests.splice(idx, 1);
     return new HttpResponse(null, { status: 204 });
   }),
@@ -1590,9 +1994,9 @@ export const handlers: HttpHandler[] = [
     const room = mockRooms.find(r => r.id === params.id);
     if (!room) return new HttpResponse(null, { status: 404 });
     // Remove all assigned guests from this room and delete them
-    const guestsToRemove = mockGuests.filter(g => g.roomId === room.id && g.hotelConfigId === room.hotelConfigId);
+    const guestsToRemove = mockGuests.filter(g => g.roomId === room.id && g.hotelId === room.hotelConfigId);
     guestsToRemove.forEach(g => {
-      const idx = mockGuests.findIndex(gg => gg.id === g.id);
+      const idx = mockGuests.findIndex(gg => gg._id === g._id);
       if (idx !== -1) mockGuests.splice(idx, 1);
     });
     room.assignedGuests = [];
@@ -1605,7 +2009,7 @@ export const handlers: HttpHandler[] = [
   http.get('/api/reservation-history', () => {
     // Only return history for the current hotel config
     const roomIdsForConfig = mockRooms.filter(r => r.hotelConfigId === currentConfigId).map(r => r.id);
-    const filtered = reservationHistory.filter(h => roomIdsForConfig.includes(h.roomId));
+    const filtered = reservationHistory.filter((h: any) => roomIdsForConfig.includes(h.roomId));
     return HttpResponse.json(filtered);
   }),
 
@@ -1670,7 +2074,7 @@ export const handlers: HttpHandler[] = [
   http.get('/api/reservations', () => {
     // Only return reservations for the current hotel config
     const roomIdsForConfig = mockRooms.filter(r => r.hotelConfigId === currentConfigId).map(r => r.id);
-    const filtered = mockReservations.filter(r => roomIdsForConfig.includes(r.rooms));
+    const filtered = mockReservations.filter((r: any) => roomIdsForConfig.includes(r.rooms));
     return HttpResponse.json(filtered);
   }),
   http.post('/api/reservations', async ({ request }) => {
@@ -1682,18 +2086,20 @@ export const handlers: HttpHandler[] = [
       safeData.newGuests.forEach((g: any) => {
         const newGuestId = `guest-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
         mockGuests.push({
-          id: newGuestId,
+          _id: newGuestId,
           name: g.name,
           email: g.email || '',
           phone: g.phone || '',
           status: 'booked',
-          roomId: safeData.rooms,
+          roomId: safeData.rooms || '',
           reservationStart: safeData.dates.split(' to ')[0],
           reservationEnd: safeData.dates.split(' to ')[1],
-          checkIn: '',
-          checkOut: '',
-          hotelConfigId: currentConfigId,
+          checkIn: null,
+          checkOut: null,
+          hotelId: currentConfigId,
           keepOpen: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         });
         guestIds.push(newGuestId);
       });
@@ -1702,7 +2108,7 @@ export const handlers: HttpHandler[] = [
     const newReservation = {
       id: `R-${(mockReservations.length + 1).toString().padStart(3, '0')}`,
       guestIds,
-      guests: guestIds.map(id => mockGuests.find(g => g.id === id)?.name || ''),
+      guests: guestIds.map(id => mockGuests.find(g => g._id === id)?.name || ''),
       rooms: safeData.rooms || '',
       dates: safeData.dates || '',
       status: safeData.status || 'Pending',
@@ -1713,7 +2119,7 @@ export const handlers: HttpHandler[] = [
     mockReservations.push(newReservation);
     // Update guests' reservation info
     guestIds.forEach((gid: string) => {
-      const guest = mockGuests.find(g => g.id === gid);
+      const guest = mockGuests.find(g => g._id === gid);
       if (guest) {
         guest.roomId = newReservation.rooms;
         guest.reservationStart = newReservation.dates.split(' to ')[0];
@@ -1733,111 +2139,50 @@ export const handlers: HttpHandler[] = [
     });
     return HttpResponse.json(newReservation, { status: 201 });
   }),
-  http.patch('/api/reservations/:id', async ({ params, request }) => {
-    const { id } = params;
+  http.patch('/api/hotel/reservations/:id', async ({ params, request }) => {
+    const idx = mockReservations.findIndex((r: any) => r.id === params.id);
+    if (idx === -1) return new HttpResponse(null, { status: 404 });
+    
     const data = await request.json();
     const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
-    const idx = mockReservations.findIndex(r => r.id === id);
-    if (idx === -1) return new HttpResponse(null, { status: 404 });
-    const prevReservation = { ...mockReservations[idx] };
-    const prevGuestIds = [...(mockReservations[idx].guestIds || [])];
-    // Add new guests if provided
-    let guestIds = Array.isArray(safeData.guestIds) ? [...safeData.guestIds] : [...(mockReservations[idx].guestIds || [])];
-    if (Array.isArray(safeData.newGuests)) {
-      safeData.newGuests.forEach((g: any) => {
-        const newGuestId = `guest-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-        mockGuests.push({
-          id: newGuestId,
-          name: g.name,
-          email: g.email || '',
-          phone: g.phone || '',
-          status: 'booked',
-          roomId: safeData.rooms || mockReservations[idx].rooms,
-          reservationStart: (safeData.dates || mockReservations[idx].dates).split(' to ')[0],
-          reservationEnd: (safeData.dates || mockReservations[idx].dates).split(' to ')[1],
-          checkIn: '',
-          checkOut: '',
-          hotelConfigId: currentConfigId,
-          keepOpen: false,
-        });
-        guestIds.push(newGuestId);
-      });
-    }
-    // Update reservation guestIds if changed
-    mockReservations[idx] = { ...mockReservations[idx], ...safeData, guestIds };
-    // Update guests' reservation info if dates or room changed, but do not reassign if already assigned
+    
+    Object.assign(mockReservations[idx], safeData, { updatedAt: new Date().toISOString() });
+    
+    // Update associated guests if dates or rooms changed
     if (safeData.dates || safeData.rooms) {
       (mockReservations[idx].guestIds || []).forEach((gid: string) => {
-        const guest = mockGuests.find(g => g.id === gid);
+        const guest = mockGuests.find(g => g._id === gid);
         if (guest) {
           if (safeData.rooms && guest.roomId !== safeData.rooms) guest.roomId = safeData.rooms;
           if (safeData.dates) {
-            const [start, end] = safeData.dates.split(' to ');
-            if (guest.reservationStart !== start) guest.reservationStart = start;
-            if (guest.reservationEnd !== end) guest.reservationEnd = end;
+            guest.reservationStart = safeData.dates.split(' to ')[0];
+            guest.reservationEnd = safeData.dates.split(' to ')[1];
           }
         }
       });
     }
-    // Add to reservation history: reservation_edited, include all editable fields
-    reservationHistory.push({
-      id: `HIST-${Date.now()}`,
-      roomId: mockReservations[idx].rooms,
-      timestamp: new Date().toISOString(),
-      action: 'reservation_edited',
-      previousState: {
-        guestIds: prevGuestIds,
-        dates: prevReservation.dates,
-        price: prevReservation.price,
-        notes: prevReservation.notes,
-        status: prevReservation.status,
-        rooms: prevReservation.rooms,
-      },
-      newState: {
-        guestIds: mockReservations[idx].guestIds,
-        dates: mockReservations[idx].dates,
-        price: mockReservations[idx].price,
-        notes: mockReservations[idx].notes,
-        status: mockReservations[idx].status,
-        rooms: mockReservations[idx].rooms,
-      },
-      performedBy: 'system',
-      notes: 'Reservation edited via API',
-    });
+    
     return HttpResponse.json(mockReservations[idx]);
   }),
-  http.delete('/api/reservations/:id', ({ params }) => {
-    const { id } = params;
-    const idx = mockReservations.findIndex(r => r.id === id);
+  http.delete('/api/hotel/reservations/:id', ({ params }) => {
+    const idx = mockReservations.findIndex((r: any) => r.id === params.id);
     if (idx === -1) return new HttpResponse(null, { status: 404 });
+    
     const reservation = mockReservations[idx];
-    // For each guest, unassign from room and reset times
+    
+    // Clear room assignments for associated guests
     if (Array.isArray(reservation.guestIds)) {
       reservation.guestIds.forEach((gid: string) => {
-        const guest = mockGuests.find(g => g.id === gid);
+        const guest = mockGuests.find(g => g._id === gid);
         if (guest) {
           guest.roomId = '';
           guest.keepOpen = false;
-          guest.reservationStart = '—';
-          guest.reservationEnd = '—';
-          guest.checkIn = '—';
-          guest.checkOut = '—';
         }
       });
     }
-    // Add to reservation history
-    reservationHistory.push({
-      id: `HIST-${Date.now()}`,
-      roomId: reservation.rooms,
-      timestamp: new Date().toISOString(),
-      action: 'reservation_deleted',
-      previousState: { guestIds: reservation.guestIds },
-      newState: {},
-      performedBy: 'system',
-      notes: 'Reservation deleted via API',
-    });
+    
     mockReservations.splice(idx, 1);
-    return new HttpResponse(null, { status: 204 });
+    return HttpResponse.json({ message: 'Reservation deleted successfully' }, { status: 200 });
   }),
 
   // NEW USER ONBOARDING: Hotel endpoints that handle empty state
@@ -1899,6 +2244,104 @@ export const handlers: HttpHandler[] = [
     return HttpResponse.json(mockHotels[hotelIndex]);
   }),
 
+  // NEW: Hotel dashboard data (matches backend GET /api/hotel/:id/dashboard-data)
+  http.get('/api/hotel/:id/dashboard-data', ({ params }) => {
+    const hotelId = params.id as string;
+    
+    // Find hotel
+    const hotel = mockHotels.find(h => h._id === hotelId);
+    if (!hotel) {
+      return new HttpResponse(null, { status: 404 });
+    }
+
+    // Generate stats
+    const totalRooms = mockRooms.length;
+    const availableRooms = mockRooms.filter(r => r.status === 'available').length;
+    const occupiedRooms = mockRooms.filter(r => r.status === 'occupied').length;
+    const maintenanceRooms = mockRooms.filter(r => r.status === 'maintenance').length;
+    const cleaningRooms = mockRooms.filter(r => r.status === 'cleaning').length;
+    const reservedRooms = mockRooms.filter(r => r.status === 'reserved' || r.status === 'partially-reserved').length;
+    
+    const byType: Record<string, number> = {};
+    mockRooms.forEach(r => {
+      if (r.typeId) {
+        byType[r.typeId] = (byType[r.typeId] || 0) + 1;
+      }
+    });
+
+    return HttpResponse.json({
+      hotel,
+      roomTypes: mockRoomTypes.filter(rt => rt.hotelId === hotelId),
+      stats: {
+        totalRooms,
+        availableRooms,
+        occupiedRooms,
+        maintenanceRooms,
+        cleaningRooms,
+        reservedRooms,
+        occupancyRate: totalRooms > 0 ? occupiedRooms / totalRooms : 0,
+        byType
+      }
+    });
+  }),
+
+  // NEW: Hotel room types endpoints (matches backend /api/hotel/:hotelId/room-types)
+  http.get('/api/hotel/:hotelId/room-types', ({ params }) => {
+    const hotelId = params.hotelId as string;
+    const hotelRoomTypes = mockRoomTypes.filter(rt => rt.hotelId === hotelId);
+    return HttpResponse.json(hotelRoomTypes);
+  }),
+
+  http.post('/api/hotel/:hotelId/room-types', async ({ params, request }) => {
+    const hotelId = params.hotelId as string;
+    const newRoomType = await request.json() as any;
+    
+    const roomType = {
+      _id: `rt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      ...newRoomType,
+      hotelId,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    mockRoomTypes.push(roomType);
+    return HttpResponse.json(roomType, { status: 201 });
+  }),
+
+  http.patch('/api/hotel/:hotelId/room-types/:id', async ({ params, request }) => {
+    const roomTypeId = params.id as string;
+    const updates = await request.json() as any;
+    
+    const roomTypeIndex = mockRoomTypes.findIndex(rt => rt._id === roomTypeId);
+    if (roomTypeIndex === -1) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    
+    mockRoomTypes[roomTypeIndex] = {
+      ...mockRoomTypes[roomTypeIndex],
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    
+    return HttpResponse.json(mockRoomTypes[roomTypeIndex]);
+  }),
+
+  http.delete('/api/hotel/:hotelId/room-types/:id', ({ params }) => {
+    const roomTypeId = params.id as string;
+    const roomTypeIndex = mockRoomTypes.findIndex(rt => rt._id === roomTypeId);
+    
+    if (roomTypeIndex === -1) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    
+    // Soft delete
+    mockRoomTypes[roomTypeIndex].isActive = false;
+    mockRoomTypes[roomTypeIndex].updatedAt = new Date().toISOString();
+    
+    return HttpResponse.json({ message: 'Room type deleted successfully' });
+  }),
+
   // Hotel stats (matches backend GET /api/hotel/stats)
   http.get('/api/hotel/stats', () => {
     // For new users with no hotel, return empty stats
@@ -1928,54 +2371,6 @@ export const handlers: HttpHandler[] = [
       occupancyRate: totalRooms > 0 ? ((totalRooms - availableRooms) / totalRooms) * 100 : 0,
       isNewUser: false
     });
-  }),
-
-  // Hotel guests endpoints (matches backend /api/hotel/guests)
-  http.get('/api/hotel/guests', () => {
-    // Return empty array for new users - they'll add guests after hotel setup
-    return HttpResponse.json(mockHotels.length === 0 ? [] : mockGuests);
-  }),
-
-  http.post('/api/hotel/guests', async ({ request }) => {
-    const newGuest = await request.json() as any;
-    const guest = {
-      id: `guest-${mockGuests.length + 1}`,
-      ...newGuest,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    mockGuests.push(guest);
-    return HttpResponse.json(guest, { status: 201 });
-  }),
-
-  http.patch('/api/hotel/guests/:id', async ({ params, request }) => {
-    const guestId = params.id as string;
-    const updates = await request.json() as any;
-    const guestIndex = mockGuests.findIndex(g => g.id === guestId);
-    
-    if (guestIndex === -1) {
-      return new HttpResponse(null, { status: 404 });
-    }
-    
-    mockGuests[guestIndex] = {
-      ...mockGuests[guestIndex],
-      ...updates,
-      updatedAt: new Date().toISOString()
-    };
-    
-    return HttpResponse.json(mockGuests[guestIndex]);
-  }),
-
-  http.delete('/api/hotel/guests/:id', ({ params }) => {
-    const guestId = params.id as string;
-    const guestIndex = mockGuests.findIndex(g => g.id === guestId);
-    
-    if (guestIndex === -1) {
-      return new HttpResponse(null, { status: 404 });
-    }
-    
-    mockGuests.splice(guestIndex, 1);
-    return HttpResponse.json({ message: 'Guest deleted successfully' });
   }),
 
   // Hotel rooms endpoints (matches backend /api/hotel/rooms)
@@ -2122,6 +2517,120 @@ export const handlers: HttpHandler[] = [
     ]);
   }),
 
+  // =============================================================================
+  // HOTEL CONFIGURATION ENDPOINTS (Complex Hotel Setup)
+  // =============================================================================
+
+  // Get all hotel configurations (matches backend GET /api/hotel/config)
+  http.get('/api/hotel/config', () => {
+    // Return empty array for new users - triggers configuration wizard
+    return HttpResponse.json(mockHotelConfigs);
+  }),
+
+  // Get current hotel configuration (matches backend GET /api/hotel/config/current)
+  http.get('/api/hotel/config/current', () => {
+    // Return 404 for new users with no configurations - triggers configuration wizard
+    if (mockHotelConfigs.length === 0) {
+      return new HttpResponse(
+        JSON.stringify({ 
+          message: 'No hotel configuration found. Please complete hotel configuration.',
+          code: 'NO_CONFIG_FOUND',
+          action: 'CREATE_CONFIG'
+        }), 
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    // Return first active configuration for existing users
+    const activeConfig = mockHotelConfigs.find((c: any) => c.isActive) || mockHotelConfigs[0];
+    return HttpResponse.json(activeConfig);
+  }),
+
+  // Create hotel configuration (matches backend POST /api/hotel/config)
+  http.post('/api/hotel/config', async ({ request }) => {
+    const newConfig = await request.json() as any;
+    
+    // Generate IDs for nested items if not provided
+    const generateId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    const config = {
+      _id: `65d00000000000000000000${mockHotelConfigs.length + 1}`,
+      ...newConfig,
+      hotelId: newConfig.hotelId || (mockHotels.length > 0 ? mockHotels[0]._id : '65b000000000000000000001'),
+      features: newConfig.features?.map((f: any) => ({
+        ...f,
+        id: f.id || generateId('feature')
+      })) || [],
+      roomTypes: newConfig.roomTypes?.map((rt: any) => ({
+        ...rt,
+        id: rt.id || generateId('roomtype')
+      })) || [],
+      floors: newConfig.floors?.map((fl: any) => ({
+        ...fl,
+        id: fl.id || generateId('floor')
+      })) || [],
+      roomTemplates: newConfig.roomTemplates?.map((rt: any) => ({
+        ...rt,
+        id: rt.id || generateId('template')
+      })) || [],
+      isActive: true,
+      createdBy: '65b000000000000000000011',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    mockHotelConfigs.push(config);
+    return HttpResponse.json(config, { status: 201 });
+  }),
+
+  // Update hotel configuration (matches backend PATCH /api/hotel/config/:id)
+  http.patch('/api/hotel/config/:id', async ({ params, request }) => {
+    const configId = params.id as string;
+    const updates = await request.json() as any;
+    const configIndex = mockHotelConfigs.findIndex((c: any) => c._id === configId);
+    
+    if (configIndex === -1) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    
+    // Update nested item IDs if needed
+    const generateId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    if (updates.features) {
+      updates.features = updates.features.map((f: any) => ({
+        ...f,
+        id: f.id || generateId('feature')
+      }));
+    }
+    
+    if (updates.roomTypes) {
+      updates.roomTypes = updates.roomTypes.map((rt: any) => ({
+        ...rt,
+        id: rt.id || generateId('roomtype')
+      }));
+    }
+    
+    mockHotelConfigs[configIndex] = {
+      ...mockHotelConfigs[configIndex],
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    
+    return HttpResponse.json(mockHotelConfigs[configIndex]);
+  }),
+
+  // Get hotel configuration by ID (matches backend GET /api/hotel/config/:id)
+  http.get('/api/hotel/config/:id', ({ params }) => {
+    const configId = params.id as string;
+    const config = mockHotelConfigs.find((c: any) => c._id === configId);
+    
+    if (!config) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    
+    return HttpResponse.json(config);
+  }),
+
+  // Communication endpoints (matches backend /api/communications/*)
 ];
 // REMOVED DUPLICATE ENDPOINTS - they were duplicated during the sync process
 

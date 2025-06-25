@@ -11,15 +11,8 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
 } from '@mui/material';
 import {
-  MoreVert as MoreIcon,
   CleaningServices as CleaningIcon,
   Build as MaintenanceIcon,
   CheckCircle as CheckInIcon,
@@ -28,9 +21,8 @@ import {
 } from '@mui/icons-material';
 import type { Room } from '../../types/room';
 import type { RoomType, Floor, HotelFeature } from '../../types/hotel';
-import { useCreateRoomAction, useUpdateRoom } from '../../services/hooks/useRooms';
+import { useCreateRoomAction } from '../../services/hooks/useRooms';
 import Tooltip from '@mui/material/Tooltip';
-import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CircleIcon from '@mui/icons-material/Circle';
 import BuildIcon from '@mui/icons-material/Build';
@@ -49,11 +41,7 @@ interface RoomGridProps {
 const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features, mapView = false, selectedRoomId, onSelectRoom }) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [selectedRoom, setSelectedRoom] = React.useState<Room | null>(null);
-  const [editRoom, setEditRoom] = React.useState<Room | null>(null);
-  const [viewRoom, setViewRoom] = React.useState<Room | null>(null);
   const createRoomAction = useCreateRoomAction();
-  const updateRoom = useUpdateRoom();
-  const [editRoomState, setEditRoomState] = React.useState<Room | null>(null);
 
   //  Memoize a map of floorId to floor for fast and always up-to-date lookup
   const floorMap = React.useMemo(() => {
@@ -69,14 +57,7 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
     return map;
   }, [features]);
 
-  React.useEffect(() => {
-    if (editRoom) setEditRoomState(editRoom);
-  }, [editRoom]);
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, room: Room) => {
-    setAnchorEl(event.currentTarget);
-    setSelectedRoom(room);
-  };
 
   const handleMenuClose = () => {
     setAnchorEl(null);
@@ -166,15 +147,11 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
                     </Box>
                     <Box>
                       <Tooltip title="View Details" arrow>
-                        <IconButton size="small" onClick={() => setViewRoom(room)}>
+                        <IconButton size="small" onClick={() => console.log('View room:', room.number)}>
                           <VisibilityIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Edit Room" arrow>
-                        <IconButton size="small" onClick={() => setEditRoom(room)}>
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
+
                       <Tooltip title="Set to Maintenance" arrow>
                         <IconButton size="small" onClick={() => handleSetMaintenance(room)}>
                           <BuildIcon fontSize="small" />

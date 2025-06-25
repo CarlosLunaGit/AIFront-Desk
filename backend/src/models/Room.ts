@@ -16,7 +16,8 @@ export enum RoomStatus {
 
 export interface IRoom extends Document {
   number: string;
-  type: RoomType;
+  type: RoomType; // Keep for backward compatibility
+  roomTypeId?: mongoose.Types.ObjectId; // New field for RoomType reference
   status: RoomStatus;
   price: number;
   capacity: number;
@@ -41,7 +42,11 @@ const roomSchema = new Schema<IRoom>(
     type: {
       type: String,
       enum: Object.values(RoomType),
-      required: true,
+      required: false, // Make optional for backward compatibility
+    },
+    roomTypeId: {
+      type: Schema.Types.ObjectId,
+      ref: 'RoomType',
     },
     status: {
       type: String,

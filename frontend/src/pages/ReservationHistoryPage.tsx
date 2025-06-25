@@ -121,7 +121,7 @@ const ReservationHistoryPage: React.FC = () => {
   const [search, setSearch] = useState('');
 
   const { data: history, isLoading, error } = useQuery({
-    queryKey: ['reservationHistory', currentConfig?.id],
+    queryKey: ['reservationHistory', (currentConfig as any)?._id],
     queryFn: fetchAllHistory,
     enabled: !!currentConfig,
   });

@@ -22,8 +22,6 @@ import {
 } from '@mui/material';
 import {
   Edit as EditIcon,
-  Hotel as HotelIcon,
-  LocalBar as MinibarIcon,
   CleaningServices as CleaningIcon,
   CheckCircle as CheckInIcon,
   Cancel as CheckOutIcon,
@@ -32,6 +30,8 @@ import {
 import { useRooms as useRoomsHook } from '../../services/hooks/useRooms';
 import type { Room } from '../../types/room';
 import { HotelConfigContext } from '../Layout/Layout';
+import { useCurrentHotel } from '../../services/hooks/useHotel';
+import { useHotelRoomTypes } from '../../services/hooks/useRoomTypes';
 import { Circle as CircleIcon } from '@mui/icons-material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -68,6 +68,35 @@ const RoomManagement: React.FC = () => {
   const [addError, setAddError] = useState<string | null>(null);
   const [addLoading, setAddLoading] = useState(false);
   const { currentConfig, selectedConfigId } = React.useContext(HotelConfigContext);
+  
+  // Use new backend hooks for real data
+  const { data: currentHotel } = useCurrentHotel();
+  const hotelId = currentHotel?._id;
+  const { data: roomTypes = [] } = useHotelRoomTypes(hotelId);
+  
+  // For backward compatibility, create mock floors and features if not available
+  const floors: Array<{ id: string; name: string; number: number; isActive: boolean }> = (currentConfig as any)?.floors || [
+    { id: 'floor-1', name: 'First Floor', number: 1, isActive: true },
+    { id: 'floor-2', name: 'Second Floor', number: 2, isActive: true },
+  ];
+  
+  const features: Array<{ id: string; name: string; type: 'feature' | 'amenity' }> = (currentConfig as any)?.features || [
+    { id: 'wifi', name: 'WiFi', type: 'feature' },
+    { id: 'tv', name: 'TV', type: 'feature' },
+    { id: 'ac', name: 'Air Conditioning', type: 'feature' },
+  ];
+
+  // Convert backend RoomType to frontend compatible format for RoomGrid component
+  const frontendRoomTypes = roomTypes.map(rt => ({
+    id: rt._id,
+    name: rt.name,
+    description: rt.description || '',
+    baseRate: rt.baseRate,
+    defaultCapacity: rt.capacity.total,
+    amenities: rt.amenities || [],
+    features: rt.features || []
+  }));
+
   const {
     data: rooms = [],
     isLoading: roomsLoading,
@@ -82,10 +111,10 @@ const RoomManagement: React.FC = () => {
   const updateRoom = useUpdateRoom();
 
   React.useEffect(() => {
-    if (selectedConfigId && currentConfig?.id === selectedConfigId) {
+    if (selectedConfigId && (currentConfig as any)?._id === selectedConfigId) {
       refetchRooms();
     }
-  }, [selectedConfigId, currentConfig?.id, refetchRooms]);
+  }, [selectedConfigId, (currentConfig as any)?._id, refetchRooms]);
 
   const filteredRooms = useMemo(() => {
     return rooms.filter(room =>
@@ -315,8 +344,8 @@ const RoomManagement: React.FC = () => {
                 <InputLabel>Type</InputLabel>
                 <Select value={filterType} label="Type" onChange={e => setFilterType(e.target.value)}>
                   <MenuItem value="">All</MenuItem>
-                  {currentConfig.roomTypes.map(rt => (
-                    <MenuItem key={rt.id} value={rt.id}>{rt.name}</MenuItem>
+                  {roomTypes.map(rt => (
+                    <MenuItem key={rt._id} value={rt._id}>{rt.name}</MenuItem>
                   ))}
                 </Select>
               </FormControl>
@@ -324,7 +353,7 @@ const RoomManagement: React.FC = () => {
                 <InputLabel>Floor</InputLabel>
                 <Select value={filterFloor} label="Floor" onChange={e => setFilterFloor(e.target.value)}>
                   <MenuItem value="">All</MenuItem>
-                  {currentConfig.floors.map(f => (
+                  {floors.map(f => (
                     <MenuItem key={f.id} value={f.id}>{f.name} (Floor {f.number})</MenuItem>
                   ))}
                 </Select>
@@ -528,21 +557,21 @@ const RoomManagement: React.FC = () => {
         ) : view === 'grid' ? (
           <RoomGrid
             rooms={filteredRooms}
-            roomTypes={currentConfig.roomTypes}
-            floors={currentConfig.floors}
-            features={currentConfig.features}
+            roomTypes={frontendRoomTypes}
+            floors={floors}
+            features={features}
             selectedRoomId={selectedRoomId}
             onSelectRoom={setSelectedRoomId}
           />
         ) : (
           <Box>
-            {currentConfig.floors.map(floor => (
+            {floors.map(floor => (
               <Box key={floor.id} mb={3}>
                 <Typography variant="h6">Floor {floor.number} - {floor.name}</Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start' }}>
                   {filteredRooms.filter(r => r.floorId === floor.id).map(room => (
                     <Box key={room.id} sx={{ flex: '0 0 220px', width: 220, minWidth: 220 }}>
-                      <RoomGrid rooms={[room]} roomTypes={currentConfig.roomTypes} floors={currentConfig.floors} features={currentConfig.features} mapView />
+                      <RoomGrid rooms={[room]} roomTypes={frontendRoomTypes} floors={floors} features={features} mapView />
                     </Box>
                   ))}
                 </Box>
@@ -558,7 +587,7 @@ const RoomManagement: React.FC = () => {
             <FormControl fullWidth required size="small">
               <InputLabel>Floor</InputLabel>
               <Select value={bulkFloor} label="Floor" onChange={e => setBulkFloor(e.target.value)}>
-                {currentConfig.floors.map(f => (
+                {floors.map(f => (
                   <MenuItem key={f.id} value={f.id}>{f.name} (Floor {f.number})</MenuItem>
                 ))}
               </Select>
@@ -566,8 +595,8 @@ const RoomManagement: React.FC = () => {
             <FormControl fullWidth required size="small">
               <InputLabel>Room Type</InputLabel>
               <Select value={bulkType} label="Room Type" onChange={e => setBulkType(e.target.value)}>
-                {currentConfig.roomTypes.map(rt => (
-                  <MenuItem key={rt.id} value={rt.id}>{rt.name}</MenuItem>
+                {roomTypes.map(rt => (
+                  <MenuItem key={rt._id} value={rt._id}>{rt.name}</MenuItem>
                 ))}
               </Select>
             </FormControl>
@@ -586,9 +615,9 @@ const RoomManagement: React.FC = () => {
                 value={bulkFeatures}
                 onChange={e => setBulkFeatures(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
                 label="Features"
-                renderValue={selected => (selected as string[]).map(fid => currentConfig.features.find(f => f.id === fid)?.name).join(', ')}
+                renderValue={selected => (selected as string[]).map(fid => features.find(f => f.id === fid)?.name).join(', ')}
               >
-                {currentConfig.features.map(f => (
+                {features.map(f => (
                   <MenuItem key={f.id} value={f.id}>{f.name}</MenuItem>
                 ))}
               </Select>
@@ -624,7 +653,7 @@ const RoomManagement: React.FC = () => {
             <FormControl fullWidth required size="small">
               <InputLabel>Floor</InputLabel>
               <Select value={addFloor} label="Floor" onChange={e => setAddFloor(e.target.value)}>
-                {currentConfig.floors.map(f => (
+                {floors.map(f => (
                   <MenuItem key={f.id} value={f.id}>{f.name} (Floor {f.number})</MenuItem>
                 ))}
               </Select>
@@ -632,8 +661,8 @@ const RoomManagement: React.FC = () => {
             <FormControl fullWidth required size="small">
               <InputLabel>Room Type</InputLabel>
               <Select value={addType} label="Room Type" onChange={e => setAddType(e.target.value)}>
-                {currentConfig.roomTypes.map(rt => (
-                  <MenuItem key={rt.id} value={rt.id}>{rt.name}</MenuItem>
+                {roomTypes.map(rt => (
+                  <MenuItem key={rt._id} value={rt._id}>{rt.name}</MenuItem>
                 ))}
               </Select>
             </FormControl>
@@ -652,9 +681,9 @@ const RoomManagement: React.FC = () => {
                 value={addFeatures}
                 onChange={e => setAddFeatures(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
                 label="Features"
-                renderValue={selected => (selected as string[]).map(fid => currentConfig.features.find(f => f.id === fid)?.name).join(', ')}
+                renderValue={selected => (selected as string[]).map(fid => features.find(f => f.id === fid)?.name).join(', ')}
               >
-                {currentConfig.features.map(f => (
+                {features.map(f => (
                   <MenuItem key={f.id} value={f.id}>{f.name}</MenuItem>
                 ))}
               </Select>
@@ -702,8 +731,8 @@ const RoomManagement: React.FC = () => {
                 onChange={e => setEditRoomState({ ...editRoomState, typeId: e.target.value })}
                 fullWidth
               >
-                {currentConfig.roomTypes.map(rt => (
-                  <option key={rt.id} value={rt.id}>{rt.name}</option>
+                {roomTypes.map(rt => (
+                  <option key={rt._id} value={rt._id}>{rt.name}</option>
                 ))}
               </TextField>
               <TextField
@@ -713,7 +742,7 @@ const RoomManagement: React.FC = () => {
                 onChange={e => setEditRoomState({ ...editRoomState, floorId: e.target.value })}
                 fullWidth
               >
-                {currentConfig.floors.map(f => (
+                {floors.map(f => (
                   <option key={f.id} value={f.id}>{f.name} (Floor {f.number})</option>
                 ))}
               </TextField>
@@ -745,7 +774,7 @@ const RoomManagement: React.FC = () => {
                 SelectProps={{ multiple: true }}
                 fullWidth
               >
-                {currentConfig.features.map(f => (
+                {features.map(f => (
                   <MenuItem key={f.id} value={f.id}>{f.name}</MenuItem>
                 ))}
               </TextField>
@@ -777,13 +806,13 @@ const RoomManagement: React.FC = () => {
           <DialogContent>
             <Box display="flex" flexDirection="column" gap={2} mt={1}>
               <Typography><b>Room Number:</b> {viewRoom.number}</Typography>
-              <Typography><b>Type:</b> {currentConfig.roomTypes.find(rt => rt.id === viewRoom.typeId)?.name || viewRoom.typeId}</Typography>
-              <Typography><b>Floor:</b> {currentConfig.floors.find(f => f.id === viewRoom.floorId)?.name || viewRoom.floorId}</Typography>
+              <Typography><b>Type:</b> {roomTypes.find(rt => rt._id === viewRoom.typeId)?.name || viewRoom.typeId}</Typography>
+              <Typography><b>Floor:</b> {floors.find(f => f.id === viewRoom.floorId)?.name || viewRoom.floorId}</Typography>
               <Typography><b>Status:</b> {viewRoom.status}</Typography>
               <Typography><b>Capacity:</b> {viewRoom.capacity}</Typography>
               <Typography><b>Rate:</b> ${viewRoom.rate}/night</Typography>
               <Typography><b>Notes:</b> {viewRoom.notes}</Typography>
-              <Typography><b>Features:</b> {viewRoom.features.map(fid => currentConfig.features.find(f => f.id === fid)?.name || fid).join(', ')}</Typography>
+              <Typography><b>Features:</b> {viewRoom.features.map(fid => features.find(f => f.id === fid)?.name || fid).join(', ')}</Typography>
               <Typography><b>keepOpen:</b> {viewRoom.keepOpen ? 'true' : 'false'}</Typography>
               <Typography><b>Assigned Guests:</b></Typography>
               <ul>

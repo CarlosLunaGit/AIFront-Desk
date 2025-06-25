@@ -9,7 +9,6 @@ import {
   Select,
   MenuItem,
   FormHelperText,
-  Button,
   OutlinedInput,
 } from '@mui/material';
 import type { HotelConfiguration } from '../../../types/hotel';

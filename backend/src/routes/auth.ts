@@ -228,17 +228,15 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
     }
 
     res.json({
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        hotelId: user.hotelId,
-        hotel: user.hotelId ? user.hotelId : null,
-        isActive: user.isActive,
-        emailVerified: user.emailVerified,
-        lastLogin: user.lastLogin,
-      },
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      hotelId: user.hotelId,
+      hotel: user.hotelId ? user.hotelId : null,
+      isActive: user.isActive,
+      emailVerified: user.emailVerified,
+      lastLogin: user.lastLogin,
     });
   } catch (error) {
     logger.error('Get user error:', error);

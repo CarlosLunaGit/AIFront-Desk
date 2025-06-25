@@ -13,153 +13,168 @@ This guide ensures MSW (Mock Service Worker) handlers stay synchronized with rea
 - `POST /api/auth/register` - ⚠️ MSW missing
 
 #### **Hotel Management** (`/api/hotel/*`)
-- `GET /api/hotel` - ✅ Just Added
-- `GET /api/hotel/current` - ✅ Just Added
-- `POST /api/hotel` - ✅ Just Added
-- `PATCH /api/hotel/:id` - ✅ Just Added
-- `GET /api/hotel/stats` - ✅ Just Added
+- `GET /api/hotel` - ✅ Synced
+- `GET /api/hotel/current` - ✅ Synced
+- `POST /api/hotel` - ✅ Synced
+- `PATCH /api/hotel/:id` - ✅ Synced
+- `GET /api/hotel/stats` - ✅ Synced
+
+#### **Hotel Features & Configuration** 
+- ✅ **ALIGNED**: Hotel features array now matches backend IHotelFeature interface
+- ✅ **ALIGNED**: Hotel configuration uses unified Hotel entity (no separate config entity)
+- ✅ **ALIGNED**: Address structure uses object format with street, city, state, zipCode, country
 
 #### **Hotel Rooms** (`/api/hotel/rooms/*`)
-- `GET /api/hotel/rooms` - ✅ Just Added
-- `POST /api/hotel/rooms` - ✅ Just Added
-- `PATCH /api/hotel/rooms/:id` - ✅ Just Added
-- `DELETE /api/hotel/rooms/:id` - ✅ Just Added
+- `GET /api/hotel/rooms` - ✅ Synced (structure aligned with backend Room model)
+- `POST /api/hotel/rooms` - ✅ Synced
+- `PATCH /api/hotel/rooms/:id` - ✅ Synced
+- `DELETE /api/hotel/rooms/:id` - ✅ Synced
 
 #### **Hotel Guests** (`/api/hotel/guests/*`)
-- `GET /api/hotel/guests` - ✅ Just Added
-- `POST /api/hotel/guests` - ✅ Just Added
-- `PATCH /api/hotel/guests/:id` - ✅ Just Added
-- `DELETE /api/hotel/guests/:id` - ✅ Just Added
+- `GET /api/hotel/guests` - ✅ Synced (Updated to match backend Guest model)
+- `POST /api/hotel/guests` - ✅ Synced
+- `PATCH /api/hotel/guests/:id` - ✅ Synced
+- `DELETE /api/hotel/guests/:id` - ✅ Synced
 
 #### **Communications** (`/api/communications/*`)
-- `GET /api/communications/guest/:guestId` - ✅ Just Added
-- `POST /api/communications/send` - ✅ Just Added
-- `GET /api/communications/stats` - ✅ Just Added
-- `GET /api/communications/conversations` - ✅ Existing
-- `GET /api/communications/conversations/:id` - ✅ Existing
-- `POST /api/communications/conversations/:id/takeover` - ✅ Existing
-- `POST /api/communications/conversations/:id/messages` - ✅ Existing
+- `GET /api/communications/guest/:guestId` - ✅ Synced
+- `POST /api/communications/send` - ✅ Synced
+- `GET /api/communications/stats` - ✅ Synced
+- `GET /api/communications/conversations` - ✅ Synced
+- `GET /api/communications/conversations/:id` - ✅ Synced
+- `POST /api/communications/conversations/:id/takeover` - ✅ Synced
+- `POST /api/communications/conversations/:id/messages` - ✅ Synced
 
 #### **Subscriptions** (`/api/subscription/*`)
-- `GET /api/subscription/plans` - ✅ Just Added
+- `GET /api/subscription/plans` - ✅ Synced
 
 ### ⚠️ **Missing from MSW**
 - `POST /api/auth/register`
 - `GET /api/auth/create-dev-user`
 - `POST /api/communications/ai` (AI processing endpoint)
 
-## 🏗️ **Data Structure Alignment**
+## 🏗️ **Data Structure Alignment - RECENTLY UPDATED**
 
-### **Backend Model → MSW Mock Data**
-
-#### **Hotel Object**
+### **Hotel Object - ✅ ALIGNED**
 ```typescript
-// Backend (MongoDB Document)
+// Backend (MongoDB Document) - ✅ MSW MATCHES
 {
   _id: ObjectId,
   name: string,
   slug: string,
-  isActive: boolean,
-  subscription: {
-    tier: 'starter' | 'professional' | 'enterprise',
-    status: 'active' | 'inactive'
+  description?: string,
+  address?: {
+    street?: string,
+    city?: string,
+    state?: string,
+    zipCode?: string,
+    country?: string
   },
+  // ✅ NEW: Hotel amenity features for guests
+  features: [{
+    id: string,
+    name: string,
+    description?: string,
+    icon?: string,
+    type: 'feature' | 'amenity',
+    category?: string
+  }],
+  contactInfo: {
+    phone?: string,
+    email?: string,
+    website?: string
+  },
+  communicationChannels?: {
+    whatsapp?: { phoneNumber: string, verified: boolean },
+    sms?: { phoneNumber: string, verified: boolean },
+    email?: { address: string, verified: boolean }
+  },
+  subscription: ISubscription,
   settings: {
     timezone: string,
     currency: string,
-    language: string
+    language: string,
+    checkInTime: string,
+    checkOutTime: string
   },
-  contactInfo: {
-    email: string,
-    phone: string,
-    address: string
-  },
+  isActive: boolean,
   createdBy: ObjectId,
+  usage: {
+    currentRooms: number,
+    aiResponsesThisMonth: number,
+    usersCount: number,
+    lastReset: Date
+  },
   createdAt: Date,
   updatedAt: Date
 }
+```
 
-// MSW Mock (now aligned)
+### **Guest Object - ✅ RECENTLY ALIGNED**
+```typescript
+// Backend (MongoDB Document) - ✅ MSW UPDATED TO MATCH
 {
-  _id: '65b000000000000000000001',
-  name: 'AI Front Desk Hotel',
-  slug: 'ai-front-desk-hotel',
-  isActive: true,
-  subscription: { tier: 'starter', status: 'active' },
-  settings: { timezone: 'America/Los_Angeles', currency: 'USD', language: 'en' },
-  contactInfo: { email: 'contact@aifrontdesk.com', phone: '+1-555-0123', address: '123 Hotel St' },
-  createdBy: '65b000000000000000000011',
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z'
+  _id: ObjectId,           // ✅ Changed from 'id' to '_id'
+  name: string,
+  email: string,
+  phone: string,
+  status: 'booked' | 'checked-in' | 'checked-out',
+  roomId: ObjectId,
+  reservationStart: Date,
+  reservationEnd: Date,
+  checkIn?: Date,         // ✅ Changed from empty string to null/Date
+  checkOut?: Date,        // ✅ Changed from empty string to null/Date
+  hotelId: ObjectId,      // ✅ Changed from 'hotelConfigId' to 'hotelId'
+  keepOpen: boolean,
+  createdAt: Date,        // ✅ Added timestamp fields
+  updatedAt: Date         // ✅ Added timestamp fields
 }
 ```
 
-#### **Communication Object**
+### **Room Object - ✅ ALIGNED**
 ```typescript
-// Backend (MongoDB Document)
+// Backend (MongoDB Document) - MSW structure matches
 {
   _id: ObjectId,
-  guestId: string,
-  hotelId: string,
-  content: string,
-  channel: 'whatsapp' | 'email' | 'sms',
-  type: 'inbound' | 'outbound',
-  status: 'pending' | 'sent' | 'delivered' | 'read',
+  number: string,
+  type: RoomType,
+  roomTypeId?: ObjectId,
+  status: RoomStatus,
+  price: number,
+  capacity: number,
+  amenities: string[],
+  description: string,
+  hotelId: ObjectId,
+  currentGuestId?: ObjectId,
+  checkInDate?: Date,
+  checkOutDate?: Date,
+  lastCleaned?: Date,
+  notes?: string,
   createdAt: Date,
   updatedAt: Date
 }
-
-// MSW Mock (aligned)
-{
-  _id: '65c000000000000000000001',
-  guestId: 'guest-1',
-  hotelId: '65b000000000000000000001',
-  content: 'Hello, I would like to check in early',
-  channel: 'whatsapp',
-  type: 'inbound',
-  status: 'read',
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z'
-}
 ```
 
-## 🔄 **Synchronization Workflow**
+## 🔄 **Recent Updates (June 2024)**
 
-### **When Backend Changes:**
-1. **Add/modify endpoint** in backend routes
-2. **Update corresponding MSW handler** in `frontend/src/mocks/handlers.ts`
-3. **Align data structures** between backend models and MSW mock data
-4. **Test both environments**:
-   - `REACT_APP_ENABLE_MOCK_API=true` (MSW)
-   - `REACT_APP_ENABLE_MOCK_API=false` (Real backend)
+### **✅ Hotel Configuration & Features Integration**
+- **COMPLETED**: Removed separate hotel configuration entity
+- **COMPLETED**: Added features array directly to Hotel model
+- **COMPLETED**: Updated Hotel Configuration Wizard to use unified Hotel entity
+- **COMPLETED**: Fixed address structure to use object format instead of string
+- **COMPLETED**: Added 15+ comprehensive hotel features with valid Material Icons
+- **COMPLETED**: Fixed icon display in Features & Amenities step
 
-### **When Frontend API Service Changes:**
-1. **Update API service** in `frontend/src/services/api/`
-2. **Update corresponding MSW handler** to match expected requests/responses
-3. **Update TypeScript types** if needed
-4. **Test MSW responses** match real API responses
+### **✅ Guest Model Synchronization**
+- **COMPLETED**: Updated MSW guest data to use `hotelId` instead of `hotelConfigId`
+- **COMPLETED**: Changed guest ID field from `id` to `_id` to match MongoDB
+- **COMPLETED**: Updated check-in/check-out fields to use proper Date/null values
+- **COMPLETED**: Added timestamp fields (`createdAt`, `updatedAt`)
 
-## 📋 **Maintenance Checklist**
-
-### **Weekly Sync Check:**
-- [ ] All backend routes have corresponding MSW handlers
-- [ ] MSW response formats match backend response formats
-- [ ] Error responses (404, 500, 400) are consistent
-- [ ] Status codes match between MSW and backend
-- [ ] Authentication flows work in both environments
-
-### **Before Each Release:**
-- [ ] Test critical user flows with MSW enabled
-- [ ] Test critical user flows with real backend
-- [ ] Verify no console errors in either mode
-- [ ] Check all new endpoints have MSW equivalents
-
-### **When Adding New Features:**
-- [ ] Create backend endpoint
-- [ ] Create MSW handler
-- [ ] Add to this sync guide
-- [ ] Test isolated frontend development
-- [ ] Test end-to-end integration
+### **🔧 Remaining MSW Reference Updates**
+- **IN PROGRESS**: Updating all MSW handler references to use new field names
+- **PLANNED**: Full cleanup of legacy `hotelConfigId` references
+- **PLANNED**: Standardization of all `id` fields to `_id` for MongoDB consistency
 
 ## 🚀 **Environment Toggle**
 
@@ -175,24 +190,11 @@ REACT_APP_SIMULATE_NEW_USER=false  # Existing user with data
 - Fast development iteration
 - No database dependencies
 
-### **New User Onboarding Mode** (Hotel Setup Testing)
-```bash
-# .env.local
-REACT_APP_ENABLE_MOCK_API=true
-REACT_APP_SIMULATE_NEW_USER=true   # New user with no hotel data
-```
-**Benefits:**
-- Test hotel onboarding flow
-- Verify new user experience
-- Test hotel configuration wizard
-- Validate empty state handling
-
 ### **Real Backend Mode** (Integration Testing)
 ```bash  
 # .env.local
 REACT_APP_ENABLE_MOCK_API=false
 REACT_APP_API_URL=http://localhost:3001
-# REACT_APP_SIMULATE_NEW_USER not used in real backend mode
 ```
 **Benefits:**
 - Real data validation
@@ -200,72 +202,37 @@ REACT_APP_API_URL=http://localhost:3001
 - Database integration testing
 - Authentication validation
 
-## 🛠️ **Tools & Commands**
-
-### **Sync Validation Script** (Future Enhancement)
-```bash
-# Create a script to validate MSW-Backend sync
-npm run validate-msw-sync
-```
-
-### **Quick Switch Commands**
-```bash
-# Switch to new user onboarding mode
-npm run new-user-mode
-
-# Switch to existing user mode (with hotel data)
-npm run existing-user-mode
-
-# Switch to MSW mode (keeps current user simulation setting)
-npm run msw-mode
-
-# Switch to real backend mode  
-npm run backend-mode
-```
-
-### **Manual Environment Setup**
-```bash
-# New user onboarding testing
-echo "REACT_APP_ENABLE_MOCK_API=true" > .env.local
-echo "REACT_APP_SIMULATE_NEW_USER=true" >> .env.local
-
-# Existing user testing
-echo "REACT_APP_ENABLE_MOCK_API=true" > .env.local
-echo "REACT_APP_SIMULATE_NEW_USER=false" >> .env.local
-
-# Real backend integration
-echo "REACT_APP_ENABLE_MOCK_API=false" > .env.local
-echo "REACT_APP_API_URL=http://localhost:3001" >> .env.local
-```
-
 ## 📝 **Implementation Notes**
 
-### **Current Frontend API Services:**
-- `frontend/src/services/api/auth.ts`
-- `frontend/src/services/api/hotel.ts` 
-- `frontend/src/services/api/room.ts`
-- `frontend/src/services/api/guest.ts`
-- `frontend/src/services/api/communications.ts`
+### **Current Features Successfully Tested:**
+- ✅ **Hotel Configuration Wizard**: Address fields, Features & Amenities step
+- ✅ **Feature Icons**: Material Icons display with fallback support
+- ✅ **Data Consistency**: MSW and backend Hotel features aligned
+- ✅ **Type Safety**: TypeScript compatibility for address objects
+- ✅ **User Experience**: Individual address fields with country dropdown
+
+### **Backend Models Location:**
+- `backend/src/models/Hotel.ts` - ✅ Features array added
+- `backend/src/models/Room.ts` - ✅ Aligned
+- `backend/src/models/Guest.ts` - ✅ Structure confirmed
 
 ### **MSW Handler Location:**
-- `frontend/src/mocks/handlers.ts` (Main handlers file)
-- `frontend/src/mocks/browser.ts` (MSW setup)
+- `frontend/src/mocks/handlers.ts` - ✅ Data models updated (partial)
 
-### **Backend Routes Location:**
-- `backend/src/routes/auth.ts`
-- `backend/src/routes/hotel.ts`
-- `backend/src/routes/communication.ts`
-- `backend/src/routes/subscription.ts`
+### **Frontend API Services:**
+- `frontend/src/services/api/hotel.ts` - ✅ Updated for unified Hotel entity
+- `frontend/src/services/api/room.ts` - ✅ Aligned
+- `frontend/src/services/api/guest.ts` - ✅ Updated for new Guest structure
 
 ## 🎯 **Next Steps**
 
-1. **Complete Missing Endpoints**: Add MSW handlers for missing backend endpoints
-2. **Validation Script**: Create automated sync validation
-3. **Documentation**: Keep this guide updated with each new endpoint
+1. **Complete MSW Reference Cleanup**: Finish updating all handler references
+2. **Add Missing Endpoints**: Complete auth registration endpoint  
+3. **Validation Script**: Create automated sync validation
 4. **Testing**: Add tests that run in both MSW and real backend modes
 
 ---
 
-**Last Updated**: Current Date
-**Maintainer**: Development Team
-**Status**: 🟢 Actively Maintained 
+**Last Updated**: June 25, 2024
+**Major Changes**: Hotel features integration, Guest model alignment, Address object structure
+**Status**: 🟢 Data Models Aligned, Reference Updates In Progress 

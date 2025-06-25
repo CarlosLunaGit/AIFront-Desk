@@ -11,7 +11,6 @@ import {
   ListItem,
   ListItemText,
   ListItemSecondaryAction,
-  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -44,14 +43,14 @@ interface FeatureFormData {
 // Common icon suggestions grouped by category
 const COMMON_ICONS = {
   'Room Features': [
-    { name: 'balcony', label: 'Balcony' },
+    { name: 'deck', label: 'Balcony' },
     { name: 'king_bed', label: 'King Bed' },
     { name: 'single_bed', label: 'Single Bed' },
-    { name: 'air', label: 'Air Conditioning' },
+    { name: 'ac_unit', label: 'Air Conditioning' },
     { name: 'tv', label: 'TV' },
     { name: 'desk', label: 'Desk' },
     { name: 'chair', label: 'Chair' },
-    { name: 'table_bar', label: 'Table' },
+    { name: 'restaurant', label: 'Table' },
   ],
   'Amenities': [
     { name: 'local_bar', label: 'Minibar' },
@@ -70,16 +69,16 @@ const COMMON_ICONS = {
     { name: 'business_center', label: 'Business Center' },
     { name: 'elevator', label: 'Elevator' },
     { name: 'stairs', label: 'Stairs' },
-    { name: 'parking', label: 'Parking' },
+    { name: 'local_parking', label: 'Parking' },
     { name: 'luggage', label: 'Luggage Storage' },
   ],
   'Services': [
     { name: 'wifi', label: 'WiFi' },
-    { name: 'concierge', label: 'Concierge' },
+    { name: 'support_agent', label: 'Concierge' },
     { name: 'security', label: 'Security' },
     { name: 'medical_services', label: 'Medical Services' },
     { name: 'child_care', label: 'Child Care' },
-    { name: 'dry_cleaning', label: 'Dry Cleaning' },
+    { name: 'local_laundry_service', label: 'Dry Cleaning' },
     { name: 'shopping_bag', label: 'Shopping' },
     { name: 'local_taxi', label: 'Taxi Service' },
   ],
@@ -87,8 +86,8 @@ const COMMON_ICONS = {
     { name: 'visibility', label: 'View' },
     { name: 'beach_access', label: 'Beach Access' },
     { name: 'landscape', label: 'Landscape' },
-    { name: 'terrace', label: 'Terrace' },
-    { name: 'garden', label: 'Garden' },
+    { name: 'deck', label: 'Terrace' },
+    { name: 'park', label: 'Garden' },
     { name: 'location_city', label: 'City View' },
     { name: 'waves', label: 'Ocean View' },
     { name: 'park', label: 'Park View' },
@@ -184,10 +183,6 @@ const FeaturesStep: React.FC<FeaturesStepProps> = ({ initialData, onComplete }) 
     onComplete(newFeatures);
   };
 
-  const handleIconSelect = (iconName: string) => {
-    setFormData({ ...formData, icon: iconName });
-  };
-
   return (
     <Box>
       <Typography variant="h6" gutterBottom>
@@ -213,6 +208,11 @@ const FeaturesStep: React.FC<FeaturesStepProps> = ({ initialData, onComplete }) 
             <List>
               {features.map((feature, index) => (
                 <ListItem key={index}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 2 }}>
+                    <span className="material-icons" style={{ fontSize: '20px', color: '#666' }}>
+                      {feature.icon || 'hotel'}
+                    </span>
+                  </Box>
                   <ListItemText
                     primary={feature.name}
                     secondary={feature.description}
@@ -280,7 +280,7 @@ const FeaturesStep: React.FC<FeaturesStepProps> = ({ initialData, onComplete }) 
                 label="Icon"
                 renderValue={(selected) => (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {selected && <span className="material-icons">{selected}</span>}
+                    {selected && <span className="material-icons">{selected || 'hotel'}</span>}
                     <Typography>{selected || 'Select an icon'}</Typography>
                   </Box>
                 )}
@@ -313,7 +313,7 @@ const FeaturesStep: React.FC<FeaturesStepProps> = ({ initialData, onComplete }) 
                   ...icons.map((icon) => (
                     <MenuItem key={icon.name} value={icon.name}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <span className="material-icons">{icon.name}</span>
+                        <span className="material-icons">{icon.name || 'hotel'}</span>
                         <Typography>{icon.label}</Typography>
                       </Box>
                     </MenuItem>

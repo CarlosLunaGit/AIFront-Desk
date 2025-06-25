@@ -111,7 +111,13 @@ export interface HotelConfiguration {
   id: string;
   name: string;
   description?: string;
-  address?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+  };
   contactInfo?: {
     phone?: string;
     email?: string;
@@ -134,7 +140,13 @@ export interface HotelConfiguration {
 export interface HotelConfigFormData {
   name: string;
   description?: string;
-  address?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+  };
   contactInfo?: {
     phone?: string;
     email?: string;

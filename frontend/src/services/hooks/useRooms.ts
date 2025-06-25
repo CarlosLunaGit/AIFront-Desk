@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRooms, getRoom, getRoomStats, updateRoom, createRoomAction, updateRoomAction, aiAssignRoom } from '../api/room';
-import type { Room, RoomAction, RoomFilter, RoomStats } from '../../types/room';
+import type { Room, RoomAction, RoomFilter } from '../../types/room';
 
 export const useRooms = (filter?: RoomFilter & { hotelConfigId?: string }) => {
   return useQuery({

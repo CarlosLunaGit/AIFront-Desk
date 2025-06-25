@@ -16,16 +16,21 @@ export const getAllHotels = async (): Promise<Hotel[]> => {
 
 // Legacy configuration endpoints (for now, return mock data)
 export const getCurrentConfig = async (): Promise<HotelConfiguration> => {
-  // For now, transform Hotel to HotelConfiguration or return mock
+  // Transform Hotel to HotelConfiguration format
   const hotel = await getCurrentHotel();
   return {
     id: hotel._id,
     name: hotel.name,
     description: hotel.description,
-    address: hotel.address ? 
-      `${hotel.address.street}, ${hotel.address.city}, ${hotel.address.state} ${hotel.address.zipCode}` : '',
+    address: hotel.address || {
+      street: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      country: ''
+    },
     contactInfo: hotel.contactInfo,
-    features: [],
+    features: (hotel as any).features || [], // Hotel now has features array
     roomTypes: [],
     floors: [],
     roomTemplates: [],
@@ -45,17 +50,22 @@ export const setCurrentConfig = async (configId: string): Promise<HotelConfigura
   return getCurrentConfig();
 };
 
-export const getAllConfigs = async (): Promise<HotelConfiguration[]> => {
-  // For now, convert Hotels to HotelConfigurations
+export const getConfigs = async (): Promise<HotelConfiguration[]> => {
+  // Convert Hotels to HotelConfigurations
   const hotels = await getAllHotels();
   return hotels.map(hotel => ({
     id: hotel._id,
     name: hotel.name,
     description: hotel.description,
-    address: hotel.address ? 
-      `${hotel.address.street}, ${hotel.address.city}, ${hotel.address.state} ${hotel.address.zipCode}` : '',
+    address: hotel.address || {
+      street: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      country: ''
+    },
     contactInfo: hotel.contactInfo,
-    features: [],
+    features: (hotel as any).features || [], // Hotel now has features array
     roomTypes: [],
     floors: [],
     roomTemplates: [],
@@ -143,5 +153,11 @@ export const createBulkRoomTemplates = async (templates: Omit<RoomTemplate, 'id'
 
 export const getDashboardStats = async () => {
   const response = await api.get('/api/dashboard/stats');
+  return response.data;
+};
+
+// NEW: Get unified dashboard data (hotel + roomTypes + stats)
+export const getHotelDashboardData = async (hotelId: string): Promise<any> => {
+  const response = await api.get(`${BASE_URL}/${hotelId}/dashboard-data`);
   return response.data;
 }; 

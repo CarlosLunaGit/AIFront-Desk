@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Box,
@@ -13,33 +12,33 @@ import {
   Toolbar,
   Typography,
   useTheme,
+  Avatar,
+  Tooltip,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   SelectChangeEvent,
-  Avatar,
-  Tooltip,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
-  Message as MessageIcon,
+  People as PeopleIcon,
   Hotel as HotelIcon,
+  Message as MessageIcon,
   CreditCard as CreditCardIcon,
   Settings as SettingsIcon,
   BarChart as BarChartIcon,
-  Business as BusinessIcon,
-  People as PeopleIcon,
-  History as HistoryIcon,
+  Logout as LogoutIcon,
   Event as EventIcon,
   EventNote as EventNoteIcon,
-  Logout as LogoutIcon,
+  History as HistoryIcon,
+  Business as BusinessIcon,
 } from '@mui/icons-material';
-import { useAllConfigs, useCurrentConfig, useSetCurrentConfig } from '../../services/hooks/useHotel';
-import type { HotelConfiguration } from '../../types/hotel';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAllHotels, useCurrentHotel } from '../../services/hooks/useHotel';
+import type { HotelConfiguration } from '../../types/hotel';
 
 // Create a context for the selected hotel configuration
 export const HotelConfigContext = React.createContext<{
@@ -79,26 +78,50 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const [selectedConfigId, setSelectedConfigId] = useState<string>('');
+  const [selectedHotelId, setSelectedHotelId] = useState<string>('');
   const { logout, user } = useAuth();
 
-  // Fetch all hotel configurations
-  const { data: hotelConfigs = [], isLoading: configsLoading } = useAllConfigs();
+  // Fetch all hotels
+  const { data: hotels = [], isLoading: hotelsLoading } = useAllHotels();
 
-  // Fetch current hotel configuration
-  const { data: currentConfig, isLoading: currentConfigLoading } = useCurrentConfig();
+  // Fetch current hotel
+  const { data: currentHotel, isLoading: currentHotelLoading } = useCurrentHotel();
 
-  // Set current configuration mutation
-  const setCurrentConfigMutation = useSetCurrentConfig();
+  // Transform Hotel to HotelConfiguration format for the context
+  const currentConfig: HotelConfiguration | undefined = currentHotel ? {
+    id: currentHotel._id,
+    name: currentHotel.name,
+    description: currentHotel.description,
+    address: currentHotel.address || {
+      street: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      country: ''
+    },
+    contactInfo: currentHotel.contactInfo,
+    features: (currentHotel as any).features || [], // Hotel now has features array
+    roomTypes: [],
+    floors: [],
+    roomTemplates: [],
+    settings: {
+      roomNumberingFormat: 'numeric' as const,
+      defaultStatus: 'available' as const,
+      currency: currentHotel.settings.currency,
+      timezone: currentHotel.settings.timezone,
+      checkInTime: currentHotel.settings.checkInTime,
+      checkOutTime: currentHotel.settings.checkOutTime,
+    }
+  } : undefined;
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
-  const handleConfigChange = (event: SelectChangeEvent<string>) => {
-    const newConfigId = event.target.value;
-    setSelectedConfigId(newConfigId);
-    setCurrentConfigMutation.mutate(newConfigId);
+  const handleHotelChange = (event: SelectChangeEvent<string>) => {
+    const newHotelId = event.target.value;
+    setSelectedHotelId(newHotelId);
+    // TODO: Implement hotel switching when needed
   };
 
   const handleLogout = () => {
@@ -108,18 +131,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   useEffect(() => {
     if (
-      hotelConfigs && 
-      Array.isArray(hotelConfigs) && 
-      hotelConfigs.length > 0 &&
-      (!selectedConfigId || !hotelConfigs.some((cfg: any) => cfg?.id === selectedConfigId))
+      hotels && 
+      Array.isArray(hotels) && 
+      hotels.length > 0 &&
+      (!selectedHotelId || !hotels.some((hotel: any) => hotel?._id === selectedHotelId))
     ) {
-      const firstConfig = hotelConfigs[0];
-      if (firstConfig && firstConfig.id) {
-        setSelectedConfigId(firstConfig.id);
-        setCurrentConfigMutation.mutate(firstConfig.id);
+      const firstHotel = hotels[0];
+      if (firstHotel && firstHotel._id) {
+        setSelectedHotelId(firstHotel._id);
       }
     }
-  }, [selectedConfigId, hotelConfigs, setCurrentConfigMutation]);
+  }, [selectedHotelId, hotels]);
 
   const drawer = (
     <div>
@@ -161,7 +183,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   );
 
   return (
-    <HotelConfigContext.Provider value={{ selectedConfigId, setSelectedConfigId, currentConfig }}>
+    <HotelConfigContext.Provider value={{ selectedConfigId: selectedHotelId, setSelectedConfigId: setSelectedHotelId, currentConfig: currentConfig }}>
       <Box sx={{ display: 'flex' }}>
         <CssBaseline />
         <AppBar
@@ -184,18 +206,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
               Hotel AI
             </Typography>
-            {!configsLoading && !currentConfigLoading && hotelConfigs && hotelConfigs.length > 0 && (
+            {!hotelsLoading && !currentHotelLoading && hotels && hotels.length > 0 && (
               <FormControl sx={{ minWidth: 200, ml: 2 }}>
-                <InputLabel>Hotel Configuration</InputLabel>
+                <InputLabel>Hotel</InputLabel>
                 <Select<string>
-                  value={selectedConfigId || (hotelConfigs && hotelConfigs.length > 0 ? hotelConfigs[0]?.id : '') || ''}
-                  onChange={handleConfigChange}
-                  label="Hotel Configuration"
+                  value={selectedHotelId || (hotels && hotels.length > 0 ? hotels[0]?._id : '') || ''}
+                  onChange={handleHotelChange}
+                  label="Hotel"
                   size="small"
                 >
-                  {hotelConfigs?.map((config: any) => (
-                    <MenuItem key={config.id} value={config.id}>
-                      {config.name}
+                  {hotels?.map((hotel: any) => (
+                    <MenuItem key={hotel._id} value={hotel._id}>
+                      {hotel.name}
                     </MenuItem>
                   ))}
                 </Select>
@@ -205,7 +227,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Tooltip title={user.email}>
                 <Box sx={{ display: 'flex', alignItems: 'center', ml: 2, mr: 1 }}>
                   <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', mr: 1 }}>
-                    {user.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase() : user.email[0].toUpperCase()}
+                    {(() => {
+                      // If user has a name, try to generate initials
+                      if (user.name && typeof user.name === 'string' && user.name.trim()) {
+                        const trimmedName = user.name.trim();
+                        const nameParts = trimmedName.split(' ').filter((n: string) => n && n.length > 0);
+                        const initials = nameParts.map((n: string) => n[0]).join('').toUpperCase();
+                        
+                        if (initials && initials.length > 0) {
+                          return initials;
+                        }
+                      }
+                      
+                      // Fallback to email initial
+                      if (user.email && user.email.length > 0) {
+                        return user.email[0].toUpperCase();
+                      }
+                      
+                      // Last resort fallback
+                      return 'U';
+                    })()}
                   </Avatar>
                   <Typography variant="subtitle1" color="inherit" sx={{ fontWeight: 500 }}>
                     {user.name}

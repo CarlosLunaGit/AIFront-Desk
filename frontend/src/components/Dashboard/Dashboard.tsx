@@ -10,9 +10,9 @@ import {
   ListItem,
   ListItemText,
 } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
-import { getDashboardStats } from '../../services/api/dashboard';
-import { HotelConfigContext } from '../Layout/Layout';
+import { useCurrentHotel, useHotelDashboardData } from '../../services/hooks/useHotel';
+import { useHotelRoomTypes } from '../../services/hooks/useRoomTypes';
+
 
 // Helper functions for SVG pie chart
 function polarToCartesian(cx: number, cy: number, r: number, angle: number) {
@@ -35,28 +35,37 @@ function describeArc(cx: number, cy: number, r: number, startAngle: number, endA
 }
 
 const Dashboard: React.FC = () => {
-  const { currentConfig } = React.useContext(HotelConfigContext);
-  const { data: stats, isLoading: isLoadingStats } = useQuery({
-    queryKey: ['dashboardStats', currentConfig?.id],
-    queryFn: () => getDashboardStats(),
-    enabled: !!currentConfig,
-  });
+  
+  // Use new backend-integrated hooks
+  const { data: currentHotel, isLoading: isLoadingHotel } = useCurrentHotel();
+  const hotelId = currentHotel?._id;
+  
+  // NEW: Use unified dashboard data endpoint
+  const { data: dashboardData, isLoading: isLoadingDashboard } = useHotelDashboardData(hotelId);
+  
+  // NEW: Get room types separately for display
+  const { data: roomTypes, isLoading: isLoadingRoomTypes } = useHotelRoomTypes(hotelId);
 
-  if (isLoadingStats) {
+  const isLoading = isLoadingHotel || isLoadingDashboard || isLoadingRoomTypes;
+
+  if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
         <CircularProgress />
       </Box>
     );
   }
-  console.log(stats);
-  if (!currentConfig) {
+
+  if (!currentHotel) {
     return (
       <Alert severity="info" sx={{ mt: 2 }}>
-        Please select a hotel configuration from the dropdown in the header to get started.
+        Please configure your hotel to get started.
       </Alert>
     );
   }
+
+  // Extract stats from dashboard data
+  const stats = dashboardData?.stats;
 
   // Pie chart for Reserved vs Free vs Occupied
   let roomStatusPieChart: React.ReactNode = null;
@@ -110,10 +119,10 @@ const Dashboard: React.FC = () => {
         <Grid item xs={12}>
           <Paper sx={{ p: 3, mb: 2 }}>
             <Typography variant="h5" gutterBottom>
-              Welcome to <b>{currentConfig.name}</b> Dashboard
+              Welcome to <b>{currentHotel.name}</b> Dashboard
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Overview and quick actions for <b>{currentConfig.name}</b>. All changes apply only to this hotel configuration.
+              Overview and quick actions for <b>{currentHotel.name}</b>. Manage your hotel operations from this dashboard.
             </Typography>
           </Paper>
         </Grid>
@@ -151,16 +160,26 @@ const Dashboard: React.FC = () => {
             <Typography variant="h6" gutterBottom>
               Rooms by Type
             </Typography>
-            <List>
-              {stats?.byType && Object.entries(stats.byType).map(([typeId, count]) => {
-                const type = currentConfig.roomTypes.find(rt => rt.id === typeId);
-                return (
-                  <ListItem key={typeId}>
-                    <ListItemText primary={`${type ? type.name : typeId}: ${count}`} />
-                  </ListItem>
-                );
-              })}
-            </List>
+            {stats?.byType && Object.keys(stats.byType).length > 0 ? (
+              <List>
+                {Object.entries(stats.byType).map(([typeId, count]) => {
+                  const type = roomTypes?.find((rt: any) => rt._id === typeId);
+                  return (
+                    <ListItem key={typeId}>
+                      <ListItemText primary={`${type ? type.name : 'Unknown Type'}: ${count}`} />
+                    </ListItem>
+                  );
+                })}
+              </List>
+            ) : roomTypes && roomTypes.length > 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                Room types are configured, but no rooms assigned to types yet.
+              </Typography>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                No room types configured. Create room types to see detailed statistics.
+              </Typography>
+            )}
           </Paper>
         </Grid>
         <Grid item xs={12} md={6}>

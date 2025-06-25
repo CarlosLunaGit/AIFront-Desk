@@ -66,30 +66,69 @@ const HotelConfigWizard: React.FC = () => {
     },
   });
 
-  // Single effect to handle all form data management
+  // Initialize form data from current config if editing
   React.useEffect(() => {
-    // If we're in edit mode and have a current config, load its data
     if (mode === 'edit' && currentConfig) {
-      console.log('Loading edit mode data:', currentConfig.name);
+      // Handle both old string address format and new object format for backward compatibility
+      let addressData;
+      const configAddress = currentConfig.address as any; // Type assertion for legacy compatibility
+      
+      if (typeof configAddress === 'string') {
+        // Legacy string format - parse it into object
+        const parts = configAddress.split(',').map((part: string) => part.trim());
+        addressData = {
+          street: parts[0] || '',
+          city: parts[1] || '',
+          state: parts[2] || '',
+          zipCode: '',
+          country: parts[parts.length - 1] || ''
+        };
+      } else if (configAddress && typeof configAddress === 'object') {
+        // New object format
+        addressData = configAddress;
+      } else {
+        // No address data
+        addressData = {
+          street: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          country: ''
+        };
+      }
+
       setFormData({
         name: currentConfig.name,
         description: currentConfig.description,
-        address: currentConfig.address,
+        address: addressData,
         contactInfo: currentConfig.contactInfo,
-        features: [...currentConfig.features],
-        roomTypes: [...currentConfig.roomTypes],
-        floors: [...currentConfig.floors],
-        roomTemplates: [...currentConfig.roomTemplates],
-        settings: { ...currentConfig.settings },
+        features: [...((currentConfig as any).features || [])],
+        roomTypes: [...((currentConfig as any).roomTypes || [])],
+        floors: [...((currentConfig as any).floors || [])],
+        roomTemplates: [...((currentConfig as any).roomTemplates || [])],
+        settings: {
+          roomNumberingFormat: (currentConfig as any).settings?.roomNumberingFormat || 'numeric',
+          defaultStatus: (currentConfig as any).settings?.defaultStatus || 'available',
+          currency: currentConfig.settings?.currency || 'USD',
+          timezone: currentConfig.settings?.timezone || 'America/New_York',
+          checkInTime: currentConfig.settings?.checkInTime || '15:00',
+          checkOutTime: currentConfig.settings?.checkOutTime || '11:00',
+        },
       });
     } 
     // If we're in new mode, reset to default values
     else if (mode === 'new') {
       console.log('Resetting to new mode');
-      setFormData({
+      const initialFormData: HotelConfigFormData = {
         name: '',
         description: '',
-        address: '',
+        address: {
+          street: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          country: ''
+        },
         contactInfo: {
           email: '',
           phone: '',
@@ -100,16 +139,17 @@ const HotelConfigWizard: React.FC = () => {
         floors: [],
         roomTemplates: [],
         settings: {
-          roomNumberingFormat: 'numeric' as const,
-          defaultStatus: 'available' as const,
+          roomNumberingFormat: 'numeric',
+          defaultStatus: 'available',
           currency: 'USD',
-          timezone: 'UTC',
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           checkInTime: '15:00',
           checkOutTime: '11:00',
         },
-      });
+      };
+      setFormData(initialFormData);
     }
-  }, [mode, currentConfig?.id]); // Only depend on mode and config ID to prevent unnecessary updates
+  }, [mode, currentConfig]); // Only depend on mode and currentConfig
 
   const handleModeChange = useCallback((newMode: 'new' | 'edit') => {
     console.log('Changing mode to:', newMode);
@@ -125,7 +165,7 @@ const HotelConfigWizard: React.FC = () => {
   });
 
   const updateConfigMutation = useMutation({
-    mutationFn: (data: HotelConfigFormData) => updateConfig(currentConfig?.id || '', data),
+    mutationFn: (data: HotelConfigFormData) => updateConfig((currentConfig as any)?._id || '', data),
     onSuccess: () => {
       navigate('/dashboard');
     },

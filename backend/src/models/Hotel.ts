@@ -33,6 +33,14 @@ export interface ISubscription {
   monthlyPrice: number;
 }
 
+export interface IFloor {
+  id: string;
+  name: string;
+  number: number;
+  description?: string;
+  isActive: boolean;
+}
+
 export interface IHotel extends Document {
   name: string; // Hotel name
   slug: string; // URL-friendly identifier
@@ -72,6 +80,7 @@ export interface IHotel extends Document {
     checkInTime: string;
     checkOutTime: string;
   };
+  floors: IFloor[]; // Embedded floors
   isActive: boolean;
   createdBy: mongoose.Types.ObjectId;
   usage: {
@@ -230,6 +239,13 @@ const hotelSchema = new Schema<IHotel>(
         default: '11:00',
       },
     },
+    floors: [{
+      id: { type: String, required: true },
+      name: { type: String, required: true, trim: true },
+      number: { type: Number, required: true },
+      description: { type: String, trim: true },
+      isActive: { type: Boolean, default: true }
+    }],
     isActive: {
       type: Boolean,
       default: true,
@@ -304,6 +320,189 @@ hotelSchema.statics.getTierFeatures = function(tier: SubscriptionTier): IFeature
 hotelSchema.statics.getTierPrice = function(tier: SubscriptionTier): number {
   return TIER_PRICING[tier];
 };
+
+// =============================================================================
+// HOTEL CONFIGURATION MODEL (Complex Hotel Setup)
+// =============================================================================
+
+export interface IHotelFeature {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  type: 'feature' | 'amenity';
+  category?: 'room' | 'common' | 'service';
+}
+
+export interface IRoomType {
+  id: string;
+  name: string;
+  description?: string;
+  baseRate: number;
+  defaultCapacity: number;
+  features: string[]; // IDs of structural features
+  amenities: string[]; // IDs of provided amenities
+}
+
+export interface IFloor {
+  id: string;
+  name: string;
+  number: number;
+  description?: string;
+  isActive: boolean;
+}
+
+export interface IRoomTemplate {
+  id: string;
+  typeId: string; // Reference to RoomType
+  floorId: string; // Reference to Floor
+  name: string;
+  capacity: number;
+  features: string[]; // Additional features specific to this room
+  rate: number;
+  notes?: string;
+}
+
+export interface IHotelConfiguration extends Document {
+  name: string;
+  description?: string;
+  address?: string;
+  contactInfo?: {
+    phone?: string;
+    email?: string;
+    website?: string;
+  };
+  features: IHotelFeature[];
+  roomTypes: IRoomType[];
+  floors: IFloor[];
+  roomTemplates: IRoomTemplate[];
+  settings: {
+    roomNumberingFormat: 'numeric' | 'alphanumeric' | 'custom';
+    defaultStatus: string;
+    currency: string;
+    timezone: string;
+    checkInTime: string;
+    checkOutTime: string;
+  };
+  hotelId: mongoose.Types.ObjectId; // Reference to the main Hotel
+  createdBy: mongoose.Types.ObjectId;
+  isActive: boolean;
+}
+
+const hotelConfigurationSchema = new Schema<IHotelConfiguration>(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
+      type: String,
+      trim: true,
+    },
+    address: {
+      type: String,
+      trim: true,
+    },
+    contactInfo: {
+      phone: { type: String, trim: true },
+      email: { type: String, lowercase: true, trim: true },
+      website: { type: String, trim: true },
+    },
+    features: [{
+      id: { type: String, required: true },
+      name: { type: String, required: true },
+      description: { type: String },
+      icon: { type: String },
+      type: { 
+        type: String, 
+        enum: ['feature', 'amenity'],
+        required: true 
+      },
+      category: { 
+        type: String, 
+        enum: ['room', 'common', 'service'] 
+      },
+    }],
+    roomTypes: [{
+      id: { type: String, required: true },
+      name: { type: String, required: true },
+      description: { type: String },
+      baseRate: { type: Number, required: true },
+      defaultCapacity: { type: Number, required: true },
+      features: [{ type: String }],
+      amenities: [{ type: String }],
+    }],
+    floors: [{
+      id: { type: String, required: true },
+      name: { type: String, required: true },
+      number: { type: Number, required: true },
+      description: { type: String },
+      isActive: { type: Boolean, default: true },
+    }],
+    roomTemplates: [{
+      id: { type: String, required: true },
+      typeId: { type: String, required: true },
+      floorId: { type: String, required: true },
+      name: { type: String, required: true },
+      capacity: { type: Number, required: true },
+      features: [{ type: String }],
+      rate: { type: Number, required: true },
+      notes: { type: String },
+    }],
+    settings: {
+      roomNumberingFormat: {
+        type: String,
+        enum: ['numeric', 'alphanumeric', 'custom'],
+        default: 'numeric',
+      },
+      defaultStatus: {
+        type: String,
+        default: 'available',
+      },
+      currency: {
+        type: String,
+        default: 'USD',
+      },
+      timezone: {
+        type: String,
+        default: 'UTC',
+      },
+      checkInTime: {
+        type: String,
+        default: '15:00',
+      },
+      checkOutTime: {
+        type: String,
+        default: '11:00',
+      },
+    },
+    hotelId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Hotel',
+      required: true,
+    },
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Indexes for HotelConfiguration
+hotelConfigurationSchema.index({ hotelId: 1 });
+hotelConfigurationSchema.index({ createdBy: 1 });
+hotelConfigurationSchema.index({ isActive: 1 });
+
+export const HotelConfiguration = mongoose.model<IHotelConfiguration>('HotelConfiguration', hotelConfigurationSchema);
 
 export const Hotel = mongoose.model<IHotel>('Hotel', hotelSchema, 'hotels');
 export { TIER_FEATURES, TIER_PRICING }; 
