@@ -10,25 +10,26 @@ import {
   Box,
   Typography,
 } from '@mui/material';
-import type { RoomFilter, RoomStatus, RoomType, RoomFeature } from '../../types/room';
+import type { RoomFilter, RoomStatus, RoomFeature } from '../../types/room';
+import type { RoomType } from '../../services/hooks/useRoomTypes';
 
 interface RoomFiltersProps {
   filter: RoomFilter;
   onFilterChange: (filter: Partial<RoomFilter>) => void;
+  roomTypes?: RoomType[];
 }
 
 const ROOM_STATUSES: RoomStatus[] = ['available', 'occupied', 'maintenance', 'cleaning', 'reserved'];
-const ROOM_TYPES: RoomType[] = ['standard', 'deluxe', 'suite', 'presidential'];
 const ROOM_FEATURES: RoomFeature[] = ['wifi', 'minibar', 'balcony', 'ocean-view', 'jacuzzi', 'king-bed'];
 const FLOORS = [1, 2, 3, 4, 5];
 
-const RoomFilters: React.FC<RoomFiltersProps> = ({ filter, onFilterChange }) => {
+const RoomFilters: React.FC<RoomFiltersProps> = ({ filter, onFilterChange, roomTypes = [] }) => {
   const handleStatusChange = (event: any) => {
     onFilterChange({ status: event.target.value });
   };
 
   const handleTypeChange = (event: any) => {
-    onFilterChange({ type: event.target.value });
+    onFilterChange({ typeId: event.target.value });
   };
 
   const handleFloorChange = (event: any) => {
@@ -83,10 +84,10 @@ const RoomFilters: React.FC<RoomFiltersProps> = ({ filter, onFilterChange }) => 
           <InputLabel>Room Type</InputLabel>
           <Select
             multiple
-            value={filter.type || []}
+            value={filter.typeId || []}
             onChange={handleTypeChange}
             input={<OutlinedInput label="Room Type" />}
-            renderValue={(selected) => (
+            renderValue={(selected: string[]) => (
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                 {selected.map((value) => (
                   <Chip
@@ -98,9 +99,9 @@ const RoomFilters: React.FC<RoomFiltersProps> = ({ filter, onFilterChange }) => 
               </Box>
             )}
           >
-            {ROOM_TYPES.map((type) => (
-              <MenuItem key={type} value={type}>
-                {type.charAt(0).toUpperCase() + type.slice(1)}
+            {roomTypes.map((type) => (
+              <MenuItem key={type._id} value={type._id}>
+                {type.name}
               </MenuItem>
             ))}
           </Select>

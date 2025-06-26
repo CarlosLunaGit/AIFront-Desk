@@ -14,6 +14,12 @@ export const getAllHotels = async (): Promise<Hotel[]> => {
   return response.data;
 };
 
+// NEW: Set current hotel (for testing/MSW environment)
+export const setCurrentHotel = async (hotelId: string): Promise<Hotel> => {
+  const response = await api.post(`${BASE_URL}/set-current`, { hotelId });
+  return response.data;
+};
+
 // Legacy configuration endpoints (for now, return mock data)
 export const getCurrentConfig = async (): Promise<HotelConfiguration> => {
   // Transform Hotel to HotelConfiguration format with related data

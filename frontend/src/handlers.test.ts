@@ -19,7 +19,7 @@ function makeRoom(overrides = {}): Room {
   return {
     id: 'room-1',
     number: '101',
-    hotelConfigId: 'mock-hotel-1',
+    hotelId: 'mock-hotel-1',
     capacity: 2,
     assignedGuests: [],
     status: 'available',
@@ -37,7 +37,7 @@ function makeGuest(overrides = {}): Guest {
   return {
     id: 'guest-1',
     roomId: 'room-1',
-    hotelConfigId: 'mock-hotel-1',
+    hotelId: 'mock-hotel-1',
     status: 'booked',
     keepOpen: true,
     name: '',

@@ -501,175 +501,175 @@ const mockMessages = [
 
 // Mock data for actual rooms
 const mockRooms = [
-  // Grand Plaza Hotel
+  // AI Front Desk Hotel
   {
     id: 'room-101',
     number: '101',
-    typeId: 'type-1',
+    typeId: 'roomtype-std-001', // Updated to match mockRoomTypes _id
     floorId: 'floor-1',
     status: 'partially-reserved' as RoomStatus,
     features: ['feature-3'],
     capacity: 2,
     rate: 150,
     notes: '',
-    hotelConfigId: 'mock-hotel-1',
+    hotelId: '65b000000000000000000001', // UPDATED: Use hotelId instead of hotelConfigId
     assignedGuests: ['guest-1'],
   },
   {
     id: 'room-102',
     number: '102',
-    typeId: 'type-1',
+    typeId: 'roomtype-std-001', // Standard Room
     floorId: 'floor-1',
     status: 'partially-occupied' as RoomStatus,
     features: ['feature-3'],
     capacity: 2,
     rate: 150,
     notes: '',
-    hotelConfigId: 'mock-hotel-1',
+    hotelId: '65b000000000000000000001', // UPDATED: Use hotelId instead of hotelConfigId
     assignedGuests: ['guest-2'],
   },
   {
     id: 'room-201',
     number: '201',
-    typeId: 'type-2',
+    typeId: 'roomtype-dlx-001', // Deluxe Room
     floorId: 'floor-2',
     status: 'occupied' as RoomStatus,
     features: ['feature-4'],
     capacity: 1,
     rate: 400,
     notes: '',
-    hotelConfigId: 'mock-hotel-1',
+    hotelId: '65b000000000000000000001', // UPDATED: Use hotelId instead of hotelConfigId
     assignedGuests: ['guest-3'],
   },
   {
     id: 'room-202',
     number: '202',
-    typeId: 'type-2',
+    typeId: 'roomtype-dlx-001', // Deluxe Room
     floorId: 'floor-2',
     status: 'partially-reserved' as RoomStatus,
     features: ['feature-4'],
     capacity: 2,
     rate: 400,
     notes: '',
-    hotelConfigId: 'mock-hotel-1',
+    hotelId: '65b000000000000000000001', // UPDATED: Use hotelId instead of hotelConfigId
     assignedGuests: ['guest-7'],
   },
   {
     id: 'room-203',
     number: '203',
-    typeId: 'type-2',
+    typeId: 'roomtype-dlx-001', // Deluxe Room
     floorId: 'floor-2',
     status: 'partially-occupied' as RoomStatus,
     features: ['feature-4'],
     capacity: 2,
     rate: 400,
     notes: '',
-    hotelConfigId: 'mock-hotel-1',
+    hotelId: '65b000000000000000000001', // UPDATED: Use hotelId instead of hotelConfigId
     assignedGuests: ['guest-8'],
   },
   {
     id: 'room-301',
     number: '301',
-    typeId: 'type-3',
+    typeId: 'roomtype-ste-001', // Family Suite
     floorId: 'floor-2',
     status: 'available' as RoomStatus,
     features: ['feature-4'],
     capacity: 4,
     rate: 600,
     notes: '',
-    hotelConfigId: 'mock-hotel-1',
+    hotelId: '65b000000000000000000001', // UPDATED: Use hotelId instead of hotelConfigId
     assignedGuests: [],
   },
   {
     id: 'room-302',
     number: '302',
-    typeId: 'type-3',
+    typeId: 'roomtype-ste-001', // Family Suite
     floorId: 'floor-2',
     status: 'partially-reserved' as RoomStatus,
     features: ['feature-4'],
     capacity: 4,
     rate: 600,
     notes: '',
-    hotelConfigId: 'mock-hotel-1',
+    hotelId: '65b000000000000000000001', // UPDATED: Use hotelId instead of hotelConfigId
     assignedGuests: ['guest-9'],
   },
   // Seaside Resort
   {
     id: 'room-401',
     number: '401',
-    typeId: 'type-4',
+    typeId: 'roomtype-ocean-001', // Ocean View Room
     floorId: 'floor-3',
     status: 'partially-reserved' as RoomStatus,
     features: ['feature-4'],
     capacity: 2,
     rate: 300,
     notes: '',
-    hotelConfigId: 'mock-hotel-2',
+    hotelId: '65b000000000000000000002', // UPDATED: Use hotelId instead of hotelConfigId
     assignedGuests: ['guest-4'],
   },
   {
     id: 'room-402',
     number: '402',
-    typeId: 'type-4',
+    typeId: 'roomtype-ocean-001', // Ocean View Room
     floorId: 'floor-3',
     status: 'partially-occupied' as RoomStatus,
     features: ['feature-4'],
     capacity: 2,
     rate: 300,
     notes: '',
-    hotelConfigId: 'mock-hotel-2',
+    hotelId: '65b000000000000000000002', // UPDATED: Use hotelId instead of hotelConfigId
     assignedGuests: ['guest-5'],
   },
   {
     id: 'room-403',
     number: '403',
-    typeId: 'type-4',
+    typeId: 'roomtype-ocean-001', // Ocean View Room
     floorId: 'floor-3',
     status: 'occupied' as RoomStatus,
     features: ['feature-4'],
     capacity: 1,
     rate: 300,
     notes: '',
-    hotelConfigId: 'mock-hotel-2',
+    hotelId: '65b000000000000000000002', // UPDATED: Use hotelId instead of hotelConfigId
     assignedGuests: ['guest-6'],
   },
   {
     id: 'room-501',
     number: '501',
-    typeId: 'type-5',
+    typeId: 'roomtype-ocean-ste-001', // Ocean Suite
     floorId: 'floor-4',
     status: 'partially-reserved' as RoomStatus,
     features: ['feature-4'],
     capacity: 4,
     rate: 600,
     notes: '',
-    hotelConfigId: 'mock-hotel-2',
+    hotelId: '65b000000000000000000002', // UPDATED: Use hotelId instead of hotelConfigId
     assignedGuests: ['guest-10'],
   },
   {
     id: 'room-502',
     number: '502',
-    typeId: 'type-5',
+    typeId: 'roomtype-ocean-ste-001', // Ocean Suite
     floorId: 'floor-4',
     status: 'partially-occupied' as RoomStatus,
     features: ['feature-4'],
     capacity: 4,
     rate: 600,
     notes: '',
-    hotelConfigId: 'mock-hotel-2',
+    hotelId: '65b000000000000000000002', // UPDATED: Use hotelId instead of hotelConfigId
     assignedGuests: ['guest-11'],
   },
   {
     id: 'room-503',
     number: '503',
-    typeId: 'type-5',
+    typeId: 'roomtype-ocean-ste-001', // Ocean Suite
     floorId: 'floor-4',
     status: 'available' as RoomStatus,
     features: ['feature-4'],
     capacity: 4,
     rate: 600,
     notes: '',
-    hotelConfigId: 'mock-hotel-2',
+    hotelId: '65b000000000000000000002', // UPDATED: Use hotelId instead of hotelConfigId
     assignedGuests: [],
   }
 ];
@@ -682,7 +682,11 @@ const mockRoomTypes = [
     name: 'Standard Room',
     description: 'Comfortable standard room with essential amenities',
     baseRate: 150,
-    defaultCapacity: 2,
+    capacity: {
+      adults: 2,
+      children: 0,
+      total: 2
+    },
     features: ['feature-1', 'feature-3'], // References to hotel features
     amenities: ['coffee-maker', 'hair-dryer'],
     hotelId: '65b000000000000000000001', // Reference to AI Front Desk Hotel
@@ -695,7 +699,11 @@ const mockRoomTypes = [
     name: 'Deluxe Room',
     description: 'Spacious deluxe room with premium amenities',
     baseRate: 250,
-    defaultCapacity: 2,
+    capacity: {
+      adults: 2,
+      children: 1,
+      total: 2
+    },
     features: ['feature-1', 'feature-3', 'feature-13', 'feature-14'], // WiFi, AC, Balcony, Minibar
     amenities: ['coffee-maker', 'hair-dryer', 'bathrobes', 'slippers'],
     hotelId: '65b000000000000000000001',
@@ -708,7 +716,11 @@ const mockRoomTypes = [
     name: 'Family Suite',
     description: 'Large family suite with separate living area',
     baseRate: 450,
-    defaultCapacity: 4,
+    capacity: {
+      adults: 4,
+      children: 2,
+      total: 4
+    },
     features: ['feature-1', 'feature-3', 'feature-13', 'feature-14'], // WiFi, AC, Balcony, Minibar
     amenities: ['coffee-maker', 'hair-dryer', 'bathrobes', 'slippers', 'kitchenette'],
     hotelId: '65b000000000000000000001',
@@ -722,7 +734,11 @@ const mockRoomTypes = [
     name: 'Ocean View Room',
     description: 'Room with beautiful ocean views',
     baseRate: 300,
-    defaultCapacity: 2,
+    capacity: {
+      adults: 2,
+      children: 1,
+      total: 2
+    },
     features: ['feature-beach-2'], // Ocean view
     amenities: ['beach-towels', 'sun-screen'],
     hotelId: '65b000000000000000000002', // Reference to Seaside Resort
@@ -735,7 +751,11 @@ const mockRoomTypes = [
     name: 'Ocean Suite',
     description: 'Luxury suite with panoramic ocean views',
     baseRate: 600,
-    defaultCapacity: 4,
+    capacity: {
+      adults: 4,
+      children: 2,
+      total: 4
+    },
     features: ['feature-beach-2'], // Ocean view
     amenities: ['beach-towels', 'sun-screen', 'jacuzzi', 'champagne'],
     hotelId: '65b000000000000000000002',
@@ -1260,7 +1280,7 @@ const mockGuests = [
 
 // Sync assignedGuests for all rooms on startup
 mockRooms.forEach(room => {
-        room.assignedGuests = mockGuests.filter(g => g.roomId === room.id && g.hotelId === room.hotelConfigId).map(g => g._id);
+        room.assignedGuests = mockGuests.filter(g => g.roomId === room.id && g.hotelId === room.hotelId).map(g => g._id);
 });
 
 // Initialize mock arrays for reservations and history
@@ -1277,7 +1297,7 @@ function generateMockReservationsAndHistory() {
     
     // For each room, collect all guests assigned to it by roomId and hotelId
     mockRooms.forEach(room => {
-      const guests = mockGuests.filter(g => g.roomId === room.id && g.hotelId === room.hotelConfigId);
+      const guests = mockGuests.filter(g => g.roomId === room.id && g.hotelId === room.hotelId);
       if (guests.length === 0) return;
       
       const guestIds = guests.map(g => g._id);
@@ -1294,7 +1314,7 @@ function generateMockReservationsAndHistory() {
         price: 100 * guestIds.length,
         status: 'booked',
         notes: '',
-        hotelConfigId: room.hotelConfigId,
+        hotelId: room.hotelId,
       };
       
       reservations.push(reservation);
@@ -1326,7 +1346,7 @@ const { reservations: finalMockReservations, history: finalReservationHistory } 
 export const handlers: HttpHandler[] = [
   // Dashboard stats (dynamic per current config)
   http.get('/api/dashboard/stats', () => {
-    const rooms = mockRooms.filter(r => r.hotelConfigId === currentConfigId);
+    const rooms = mockRooms.filter(r => r.hotelId === currentConfigId);
     const totalRooms = rooms.length;
     const availableRooms = rooms.filter(r => r.status === 'available').length;
     const occupiedRooms = rooms.filter(r => r.status === 'occupied').length;
@@ -1774,12 +1794,26 @@ export const handlers: HttpHandler[] = [
     });
   }),
 
-  // Room endpoints
-  http.get('/api/rooms', () => {
+  // Room endpoints  
+  http.get('/api/rooms', ({ request }) => {
+    const url = new URL(request.url);
+    const hotelId = url.searchParams.get('hotelId');
+    
+    // Filter rooms by hotelId if provided, otherwise use current config mapping
+    let filteredRooms;
+    if (hotelId) {
+      // Direct filtering by hotelId (Hotel entity approach)
+      filteredRooms = mockRooms.filter(r => r.hotelId === hotelId);
+    } else {
+      // Fallback to current config for backward compatibility
+      const currentHotelId = currentConfigId === 'mock-hotel-1' ? '65b000000000000000000001' : '65b000000000000000000002';
+      filteredRooms = mockRooms.filter(r => r.hotelId === currentHotelId);
+    }
+    
     // For each room, recalculate status and keepOpen, then log keepOpen
-    const rooms = mockRooms.filter(r => r.hotelConfigId === currentConfigId).map(room => {
+    const rooms = filteredRooms.map(room => {
       recalculateRoomStatus(room); // Ensure status and keepOpen are up-to-date
-      const guests = mockGuests.filter(g => g.roomId === room.id && g.hotelId === room.hotelConfigId);
+      const guests = mockGuests.filter(g => g.roomId === room.id && g.hotelId === room.hotelId);
       const keepOpen = guests.length > 0 && guests.every(g => g.keepOpen === true);
       const roomWithKeepOpen = { ...room, keepOpen };
       console.log('DEBUG /api/rooms:', room.id, 'keepOpen:', keepOpen, 'status:', room.status);
@@ -1791,6 +1825,10 @@ export const handlers: HttpHandler[] = [
   http.post('/api/rooms', async ({ request }) => {
     const data = await request.json();
     const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+    
+    // Map currentConfigId to hotelId for room creation
+    const currentHotelId = currentConfigId === 'mock-hotel-1' ? '65b000000000000000000001' : '65b000000000000000000002';
+    
     const newRoom = ensureRoomDefaults({
       id: `room-${Date.now()}`,
       number: typeof safeData.number === 'string' ? safeData.number : '',
@@ -1801,7 +1839,7 @@ export const handlers: HttpHandler[] = [
       capacity: typeof safeData.capacity === 'number' ? safeData.capacity : 1,
       rate: typeof safeData.rate === 'number' ? safeData.rate : 0,
       notes: typeof safeData.notes === 'string' ? safeData.notes : '',
-      hotelConfigId: currentConfigId,
+      hotelId: currentHotelId, // UPDATED: Use hotelId instead of currentConfigId
       assignedGuests: [],
     });
     mockRooms.push(newRoom);
@@ -1992,7 +2030,7 @@ export const handlers: HttpHandler[] = [
         capacity: typeof room.capacity === 'number' ? room.capacity : 1,
         rate: typeof room.rate === 'number' ? room.rate : 0,
         notes: typeof room.notes === 'string' ? room.notes : '',
-        hotelConfigId: currentConfigId,
+        hotelId: currentConfigId,
         assignedGuests: [],
       });
       mockRooms.push(newRoom);
@@ -2024,7 +2062,7 @@ export const handlers: HttpHandler[] = [
     mockGuests.push(newGuest);
     
     // Update room status based on new guest assignment
-    recalculateRoomStatus(mockRooms.find(r => r.id === newGuest.roomId && r.hotelConfigId === currentConfigId), 'system', 'Triggered by guest assignment');
+    recalculateRoomStatus(mockRooms.find(r => r.id === newGuest.roomId && r.hotelId === currentConfigId), 'system', 'Triggered by guest assignment');
     
     return HttpResponse.json(newGuest);
   }),
@@ -2038,7 +2076,7 @@ export const handlers: HttpHandler[] = [
     Object.assign(guest, updates, { updatedAt: new Date().toISOString() });
     
     // Update room status based on guest status change
-    recalculateRoomStatus(mockRooms.find(r => r.id === guest.roomId && r.hotelConfigId === currentConfigId), 'system', 'Triggered by guest status change');
+    recalculateRoomStatus(mockRooms.find(r => r.id === guest.roomId && r.hotelId === currentConfigId), 'system', 'Triggered by guest status change');
     
     return HttpResponse.json(guest);
   }),
@@ -2068,7 +2106,7 @@ export const handlers: HttpHandler[] = [
     const room = mockRooms.find(r => r.id === params.id);
     if (!room) return new HttpResponse(null, { status: 404 });
     // Remove all assigned guests from this room and delete them
-    const guestsToRemove = mockGuests.filter(g => g.roomId === room.id && g.hotelId === room.hotelConfigId);
+    const guestsToRemove = mockGuests.filter(g => g.roomId === room.id && g.hotelId === room.hotelId);
     guestsToRemove.forEach(g => {
       const idx = mockGuests.findIndex(gg => gg._id === g._id);
       if (idx !== -1) mockGuests.splice(idx, 1);
@@ -2082,7 +2120,7 @@ export const handlers: HttpHandler[] = [
   // Get all reservation history
   http.get('/api/reservation-history', () => {
     // Only return history for the current hotel config
-    const roomIdsForConfig = mockRooms.filter(r => r.hotelConfigId === currentConfigId).map(r => r.id);
+    const roomIdsForConfig = mockRooms.filter(r => r.hotelId === currentConfigId).map(r => r.id);
     const filtered = finalReservationHistory.filter((h: any) => roomIdsForConfig.includes(h.roomId));
     return HttpResponse.json(filtered);
   }),
@@ -2147,7 +2185,7 @@ export const handlers: HttpHandler[] = [
   // Reservation endpoints
   http.get('/api/reservations', () => {
     // Only return reservations for the current hotel config
-    const roomIdsForConfig = mockRooms.filter(r => r.hotelConfigId === currentConfigId).map(r => r.id);
+    const roomIdsForConfig = mockRooms.filter(r => r.hotelId === currentConfigId).map(r => r.id);
     const filtered = finalMockReservations.filter((r: any) => roomIdsForConfig.includes(r.rooms));
     return HttpResponse.json(filtered);
   }),
@@ -2278,8 +2316,18 @@ export const handlers: HttpHandler[] = [
         { status: 404, headers: { 'Content-Type': 'application/json' } }
       );
     }
-    // Return first active hotel for existing users
-    const activeHotel = mockHotels.find((h: any) => h.isActive) || mockHotels[0];
+    
+    // Return hotel based on current config selection (for testing multiple hotels)
+    let currentHotel;
+    if (currentConfigId === 'mock-hotel-1') {
+      currentHotel = mockHotels.find(h => h._id === '65b000000000000000000001');
+    } else if (currentConfigId === 'mock-hotel-2') {
+      currentHotel = mockHotels.find(h => h._id === '65b000000000000000000002');
+    }
+    
+    // Fallback to first active hotel if no specific selection
+    const activeHotel = currentHotel || mockHotels.find((h: any) => h.isActive) || mockHotels[0];
+    console.log('🏨 Returning current hotel:', activeHotel.name, 'Config ID:', currentConfigId);
     return HttpResponse.json(activeHotel);
   }),
 
@@ -2297,6 +2345,27 @@ export const handlers: HttpHandler[] = [
     };
     mockHotels.push(hotel);
     return HttpResponse.json(hotel, { status: 201 });
+  }),
+
+  // NEW: Set current hotel (for testing/MSW environment)
+  http.post('/api/hotel/set-current', async ({ request }) => {
+    const { hotelId } = await request.json() as { hotelId: string };
+    
+    // Find the hotel
+    const hotel = mockHotels.find(h => h._id === hotelId);
+    if (!hotel) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    
+    // Update the global currentConfigId based on hotel selection
+    if (hotelId === '65b000000000000000000001') {
+      currentConfigId = 'mock-hotel-1';
+    } else if (hotelId === '65b000000000000000000002') {
+      currentConfigId = 'mock-hotel-2';
+    }
+    
+    console.log('🔄 Hotel switched to:', hotel.name, 'Config ID:', currentConfigId);
+    return HttpResponse.json(hotel);
   }),
 
   // Update hotel (matches backend PATCH /api/hotel/:id)
@@ -2328,19 +2397,30 @@ export const handlers: HttpHandler[] = [
       return new HttpResponse(null, { status: 404 });
     }
 
-    // Generate stats
-    const totalRooms = mockRooms.length;
-    const availableRooms = mockRooms.filter(r => r.status === 'available').length;
-    const occupiedRooms = mockRooms.filter(r => r.status === 'occupied').length;
-    const maintenanceRooms = mockRooms.filter(r => r.status === 'maintenance').length;
-    const cleaningRooms = mockRooms.filter(r => r.status === 'cleaning').length;
-    const reservedRooms = mockRooms.filter(r => r.status === 'reserved' || r.status === 'partially-reserved').length;
+    // Filter rooms for this specific hotel - FIXED: Use hotelId directly
+    const hotelRooms = mockRooms.filter(r => r.hotelId === hotelId);
+
+    // Generate stats using filtered rooms
+    const totalRooms = hotelRooms.length;
+    const availableRooms = hotelRooms.filter(r => r.status === 'available').length;
+    const occupiedRooms = hotelRooms.filter(r => r.status === 'occupied').length;
+    const maintenanceRooms = hotelRooms.filter(r => r.status === 'maintenance').length;
+    const cleaningRooms = hotelRooms.filter(r => r.status === 'cleaning').length;
+    const reservedRooms = hotelRooms.filter(r => r.status === 'reserved' || r.status === 'partially-reserved').length;
     
     const byType: Record<string, number> = {};
-    mockRooms.forEach(r => {
+    hotelRooms.forEach(r => {
       if (r.typeId) {
         byType[r.typeId] = (byType[r.typeId] || 0) + 1;
       }
+    });
+
+    console.log('📊 Dashboard Stats for Hotel:', hotel.name, {
+      totalRooms,
+      availableRooms,
+      occupiedRooms,
+      hotelRoomsCount: hotelRooms.length,
+      hotelId
     });
 
     return HttpResponse.json({

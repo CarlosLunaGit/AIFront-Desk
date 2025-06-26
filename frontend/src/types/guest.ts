@@ -11,6 +11,6 @@ export interface Guest {
   reservationEnd: string;
   checkIn?: string;
   checkOut?: string;
-  hotelConfigId: string;
+  hotelId: string;
   keepOpen: boolean;
 } 

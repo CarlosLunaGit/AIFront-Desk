@@ -12,7 +12,7 @@ export const useCurrentHotel = () => {
 
 export const useAllHotels = () => {
   return useQuery({
-    queryKey: ['hotel', 'all'],
+    queryKey: ['hotels', 'all'],
     queryFn: hotelApi.getAllHotels,
   });
 };
@@ -78,6 +78,21 @@ export const useUpdateConfig = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hotelConfig', 'all'] });
       queryClient.invalidateQueries({ queryKey: ['hotelConfig', 'current'] });
+    },
+  });
+};
+
+export const useSetCurrentHotel = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: hotelApi.setCurrentHotel,
+    onSuccess: () => {
+      // Invalidate all hotel-related queries when hotel is switched
+      queryClient.invalidateQueries({ queryKey: ['hotel'] });
+      queryClient.invalidateQueries({ queryKey: ['hotelConfig'] });
+      queryClient.invalidateQueries({ queryKey: ['roomTypes'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
     },
   });
 };

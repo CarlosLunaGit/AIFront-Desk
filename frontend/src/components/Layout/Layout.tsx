@@ -37,7 +37,7 @@ import {
 } from '@mui/icons-material';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useAllHotels, useCurrentHotel, useCurrentConfig } from '../../services/hooks/useHotel';
+import { useAllHotels, useCurrentHotel, useCurrentConfig, useSetCurrentHotel } from '../../services/hooks/useHotel';
 import type { HotelConfiguration } from '../../types/hotel';
 
 // Create a context for the selected hotel configuration
@@ -87,6 +87,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   // Fetch current hotel and configuration with room types
   const { data: currentConfig, isLoading: currentConfigLoading } = useCurrentConfig();
 
+  // Hotel switching mutation
+  const setCurrentHotelMutation = useSetCurrentHotel();
+
   // Debug logging for room types
   React.useEffect(() => {
     if (currentConfig) {
@@ -103,7 +106,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const handleHotelChange = (event: SelectChangeEvent<string>) => {
     const newHotelId = event.target.value;
     setSelectedHotelId(newHotelId);
-    // TODO: Implement hotel switching when needed
+    
+    // Actually switch the hotel using the API
+    console.log('🔄 Switching to hotel:', newHotelId);
+    setCurrentHotelMutation.mutate(newHotelId, {
+      onSuccess: (switchedHotel) => {
+        console.log('✅ Successfully switched to hotel:', switchedHotel.name);
+      },
+      onError: (error) => {
+        console.error('❌ Failed to switch hotel:', error);
+        // Revert the UI selection on error
+        setSelectedHotelId(hotels.find(h => h._id !== newHotelId)?._id || '');
+      }
+    });
   };
 
   const handleLogout = () => {

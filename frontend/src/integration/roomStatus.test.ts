@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll, afterAll, afterEach } from '@jest/glob
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 import { API_BASE_URL } from '../config';
-import type { Room, Guest } from '../types';
+import type { Room } from '../types/room';
+import type { Guest } from '../types/guest';
 import type { RoomStatus } from '../types/room';
 import { recalculateRoomStatus } from '../utils/roomStatus';
 
@@ -15,7 +16,7 @@ function resetState() {
     {
       id: 'guest-1',
       roomId: 'room-1',
-      hotelConfigId: 'mock-hotel-1',
+      hotelId: 'mock-hotel-1',
       status: 'booked',
       keepOpen: true,
       name: 'Test Guest',
@@ -30,7 +31,7 @@ function resetState() {
   roomState = {
     id: 'room-1',
     number: '101',
-    hotelConfigId: 'mock-hotel-1',
+    hotelId: 'mock-hotel-1',
     capacity: 2,
     assignedGuests: guestsState.map(g => g.id),
     status: 'available', // will be recalculated below
@@ -212,7 +213,7 @@ describe('Room Status Integration Tests', () => {
       {
         id: 'guest-1',
         roomId: 'room-1',
-        hotelConfigId: 'mock-hotel-1',
+        hotelId: 'mock-hotel-1',
         status: 'booked',
         keepOpen: true,
         name: 'Test Guest 1',
@@ -226,7 +227,7 @@ describe('Room Status Integration Tests', () => {
       {
         id: 'guest-2',
         roomId: 'room-1',
-        hotelConfigId: 'mock-hotel-1',
+        hotelId: 'mock-hotel-1',
         status: 'checked-in',
         keepOpen: false,
         name: 'Test Guest 2',
@@ -241,7 +242,7 @@ describe('Room Status Integration Tests', () => {
     roomState = {
       id: 'room-1',
       number: '101',
-      hotelConfigId: 'mock-hotel-1',
+      hotelId: 'mock-hotel-1',
       capacity: 2,
       assignedGuests: guestsState.map(g => g.id),
       status: 'partially-occupied',
@@ -287,7 +288,7 @@ describe('Room Status Integration Tests', () => {
       {
         id: 'guest-1',
         roomId: 'room-1',
-        hotelConfigId: 'mock-hotel-1',
+        hotelId: 'mock-hotel-1',
         status: 'booked',
         keepOpen: true,
         name: 'Room 1 Guest',
@@ -301,7 +302,7 @@ describe('Room Status Integration Tests', () => {
       {
         id: 'guest-2',
         roomId: 'room-2',
-        hotelConfigId: 'mock-hotel-1',
+        hotelId: 'mock-hotel-1',
         status: 'booked',
         keepOpen: true,
         name: 'Room 2 Guest',
@@ -317,7 +318,7 @@ describe('Room Status Integration Tests', () => {
     const room1 = {
       id: 'room-1',
       number: '101',
-      hotelConfigId: 'mock-hotel-1',
+      hotelId: 'mock-hotel-1',
       capacity: 1,
       assignedGuests: ['guest-1'],
       status: 'reserved' as RoomStatus,
@@ -331,7 +332,7 @@ describe('Room Status Integration Tests', () => {
     const room2 = {
       id: 'room-2',
       number: '102',
-      hotelConfigId: 'mock-hotel-1',
+      hotelId: 'mock-hotel-1',
       capacity: 1,
       assignedGuests: ['guest-2'],
       status: 'reserved' as RoomStatus,
@@ -366,7 +367,7 @@ describe('Room Status Integration Tests', () => {
       {
         id: 'guest-1',
         roomId: 'room-1',
-        hotelConfigId: 'mock-hotel-1',
+        hotelId: 'mock-hotel-1',
         status: 'booked',
         keepOpen: true,
         name: 'Test Guest 1',
@@ -380,7 +381,7 @@ describe('Room Status Integration Tests', () => {
       {
         id: 'guest-2',
         roomId: 'room-1',
-        hotelConfigId: 'mock-hotel-1',
+        hotelId: 'mock-hotel-1',
         status: 'booked',
         keepOpen: true,
         name: 'Test Guest 2',
@@ -395,7 +396,7 @@ describe('Room Status Integration Tests', () => {
     roomState = {
       id: 'room-1',
       number: '101',
-      hotelConfigId: 'mock-hotel-1',
+      hotelId: 'mock-hotel-1',
       capacity: 2,
       assignedGuests: ['guest-1', 'guest-2'],
       status: 'reserved' as RoomStatus,

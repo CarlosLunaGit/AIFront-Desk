@@ -43,7 +43,7 @@ const GuestManagement: React.FC = () => {
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
 
   // Fetch available rooms for assignment
-  const { data: rooms = [] } = useRooms({ hotelConfigId: (currentConfig as any)?._id });
+  const { data: rooms = [] } = useRooms({ hotelId: (currentConfig as any)?._id });
   // Only rooms that are available or partially-reserved (not occupied/maintenance/cleaning/reserved/checked-in)
   const availableRooms = rooms.filter(
     (room: any) =>

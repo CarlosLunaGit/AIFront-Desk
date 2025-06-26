@@ -7,7 +7,7 @@ export * from './communication';
 export interface Guest {
   id: string;
   roomId: string;
-  hotelConfigId: string;
+  hotelId: string;
   status: GuestStatus;
   keepOpen: boolean;
   name: string;
@@ -22,7 +22,7 @@ export interface Guest {
 export interface Room {
   id: string;
   number: string;
-  hotelConfigId: string;
+  hotelId: string;
   capacity: number;
   assignedGuests: string[];
   status: RoomStatus;

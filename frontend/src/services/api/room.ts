@@ -5,7 +5,7 @@ const ROOMS_ENDPOINT = '/api/rooms';
 const ROOM_ACTIONS_ENDPOINT = '/api/rooms/actions';
 const ROOM_STATS_ENDPOINT = '/api/rooms/stats';
 
-export const getRooms = async (filter?: RoomFilter & { hotelConfigId?: string }) => {
+export const getRooms = async (filter?: RoomFilter & { hotelId?: string }) => {
   const { data } = await api.get<Room[]>(ROOMS_ENDPOINT, { params: filter });
   return data;
 };

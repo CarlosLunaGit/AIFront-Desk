@@ -6,7 +6,7 @@ export type RoomStatus =
   | 'occupied'
   | 'cleaning'
   | 'maintenance';
-export type RoomType = 'standard' | 'deluxe' | 'suite' | 'presidential';
+
 export type RoomFeature = 'wifi' | 'minibar' | 'balcony' | 'ocean-view' | 'jacuzzi' | 'king-bed';
 
 export interface Room {
@@ -18,7 +18,7 @@ export interface Room {
   features: string[];
   capacity: number;
   rate: number;
-  hotelConfigId: string;
+  hotelId: string;
   lastCleaned?: string;
   lastMaintenance?: string;
   assignedGuests: string[];
@@ -40,7 +40,7 @@ export interface RoomAction {
 
 export interface RoomFilter {
   status?: RoomStatus[];
-  type?: RoomType[];
+  typeId?: string[];
   floor?: number[];
   features?: RoomFeature[];
   minCapacity?: number;
@@ -55,7 +55,7 @@ export interface RoomStats {
   maintenance: number;
   cleaning: number;
   reserved: number;
-  byType: Record<RoomType, number>;
+  byType: Record<string, number>;
   byFloor: Record<number, number>;
   occupancyRate: number;
   averageStayDuration: number;
@@ -72,6 +72,6 @@ export interface Guest {
   reservationEnd: string;
   checkIn: string;
   checkOut: string;
-  hotelConfigId: string;
+  hotelId: string;
   keepOpen: boolean;
 } 

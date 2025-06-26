@@ -18,7 +18,7 @@ import {
   CircularProgress,
   ToggleButtonGroup,
   ToggleButton,
-  Tooltip,
+  Tooltip
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -26,6 +26,8 @@ import {
   CheckCircle as CheckInIcon,
   Cancel as CheckOutIcon,
   DeleteForever as DeleteForeverIcon,
+  Visibility as VisibilityIcon,
+  Info as InfoOutlinedIcon
 } from '@mui/icons-material';
 import { useRooms as useRoomsHook } from '../../services/hooks/useRooms';
 import type { Room } from '../../types/room';
@@ -33,8 +35,6 @@ import { HotelConfigContext } from '../Layout/Layout';
 import { useCurrentHotel } from '../../services/hooks/useHotel';
 import { useHotelRoomTypes } from '../../services/hooks/useRoomTypes';
 import { Circle as CircleIcon } from '@mui/icons-material';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { bulkCreateRooms, updateRoomStatus, requestMaintenance, requestCleaning } from '../../services/api/room';
 import { checkInGuest, checkOutGuest, deleteGuest } from '../../services/api/guest';
 import RoomGrid from './RoomGrid';
@@ -67,7 +67,7 @@ const RoomManagement: React.FC = () => {
   const [addRate, setAddRate] = useState<number | ''>('');
   const [addError, setAddError] = useState<string | null>(null);
   const [addLoading, setAddLoading] = useState(false);
-  const { currentConfig, selectedConfigId } = React.useContext(HotelConfigContext);
+  const { currentConfig } = React.useContext(HotelConfigContext);
   
   // Use new backend hooks for real data
   const { data: currentHotel } = useCurrentHotel();
@@ -102,7 +102,7 @@ const RoomManagement: React.FC = () => {
     isLoading: roomsLoading,
     isFetching: roomsFetching,
     refetch: refetchRooms
-  } = useRoomsHook({ hotelConfigId: selectedConfigId });
+  } = useRoomsHook({ hotelId });
   const isLoading = !currentConfig || roomsLoading || roomsFetching;
   const [editRoom, setEditRoom] = useState<Room | null>(null);
   const [viewRoom, setViewRoom] = useState<Room | null>(null);
@@ -111,10 +111,10 @@ const RoomManagement: React.FC = () => {
   const updateRoom = useUpdateRoom();
 
   React.useEffect(() => {
-    if (selectedConfigId && (currentConfig as any)?._id === selectedConfigId) {
+    if (hotelId) {
       refetchRooms();
     }
-  }, [selectedConfigId, (currentConfig as any)?._id, refetchRooms]);
+  }, [hotelId, refetchRooms]);
 
   const filteredRooms = useMemo(() => {
     return rooms.filter(room =>
