@@ -161,12 +161,14 @@ const RoomTypesStep: React.FC<RoomTypesStepProps> = ({ initialData, features, on
                   <ListItemText
                     primary={roomType.name}
                     secondary={
-                      <>
+                      <Box component="div">
                         <Typography component="span" variant="body2" color="text.primary">
                           ${roomType.baseRate}/night • {roomType.defaultCapacity} {roomType.defaultCapacity === 1 ? 'person' : 'persons'}
                         </Typography>
                         <br />
-                        {roomType.description}
+                        <Typography component="span" variant="body2" color="text.secondary">
+                          {roomType.description}
+                        </Typography>
                         <Box sx={{ mt: 1 }}>
                           {roomType.features.map((featureId) => {
                             const feature = features.find((f) => f.name === featureId);
@@ -180,8 +182,11 @@ const RoomTypesStep: React.FC<RoomTypesStepProps> = ({ initialData, features, on
                             ) : null;
                           })}
                         </Box>
-                      </>
+                      </Box>
                     }
+                    secondaryTypographyProps={{
+                      component: 'div'
+                    }}
                   />
                   <ListItemSecondaryAction>
                     <IconButton
@@ -215,8 +220,15 @@ const RoomTypesStep: React.FC<RoomTypesStepProps> = ({ initialData, features, on
         </Grid>
       </Grid>
 
-      <Dialog open={isDialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
+      <Dialog 
+        open={isDialogOpen} 
+        onClose={handleCloseDialog} 
+        maxWidth="sm" 
+        fullWidth
+        aria-labelledby="room-type-dialog-title"
+        aria-describedby="room-type-dialog-description"
+      >
+        <DialogTitle id="room-type-dialog-title">
           {editingIndex !== null ? 'Edit Room Type' : 'Add Room Type'}
         </DialogTitle>
         <DialogContent>

@@ -16,8 +16,30 @@ export const getAllHotels = async (): Promise<Hotel[]> => {
 
 // Legacy configuration endpoints (for now, return mock data)
 export const getCurrentConfig = async (): Promise<HotelConfiguration> => {
-  // Transform Hotel to HotelConfiguration format
+  // Transform Hotel to HotelConfiguration format with related data
   const hotel = await getCurrentHotel();
+  
+  // Fetch room types for this hotel from separate collection (normalized approach)
+  let roomTypes: RoomType[] = [];
+  try {
+    console.log('🔍 Fetching room types for hotel ID:', hotel._id);
+    const roomTypesResponse = await api.get(`${BASE_URL}/${hotel._id}/room-types`);
+    console.log('📋 Raw room types response:', roomTypesResponse.data);
+    roomTypes = roomTypesResponse.data.map((rt: any) => ({
+      id: rt._id,
+      name: rt.name,
+      description: rt.description,
+      defaultCapacity: rt.defaultCapacity,
+      baseRate: rt.baseRate,
+      features: rt.features || [],
+      amenities: rt.amenities || []
+    }));
+    console.log('✅ Transformed room types:', roomTypes);
+  } catch (error) {
+    console.warn('Could not fetch room types for hotel:', hotel._id, error);
+    roomTypes = [];
+  }
+  
   return {
     id: hotel._id,
     name: hotel.name,
@@ -30,13 +52,13 @@ export const getCurrentConfig = async (): Promise<HotelConfiguration> => {
       country: ''
     },
     contactInfo: hotel.contactInfo,
-    features: (hotel as any).features || [], // Hotel now has features array
-    roomTypes: [],
-    floors: [],
-    roomTemplates: [],
+    features: (hotel as any).features || [], // Hotel amenities/features
+    roomTypes, // Fetched from separate room types collection (proper document relationships)
+    floors: (hotel as any).floors || [], // For future use
+    roomTemplates: (hotel as any).roomTemplates || [], // For future use
     settings: {
-      roomNumberingFormat: 'numeric' as const,
-      defaultStatus: 'available' as const,
+      roomNumberingFormat: (hotel as any).settings?.roomNumberingFormat || 'numeric' as const,
+      defaultStatus: (hotel as any).settings?.defaultStatus || 'available' as const,
       currency: hotel.settings.currency,
       timezone: hotel.settings.timezone,
       checkInTime: hotel.settings.checkInTime,
@@ -51,33 +73,56 @@ export const setCurrentConfig = async (configId: string): Promise<HotelConfigura
 };
 
 export const getConfigs = async (): Promise<HotelConfiguration[]> => {
-  // Convert Hotels to HotelConfigurations
+  // Convert Hotels to HotelConfigurations with related data
   const hotels = await getAllHotels();
-  return hotels.map(hotel => ({
-    id: hotel._id,
-    name: hotel.name,
-    description: hotel.description,
-    address: hotel.address || {
-      street: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      country: ''
-    },
-    contactInfo: hotel.contactInfo,
-    features: (hotel as any).features || [], // Hotel now has features array
-    roomTypes: [],
-    floors: [],
-    roomTemplates: [],
-    settings: {
-      roomNumberingFormat: 'numeric' as const,
-      defaultStatus: 'available' as const,
-      currency: hotel.settings.currency,
-      timezone: hotel.settings.timezone,
-      checkInTime: hotel.settings.checkInTime,
-      checkOutTime: hotel.settings.checkOutTime,
+  
+  const configs = await Promise.all(hotels.map(async (hotel) => {
+    // Fetch room types for each hotel from separate collection
+    let roomTypes: RoomType[] = [];
+    try {
+      const roomTypesResponse = await api.get(`${BASE_URL}/${hotel._id}/room-types`);
+      roomTypes = roomTypesResponse.data.map((rt: any) => ({
+        id: rt._id,
+        name: rt.name,
+        description: rt.description,
+        defaultCapacity: rt.defaultCapacity,
+        baseRate: rt.baseRate,
+        features: rt.features || [],
+        amenities: rt.amenities || []
+      }));
+    } catch (error) {
+      console.warn('Could not fetch room types for hotel:', hotel._id, error);
+      roomTypes = [];
     }
+    
+    return {
+      id: hotel._id,
+      name: hotel.name,
+      description: hotel.description,
+      address: hotel.address || {
+        street: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        country: ''
+      },
+      contactInfo: hotel.contactInfo,
+      features: (hotel as any).features || [], // Hotel amenities/features
+      roomTypes, // Fetched from separate room types collection (proper document relationships)
+      floors: (hotel as any).floors || [], // For future use
+      roomTemplates: (hotel as any).roomTemplates || [], // For future use
+      settings: {
+        roomNumberingFormat: (hotel as any).settings?.roomNumberingFormat || 'numeric' as const,
+        defaultStatus: (hotel as any).settings?.defaultStatus || 'available' as const,
+        currency: hotel.settings.currency,
+        timezone: hotel.settings.timezone,
+        checkInTime: hotel.settings.checkInTime,
+        checkOutTime: hotel.settings.checkOutTime,
+      }
+    };
   }));
+  
+  return configs;
 };
 
 export const createConfig = async (config: HotelConfigFormData): Promise<HotelConfiguration> => {
@@ -105,17 +150,39 @@ export const deleteFeature = async (id: string): Promise<void> => {
 };
 
 export const addRoomType = async (roomType: Omit<RoomType, 'id'>): Promise<RoomType> => {
-  const response = await api.post(`${BASE_URL}/room-types`, roomType);
-  return response.data;
+  // Get current hotel to use proper endpoint with hotel ID
+  const hotel = await getCurrentHotel();
+  const response = await api.post(`${BASE_URL}/${hotel._id}/room-types`, roomType);
+  return {
+    id: response.data._id,
+    name: response.data.name,
+    description: response.data.description,
+    defaultCapacity: response.data.defaultCapacity,
+    baseRate: response.data.baseRate,
+    features: response.data.features || [],
+    amenities: response.data.amenities || []
+  };
 };
 
 export const updateRoomType = async (id: string, roomType: Partial<RoomType>): Promise<RoomType> => {
-  const response = await api.patch(`${BASE_URL}/room-types/${id}`, roomType);
-  return response.data;
+  // Get current hotel to use proper endpoint with hotel ID
+  const hotel = await getCurrentHotel();
+  const response = await api.patch(`${BASE_URL}/${hotel._id}/room-types/${id}`, roomType);
+  return {
+    id: response.data._id,
+    name: response.data.name,
+    description: response.data.description,
+    defaultCapacity: response.data.defaultCapacity,
+    baseRate: response.data.baseRate,
+    features: response.data.features || [],
+    amenities: response.data.amenities || []
+  };
 };
 
 export const deleteRoomType = async (id: string): Promise<void> => {
-  await api.delete(`${BASE_URL}/room-types/${id}`);
+  // Get current hotel to use proper endpoint with hotel ID
+  const hotel = await getCurrentHotel();
+  await api.delete(`${BASE_URL}/${hotel._id}/room-types/${id}`);
 };
 
 export const addFloor = async (floor: Omit<Floor, 'id'>): Promise<Floor> => {

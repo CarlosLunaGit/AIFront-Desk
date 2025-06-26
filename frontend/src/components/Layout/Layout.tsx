@@ -37,7 +37,7 @@ import {
 } from '@mui/icons-material';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useAllHotels, useCurrentHotel } from '../../services/hooks/useHotel';
+import { useAllHotels, useCurrentHotel, useCurrentConfig } from '../../services/hooks/useHotel';
 import type { HotelConfiguration } from '../../types/hotel';
 
 // Create a context for the selected hotel configuration
@@ -84,35 +84,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   // Fetch all hotels
   const { data: hotels = [], isLoading: hotelsLoading } = useAllHotels();
 
-  // Fetch current hotel
-  const { data: currentHotel, isLoading: currentHotelLoading } = useCurrentHotel();
+  // Fetch current hotel and configuration with room types
+  const { data: currentConfig, isLoading: currentConfigLoading } = useCurrentConfig();
 
-  // Transform Hotel to HotelConfiguration format for the context
-  const currentConfig: HotelConfiguration | undefined = currentHotel ? {
-    id: currentHotel._id,
-    name: currentHotel.name,
-    description: currentHotel.description,
-    address: currentHotel.address || {
-      street: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      country: ''
-    },
-    contactInfo: currentHotel.contactInfo,
-    features: (currentHotel as any).features || [], // Hotel now has features array
-    roomTypes: [],
-    floors: [],
-    roomTemplates: [],
-    settings: {
-      roomNumberingFormat: 'numeric' as const,
-      defaultStatus: 'available' as const,
-      currency: currentHotel.settings.currency,
-      timezone: currentHotel.settings.timezone,
-      checkInTime: currentHotel.settings.checkInTime,
-      checkOutTime: currentHotel.settings.checkOutTime,
+  // Debug logging for room types
+  React.useEffect(() => {
+    if (currentConfig) {
+      console.log('🏨 Layout: Current config loaded:', currentConfig);
+      console.log('🏠 Layout: Room types count:', currentConfig.roomTypes?.length || 0);
+      console.log('📋 Layout: Room types:', currentConfig.roomTypes);
     }
-  } : undefined;
+  }, [currentConfig]);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -206,7 +188,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
               Hotel AI
             </Typography>
-            {!hotelsLoading && !currentHotelLoading && hotels && hotels.length > 0 && (
+            {!hotelsLoading && !currentConfigLoading && hotels && hotels.length > 0 && (
               <FormControl sx={{ minWidth: 200, ml: 2 }}>
                 <InputLabel>Hotel</InputLabel>
                 <Select<string>

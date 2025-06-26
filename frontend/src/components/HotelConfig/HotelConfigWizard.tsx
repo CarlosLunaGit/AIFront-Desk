@@ -97,6 +97,12 @@ const HotelConfigWizard: React.FC = () => {
         };
       }
 
+      console.log('Initializing form data from current config:', currentConfig);
+      console.log('Current config room types:', (currentConfig as any).roomTypes);
+      console.log('Room types array length:', (currentConfig as any).roomTypes?.length);
+      console.log('Current config floors:', (currentConfig as any).floors);
+      console.log('Floors array length:', (currentConfig as any).floors?.length);
+      
       setFormData({
         name: currentConfig.name,
         description: currentConfig.description,
@@ -165,7 +171,7 @@ const HotelConfigWizard: React.FC = () => {
   });
 
   const updateConfigMutation = useMutation({
-    mutationFn: (data: HotelConfigFormData) => updateConfig((currentConfig as any)?._id || '', data),
+    mutationFn: (data: HotelConfigFormData) => updateConfig(currentConfig?.id || '', data),
     onSuccess: () => {
       navigate('/dashboard');
     },
@@ -216,6 +222,20 @@ const HotelConfigWizard: React.FC = () => {
   const handleStepComplete = useCallback((stepData: Partial<HotelConfigFormData>) => {
     setFormData((prev) => ({ ...prev, ...stepData }));
   }, []);
+
+  // NEW: Handle clicking on stepper steps for direct navigation
+  const handleStepClick = useCallback((stepIndex: number) => {
+    // Allow navigation to:
+    // 1. Completed steps (have valid data)
+    // 2. The first step (always accessible)
+    // 3. Any step that comes before or is the current active step (previously visited)
+    const isCompleted = validateStep(stepIndex);
+    const isAccessible = isCompleted || stepIndex === 0 || stepIndex <= activeStep;
+    
+    if (isAccessible) {
+      setActiveStep(stepIndex);
+    }
+  }, [validateStep, activeStep]);
 
   const handleExit = useCallback(() => {
     setShowExitDialog(true);
@@ -338,12 +358,54 @@ const HotelConfigWizard: React.FC = () => {
         )}
 
         <Stepper activeStep={activeStep} sx={{ my: 4 }}>
-          {steps.map((label, index) => (
-            <Step key={label} completed={validateStep(index)}>
-              <StepLabel>{label}</StepLabel>
-            </Step>
-          ))}
+          {steps.map((label, index) => {
+            const isCompleted = validateStep(index);
+            const isAccessible = isCompleted || index === 0 || index <= activeStep;
+            
+            return (
+              <Step key={label} completed={isCompleted}>
+                <StepLabel 
+                  onClick={() => handleStepClick(index)}
+                  sx={{
+                    cursor: isAccessible ? 'pointer' : 'default',
+                    '&:hover': isAccessible ? {
+                      '& .MuiStepLabel-label': {
+                        color: 'primary.main',
+                      }
+                    } : {},
+                    '& .MuiStepLabel-label': {
+                      fontSize: '0.875rem',
+                      transition: 'color 0.2s ease-in-out',
+                      color: isAccessible ? 'inherit' : 'text.disabled',
+                    },
+                    '& .MuiStepIcon-root': {
+                      cursor: isAccessible ? 'pointer' : 'default',
+                      transition: 'transform 0.2s ease-in-out',
+                      '&:hover': isAccessible ? {
+                        transform: 'scale(1.1)',
+                      } : {},
+                    }
+                  }}
+                >
+                  {label}
+                </StepLabel>
+              </Step>
+            );
+          })}
         </Stepper>
+
+        <Typography 
+          variant="caption" 
+          color="text.secondary" 
+          sx={{ 
+            display: 'block', 
+            textAlign: 'center', 
+            mb: 2,
+            fontStyle: 'italic'
+          }}
+        >
+          💡 Tip: Click on any accessible step to navigate directly (completed steps in blue or previously visited steps)
+        </Typography>
 
         {(createConfigMutation.isError || updateConfigMutation.isError) && (
           <Alert severity="error" sx={{ mb: 2 }}>
