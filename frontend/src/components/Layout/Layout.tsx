@@ -19,6 +19,7 @@ import {
   Select,
   MenuItem,
   SelectChangeEvent,
+  CircularProgress,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -211,6 +212,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   onChange={handleHotelChange}
                   label="Hotel"
                   size="small"
+                  disabled={setCurrentHotelMutation.isPending}
+                  endAdornment={
+                    setCurrentHotelMutation.isPending && (
+                      <Box sx={{ mr: 2 }}>
+                        <CircularProgress size={16} />
+                      </Box>
+                    )
+                  }
                 >
                   {hotels?.map((hotel: any) => (
                     <MenuItem key={hotel._id} value={hotel._id}>
@@ -219,6 +228,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   ))}
                 </Select>
               </FormControl>
+            )}
+            {(hotelsLoading || currentConfigLoading) && (
+              <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
+                <CircularProgress size={20} sx={{ mr: 1 }} />
+                <Typography variant="body2">Loading hotels...</Typography>
+              </Box>
             )}
             {user && (
               <Tooltip title={user.email}>

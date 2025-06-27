@@ -29,7 +29,12 @@ import { useRooms } from '../services/hooks/useRooms';
 
 const GuestManagement: React.FC = () => {
   const { currentConfig } = useContext(HotelConfigContext);
-  const { data: guests, isLoading, error } = useGuests();
+  const hotelId = (currentConfig as any)?.id || (currentConfig as any)?._id;
+  
+  console.log('🔍 GuestManagement: currentConfig:', currentConfig);
+  console.log('🔍 GuestManagement: extracted hotelId:', hotelId);
+  
+  const { data: guests, isLoading, error, isFetching } = useGuests(hotelId);
 
   // Modal state for viewing guest details
   const [viewGuest, setViewGuest] = useState<any | null>(null);
@@ -43,7 +48,7 @@ const GuestManagement: React.FC = () => {
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
 
   // Fetch available rooms for assignment
-  const { data: rooms = [] } = useRooms({ hotelId: (currentConfig as any)?._id });
+  const { data: rooms = [] } = useRooms({ hotelId: hotelId });
   // Only rooms that are available or partially-reserved (not occupied/maintenance/cleaning/reserved/checked-in)
   const availableRooms = rooms.filter(
     (room: any) =>
@@ -60,20 +65,27 @@ const GuestManagement: React.FC = () => {
       )
     : [];
 
-  const selectedGuest = filteredGuests.find((g: any) => g.id === selectedGuestId) || null;
+  const selectedGuest = filteredGuests.find((g: any) => g._id === selectedGuestId) || null;
 
-  const { mutate: addGuest } = useCreateGuest();
-  const { mutate: updateGuestMutation } = useUpdateGuest();
-  const { mutate: removeGuest } = useDeleteGuest();
-  const { mutate: checkInGuestMutation } = useCheckInGuest();
-  const { mutate: checkOutGuestMutation } = useCheckOutGuest();
-  const { mutate: toggleKeepOpenMutation } = useToggleKeepOpen();
+  // Pass hotelId to all mutation hooks for proper cache invalidation
+  const { mutate: addGuest, isPending: isAddingGuest } = useCreateGuest(hotelId);
+  const { mutate: updateGuestMutation, isPending: isUpdatingGuest } = useUpdateGuest(hotelId);
+  const { mutate: removeGuest, isPending: isDeletingGuest } = useDeleteGuest(hotelId);
+  const { mutate: checkInGuestMutation, isPending: isCheckingIn } = useCheckInGuest(hotelId);
+  const { mutate: checkOutGuestMutation, isPending: isCheckingOut } = useCheckOutGuest(hotelId);
+  const { mutate: toggleKeepOpenMutation, isPending: isTogglingKeepOpen } = useToggleKeepOpen(hotelId);
+
+  // Reset selected guest when hotel changes or guests data changes
+  React.useEffect(() => {
+    setSelectedGuestId(null);
+    setSearch('');
+  }, [hotelId]);
 
   // Handler for edit (now actually saves to backend)
   const handleEditSave = async () => {
     if (!editGuest) return;
     try {
-      updateGuestMutation({ id: editGuest.id, ...editGuest });
+      updateGuestMutation({ id: editGuest._id, ...editGuest });
       setEditGuest(null);
     } catch (err) {
       alert('Failed to save guest');
@@ -84,7 +96,7 @@ const GuestManagement: React.FC = () => {
   const handleDelete = async () => {
     if (!deleteGuest) return;
     try {
-      removeGuest(deleteGuest.id);
+      removeGuest(deleteGuest._id);
       setDeleteGuest(null);
     } catch (err) {
       alert('Failed to delete guest');
@@ -103,6 +115,7 @@ const GuestManagement: React.FC = () => {
         checkIn: '',
         checkOut: '',
         keepOpen: newGuest.keepOpen,
+        hotelId: hotelId, // Add hotelId for Hotel entity approach
       });
       setAddGuestOpen(false);
       setNewGuest({ name: '', email: '', phone: '', status: 'booked', roomId: '', reservationStart: '', reservationEnd: '', keepOpen: false });
@@ -114,7 +127,7 @@ const GuestManagement: React.FC = () => {
   // Handler for check-in action
   const handleCheckIn = async (guest: any) => {
     try {
-      checkInGuestMutation(guest.id);
+      checkInGuestMutation(guest._id);
     } catch (err) {
       alert('Failed to check in guest');
     }
@@ -123,7 +136,7 @@ const GuestManagement: React.FC = () => {
   // Handler for check-out action
   const handleCheckout = async (guest: any) => {
     try {
-      checkOutGuestMutation(guest.id);
+      checkOutGuestMutation(guest._id);
     } catch (err) {
       alert('Failed to check out guest');
     }
@@ -132,7 +145,7 @@ const GuestManagement: React.FC = () => {
   // Handler for toggle keepOpen
   const handleToggleKeepOpen = async (guest: any) => {
     try {
-      toggleKeepOpenMutation({ id: guest.id, keepOpen: !guest.keepOpen });
+      toggleKeepOpenMutation({ id: guest._id, keepOpen: !guest.keepOpen });
     } catch (err) {
       alert('Failed to update keepOpen');
     }
@@ -142,6 +155,23 @@ const GuestManagement: React.FC = () => {
     if (!val || val === '—') return '—';
     const d = new Date(val);
     return isNaN(d.getTime()) ? '—' : d.toLocaleString();
+  }
+
+  // Show loading state when no hotel is selected
+  if (!hotelId) {
+    return (
+      <Box p={3}>
+        <Paper sx={{ p: 3, textAlign: 'center' }}>
+          <CircularProgress />
+          <Typography variant="h6" sx={{ mt: 2 }}>
+            Loading hotel configuration...
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Please wait while we load your hotel data.
+          </Typography>
+        </Paper>
+      </Box>
+    );
   }
 
   return (
@@ -165,111 +195,172 @@ const GuestManagement: React.FC = () => {
             value={search}
             onChange={e => setSearch(e.target.value)}
             sx={{ width: 300 }}
+            disabled={isLoading || isFetching}
           />
           <Button
             variant="contained"
-            startIcon={<AddIcon />}
+            startIcon={isAddingGuest ? <CircularProgress size={16} /> : <AddIcon />}
             onClick={() => setAddGuestOpen(true)}
             sx={{ ml: 2 }}
+            disabled={isAddingGuest || isLoading}
           >
-            Add Guest
+            {isAddingGuest ? 'Adding...' : 'Add Guest'}
           </Button>
         </Box>
       </Paper>
+      
+      {/* Action Buttons with Loading States */}
       <Box display="flex" gap={2} mb={2}>
         <Button
           variant="contained"
           color="error"
-          disabled={!selectedGuest}
+          disabled={!selectedGuest || isDeletingGuest}
           onClick={() => selectedGuest && setDeleteGuest(selectedGuest)}
+          startIcon={isDeletingGuest ? <CircularProgress size={16} /> : undefined}
         >
-          Delete
+          {isDeletingGuest ? 'Deleting...' : 'Delete'}
         </Button>
         <Button
           variant="outlined"
-          disabled={!selectedGuest}
+          disabled={!selectedGuest || isUpdatingGuest}
           onClick={() => selectedGuest && setEditGuest(selectedGuest)}
+          startIcon={isUpdatingGuest ? <CircularProgress size={16} /> : undefined}
         >
-          Edit
+          {isUpdatingGuest ? 'Updating...' : 'Edit'}
         </Button>
         <Button
           variant="outlined"
-          disabled={!selectedGuest || selectedGuest.status === 'checked-in'}
+          disabled={!selectedGuest || selectedGuest.status === 'checked-in' || isCheckingIn}
           onClick={() => selectedGuest && handleCheckIn(selectedGuest)}
+          startIcon={isCheckingIn ? <CircularProgress size={16} /> : undefined}
         >
-          Check In
+          {isCheckingIn ? 'Checking In...' : 'Check In'}
         </Button>
         <Button
           variant="outlined"
-          disabled={!selectedGuest || selectedGuest.status !== 'checked-in'}
+          disabled={!selectedGuest || selectedGuest.status !== 'checked-in' || isCheckingOut}
           onClick={() => selectedGuest && handleCheckout(selectedGuest)}
+          startIcon={isCheckingOut ? <CircularProgress size={16} /> : undefined}
         >
-          Check Out
+          {isCheckingOut ? 'Checking Out...' : 'Check Out'}
         </Button>
         <Button
           variant="outlined"
-          disabled={!selectedGuest}
+          disabled={!selectedGuest || isTogglingKeepOpen}
           onClick={() => selectedGuest && handleToggleKeepOpen(selectedGuest)}
+          startIcon={isTogglingKeepOpen ? <CircularProgress size={16} /> : undefined}
         >
-          {selectedGuest?.keepOpen ? 'Close' : 'Keep Open'}
+          {isTogglingKeepOpen ? 'Updating...' : (selectedGuest?.keepOpen ? 'Close' : 'Keep Open')}
         </Button>
       </Box>
+      
       <Paper>
         {isLoading ? (
           <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
-            <CircularProgress />
+            <Box textAlign="center">
+              <CircularProgress />
+              <Typography variant="h6" sx={{ mt: 2 }}>
+                Loading guests...
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Please wait while we fetch guest data for {currentConfig?.name}
+              </Typography>
+            </Box>
           </Box>
         ) : error ? (
           <Alert severity="error">{(error as Error).message}</Alert>
         ) : (
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Email</TableCell>
-                  <TableCell>Phone</TableCell>
-                  <TableCell>
-                    Status
-                    <span title="Partially Occupied: Some guests have checked in, others are still booked." style={{ cursor: 'help', marginLeft: 4 }}>🛈</span>
-                  </TableCell>
-                  <TableCell>Room</TableCell>
-                  <TableCell>
-                    Room Open State
-                    <span title="Shows if the room is open to more guests (all assigned guests have keepOpen true) or closed (at least one assigned guest has keepOpen false)." style={{ cursor: 'help', marginLeft: 4 }}>🛈</span>
-                  </TableCell>
-                  <TableCell>Guest keepOpen (debug)</TableCell>
-                  <TableCell>Reservation Start</TableCell>
-                  <TableCell>Reservation End</TableCell>
-                  <TableCell>Check-in</TableCell>
-                  <TableCell>Check-out</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredGuests.map((guest: any) => (
-                  <TableRow
-                    key={guest.id}
-                    hover
-                    selected={selectedGuestId === guest.id}
-                    onClick={() => setSelectedGuestId(guest.id)}
-                    sx={{ cursor: 'pointer', backgroundColor: selectedGuestId === guest.id ? 'rgba(25, 118, 210, 0.08)' : undefined }}
-                  >
-                    <TableCell>{guest.name}</TableCell>
-                    <TableCell>{guest.email}</TableCell>
-                    <TableCell>{guest.phone}</TableCell>
-                    <TableCell>{guest.status}</TableCell>
-                    <TableCell>{guest.roomId}</TableCell>
-                    <TableCell>{guest.keepOpen ? 'Open to more guests' : 'Closed room'}</TableCell>
-                    <TableCell>{guest.keepOpen ? 'true' : 'false'}</TableCell>
-                    <TableCell>{renderDateField(guest.reservationStart)}</TableCell>
-                    <TableCell>{renderDateField(guest.reservationEnd)}</TableCell>
-                    <TableCell>{renderDateField(guest.checkIn)}</TableCell>
-                    <TableCell>{renderDateField(guest.checkOut)}</TableCell>
+          <>
+            {/* Show loading overlay when fetching (e.g., during hotel switch) */}
+            {isFetching && !isLoading && (
+              <Box 
+                sx={{ 
+                  position: 'relative',
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                    zIndex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }
+                }}
+              >
+                <Box 
+                  sx={{ 
+                    position: 'absolute', 
+                    top: '50%', 
+                    left: '50%', 
+                    transform: 'translate(-50%, -50%)', 
+                    zIndex: 2,
+                    textAlign: 'center'
+                  }}
+                >
+                  <CircularProgress size={24} />
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    Updating data...
+                  </Typography>
+                </Box>
+              </Box>
+            )}
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Email</TableCell>
+                    <TableCell>Phone</TableCell>
+                    <TableCell>
+                      Status
+                      <span title="Partially Occupied: Some guests have checked in, others are still booked." style={{ cursor: 'help', marginLeft: 4 }}>🛈</span>
+                    </TableCell>
+                    <TableCell>Room</TableCell>
+                    <TableCell>
+                      Room Open State
+                      <span title="Shows if the room is open to more guests (all assigned guests have keepOpen true) or closed (at least one assigned guest has keepOpen false)." style={{ cursor: 'help', marginLeft: 4 }}>🛈</span>
+                    </TableCell>
+                    <TableCell>Guest keepOpen (debug)</TableCell>
+                    <TableCell>Reservation Start</TableCell>
+                    <TableCell>Reservation End</TableCell>
+                    <TableCell>Check-in</TableCell>
+                    <TableCell>Check-out</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {filteredGuests.map((guest: any) => (
+                    <TableRow
+                      key={guest._id}
+                      hover
+                      selected={selectedGuestId === guest._id}
+                      onClick={() => setSelectedGuestId(guest._id)}
+                      sx={{ 
+                        cursor: 'pointer', 
+                        backgroundColor: selectedGuestId === guest._id ? 'rgba(25, 118, 210, 0.08)' : undefined,
+                        opacity: isFetching ? 0.6 : 1 // Show visual feedback during data updates
+                      }}
+                    >
+                      <TableCell>{guest.name}</TableCell>
+                      <TableCell>{guest.email}</TableCell>
+                      <TableCell>{guest.phone}</TableCell>
+                      <TableCell>{guest.status}</TableCell>
+                      <TableCell>{guest.roomId}</TableCell>
+                      <TableCell>{guest.keepOpen ? 'Open to more guests' : 'Closed room'}</TableCell>
+                      <TableCell>{guest.keepOpen ? 'true' : 'false'}</TableCell>
+                      <TableCell>{renderDateField(guest.reservationStart)}</TableCell>
+                      <TableCell>{renderDateField(guest.reservationEnd)}</TableCell>
+                      <TableCell>{renderDateField(guest.checkIn)}</TableCell>
+                      <TableCell>{renderDateField(guest.checkOut)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </>
         )}
       </Paper>
       {/* Guest Details Modal */}

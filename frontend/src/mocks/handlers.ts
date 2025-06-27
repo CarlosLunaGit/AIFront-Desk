@@ -2095,6 +2095,101 @@ export const handlers: HttpHandler[] = [
     return new HttpResponse(null, { status: 204 });
   }),
 
+  // NEW: Unified guest endpoints for Hotel entity approach (replacement for /api/hotel/guests)
+  http.get('/api/guests', ({ request }) => {
+    const url = new URL(request.url);
+    const hotelId = url.searchParams.get('hotelId');
+    
+    console.log('🔍 GET /api/guests called with hotelId:', hotelId);
+    console.log('📊 Total mockGuests:', mockGuests.length);
+    
+    if (hotelId) {
+      // Filter by hotelId if provided
+      const filteredGuests = mockGuests.filter(g => g.hotelId === hotelId);
+      console.log('✅ Filtered guests for hotelId', hotelId + ':', filteredGuests.length, 'guests');
+      console.log('👥 Guest IDs:', filteredGuests.map(g => g._id));
+      return HttpResponse.json(filteredGuests);
+    } else {
+      // Return guests for current config if no hotelId specified - map config ID to actual hotel ID
+      const currentHotelId = currentConfigId === 'mock-hotel-1' ? '65b000000000000000000001' : '65b000000000000000000002';
+      const filteredGuests = mockGuests.filter(g => g.hotelId === currentHotelId);
+      console.log('🏨 No hotelId provided, using currentConfigId:', currentConfigId, '-> hotelId:', currentHotelId);
+      console.log('✅ Filtered guests for current hotel:', filteredGuests.length, 'guests');
+      console.log('👥 Guest IDs:', filteredGuests.map(g => g._id));
+      return HttpResponse.json(filteredGuests);
+    }
+  }),
+
+  http.get('/api/guests/:id', ({ params }) => {
+    const guest = mockGuests.find(g => g._id === params.id);
+    if (!guest) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    return HttpResponse.json(guest);
+  }),
+
+  http.post('/api/guests', async ({ request }) => {
+    const guestData = await request.json() as any;
+    
+    // Fix: Map config ID to actual hotel ID if no hotelId provided
+    let hotelId = guestData.hotelId;
+    if (!hotelId) {
+      hotelId = currentConfigId === 'mock-hotel-1' ? '65b000000000000000000001' : '65b000000000000000000002';
+    }
+    
+    const newGuest = {
+      _id: `guest-${Date.now()}`,
+      ...guestData,
+      hotelId: hotelId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockGuests.push(newGuest);
+    
+    console.log('➕ Created new guest:', newGuest._id, 'for hotelId:', hotelId);
+    
+    // Update room status based on new guest assignment
+    const room = mockRooms.find(r => r.id === newGuest.roomId && r.hotelId === newGuest.hotelId);
+    if (room) {
+      recalculateRoomStatus(room, 'system', 'Triggered by guest assignment');
+    }
+    
+    return HttpResponse.json(newGuest);
+  }),
+
+  http.patch('/api/guests/:id', async ({ params, request }) => {
+    const updates = await request.json() as any;
+    const guest = mockGuests.find(g => g._id === params.id);
+    if (!guest) {
+      return new HttpResponse(null, { status: 404 });
+    }
+
+    Object.assign(guest, updates, { updatedAt: new Date().toISOString() });
+    
+    // Update room status based on guest status change
+    const room = mockRooms.find(r => r.id === guest.roomId && r.hotelId === guest.hotelId);
+    if (room) {
+      recalculateRoomStatus(room, 'system', 'Triggered by guest status change');
+    }
+    
+    return HttpResponse.json(guest);
+  }),
+
+  http.delete('/api/guests/:id', ({ params }) => {
+    const idx = mockGuests.findIndex(g => g._id === params.id);
+    if (idx === -1) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    
+    // Remove guest from rooms before deleting
+    mockRooms.forEach(r => {
+      r.assignedGuests = r.assignedGuests.filter((gid: string) => gid !== params.id);
+    });
+    
+    mockGuests.splice(idx, 1);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   http.patch('/api/rooms/:id/maintenance', ({ params }) => {
     const room = mockRooms.find(r => r.id === params.id);
     if (!room) return new HttpResponse(null, { status: 404 });
@@ -2351,20 +2446,28 @@ export const handlers: HttpHandler[] = [
   http.post('/api/hotel/set-current', async ({ request }) => {
     const { hotelId } = await request.json() as { hotelId: string };
     
+    console.log('🔄 SET CURRENT HOTEL called with hotelId:', hotelId);
+    console.log('📍 Previous currentConfigId:', currentConfigId);
+    
     // Find the hotel
     const hotel = mockHotels.find(h => h._id === hotelId);
     if (!hotel) {
+      console.error('❌ Hotel not found for ID:', hotelId);
       return new HttpResponse(null, { status: 404 });
     }
     
     // Update the global currentConfigId based on hotel selection
+    const previousConfigId = currentConfigId;
     if (hotelId === '65b000000000000000000001') {
       currentConfigId = 'mock-hotel-1';
     } else if (hotelId === '65b000000000000000000002') {
       currentConfigId = 'mock-hotel-2';
     }
     
-    console.log('🔄 Hotel switched to:', hotel.name, 'Config ID:', currentConfigId);
+    console.log('✅ Hotel switched from', previousConfigId, 'to', currentConfigId);
+    console.log('🏨 New hotel:', hotel.name, 'ID:', hotelId);
+    console.log('📊 Guest count for new hotel:', mockGuests.filter(g => g.hotelId === hotelId).length);
+    
     return HttpResponse.json(hotel);
   }),
 

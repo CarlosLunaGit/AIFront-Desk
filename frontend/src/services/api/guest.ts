@@ -1,7 +1,8 @@
 import { api } from '../axios';
 
-export const getGuests = async () => {
-  const { data } = await api.get('/api/guests');
+export const getGuests = async (hotelId?: string) => {
+  const url = hotelId ? `/api/guests?hotelId=${hotelId}` : '/api/guests';
+  const { data } = await api.get(url);
   return data;
 };
 

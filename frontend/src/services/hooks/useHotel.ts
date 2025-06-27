@@ -93,6 +93,10 @@ export const useSetCurrentHotel = () => {
       queryClient.invalidateQueries({ queryKey: ['roomTypes'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      // CRITICAL: Invalidate all guest queries since guests are hotel-specific
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      // Also invalidate any room-related data that depends on guest assignments
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
     },
   });
 };
