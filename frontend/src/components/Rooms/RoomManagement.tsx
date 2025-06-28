@@ -321,6 +321,10 @@ const RoomManagement: React.FC = () => {
         return 'orange';
       case 'partially-reserved':
         return '#BDBDBD';
+      case 'deoccupied':
+        return '#FF9800'; // Orange for needs attention
+      case 'partially-deoccupied':
+        return '#FF6F00'; // Darker orange for mixed checkout
       default:
         return 'grey.400';
     }
@@ -342,6 +346,10 @@ const RoomManagement: React.FC = () => {
         return 'PO';
       case 'partially-reserved':
         return 'PR';
+      case 'deoccupied':
+        return 'D';
+      case 'partially-deoccupied':
+        return 'PD';
       default:
         return '?';
     }
@@ -355,6 +363,8 @@ const RoomManagement: React.FC = () => {
       'Partially Occupied': 'partially-occupied',
       'Partially Reserved': 'partially-reserved',
       'Reserved': 'reserved',
+      'Deoccupied': 'deoccupied',
+      'Partially Deoccupied': 'partially-deoccupied',
       'Maintenance': 'maintenance',
       'Cleaning': 'cleaning',
     };
@@ -426,9 +436,13 @@ const RoomManagement: React.FC = () => {
                   <MenuItem value="">All</MenuItem>
                   <MenuItem value="available">Available</MenuItem>
                   <MenuItem value="occupied">Occupied</MenuItem>
+                  <MenuItem value="partially-occupied">Partially Occupied</MenuItem>
+                  <MenuItem value="partially-reserved">Partially Reserved</MenuItem>
+                  <MenuItem value="reserved">Reserved</MenuItem>
+                  <MenuItem value="deoccupied">Deoccupied</MenuItem>
+                  <MenuItem value="partially-deoccupied">Partially Deoccupied</MenuItem>
                   <MenuItem value="maintenance">Maintenance</MenuItem>
                   <MenuItem value="cleaning">Cleaning</MenuItem>
-                  <MenuItem value="reserved">Reserved</MenuItem>
                 </Select>
               </FormControl>
               <FormControl size="small" sx={{ minWidth: 120 }}>
@@ -461,6 +475,8 @@ const RoomManagement: React.FC = () => {
                 { label: 'Partially Occupied', color: 'orange', description: 'Some guests have checked in, others are still booked.' },
                 { label: 'Partially Reserved', color: '#BDBDBD', description: 'Room has some guests booked' },
                 { label: 'Reserved', color: '#616161', description: 'Room is fully booked' },
+                { label: 'Deoccupied', color: '#FF9800', description: 'All guests checked out, needs cleaning' },
+                { label: 'Partially Deoccupied', color: '#FF6F00', description: 'Some guests checked out, others remain' },
                 { label: 'Maintenance', color: '#FFD600', description: 'Room is under maintenance' },
                 { label: 'Cleaning', color: 'info.main', description: 'Room is being cleaned' },
               ].map(({ label, color, description }) => (
@@ -499,6 +515,8 @@ const RoomManagement: React.FC = () => {
                 { label: 'Partially Occupied', color: 'orange', description: 'Some guests have checked in, others are still booked.' },
                 { label: 'Partially Reserved', color: '#BDBDBD', description: 'Room has some guests booked' },
                 { label: 'Reserved', color: '#616161', description: 'Room is fully booked' },
+                { label: 'Deoccupied', color: '#FF9800', description: 'All guests checked out, needs cleaning' },
+                { label: 'Partially Deoccupied', color: '#FF6F00', description: 'Some guests checked out, others remain' },
                 { label: 'Maintenance', color: '#FFD600', description: 'Room is under maintenance' },
                 { label: 'Cleaning', color: 'info.main', description: 'Room is being cleaned' },
               ].map(({ label, color, description }) => (

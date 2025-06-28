@@ -90,6 +90,10 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
         return 'orange';
       case 'partially-reserved':
         return '#BDBDBD';
+      case 'deoccupied':
+        return '#FF9800'; // Orange for needs attention
+      case 'partially-deoccupied':
+        return '#FF6F00'; // Darker orange for mixed checkout
       default:
         return 'grey.400';
     }
@@ -111,6 +115,10 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
         return 'PO';
       case 'partially-reserved':
         return 'PR';
+      case 'deoccupied':
+        return 'D';
+      case 'partially-deoccupied':
+        return 'PD';
       default:
         return '?';
     }

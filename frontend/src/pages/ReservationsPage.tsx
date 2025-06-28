@@ -1,12 +1,10 @@
-import React, { useState, useContext } from 'react';
-import { Box, Typography, Paper, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, MenuItem, CircularProgress, Collapse } from '@mui/material';
+import React, { useState } from 'react';
+import { Box, Typography, Paper, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, MenuItem, CircularProgress, Collapse, Tabs, Tab, Chip } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { Dayjs } from 'dayjs';
-import { useQueryClient } from '@tanstack/react-query';
 import Autocomplete from '@mui/material/Autocomplete';
-import { HotelConfigContext } from '../components/Layout/Layout';
 import SearchIcon from '@mui/icons-material/Search';
 import { useSnackbar } from 'notistack';
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog';
@@ -14,49 +12,82 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import Tooltip from '@mui/material/Tooltip';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import { useReservations, useCreateReservation, useUpdateReservation } from '../services/hooks/useReservations';
+import { useReservations, useCreateReservation, useUpdateReservation, useDeleteReservation } from '../services/hooks/useReservations';
 import { useGuests } from '../services/hooks/useGuests';
 import { useRooms } from '../services/hooks/useRooms';
+import { useCurrentHotel } from '../services/hooks/useHotel';
+import { determineReservationStatus, getReservationStatusDisplay } from '../utils/reservationUtils';
 
 const ReservationsPage: React.FC = () => {
-  const queryClient = useQueryClient();
-  const { selectedConfigId, currentConfig } = useContext(HotelConfigContext);
   const { enqueueSnackbar } = useSnackbar();
+  
+  // Use the new hotel entities instead of hotel configuration
+  const { data: currentHotel, isLoading: hotelLoading } = useCurrentHotel();
+  const hotelId = currentHotel?._id;
+  
   // Fetch reservations
   const { data: reservations = [], isLoading: loadingReservations } = useReservations();
-  // Fetch guests
-  const { data: guests = [], isLoading: loadingGuests } = useGuests();
-  // Fetch rooms
+  // Fetch guests for the current hotel
+  const { data: guests = [], isLoading: loadingGuests } = useGuests(hotelId);
+  // Fetch rooms for the current hotel  
   const { data: rooms = [], isLoading: loadingRooms } = useRooms();
 
-  // Only show reservations for rooms in the current hotel config, using room ID
-  const roomIdsForConfig = rooms.filter((r: any) => r.hotelConfigId === selectedConfigId).map((r: any) => r.id);
+  // Only show reservations for rooms in the current hotel
+  const roomIdsForHotel = rooms.filter((r: any) => r.hotelId === hotelId).map((r: any) => r.id);
   const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('dates');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [expandedRows, setExpandedRows] = useState<{ [id: string]: boolean }>({});
+  const [activeTab, setActiveTab] = useState(0); // 0 = Active, 1 = Inactive
 
-  const filteredReservations = reservations
-    .filter((res: any) => roomIdsForConfig.includes(res.rooms))
-    .filter((res: any) => {
-      if (!search) return true;
-      return (
-        res.id.toLowerCase().includes(search.toLowerCase()) ||
-        (res.guestIds && res.guestIds.some((gid: string) => {
-          const g = guests.find((gg: any) => gg.id === gid);
-          return g && g.name.toLowerCase().includes(search.toLowerCase());
-        })) ||
-        res.rooms.toLowerCase().includes(search.toLowerCase())
-      );
-    });
+  // Filter reservations by hotel and categorize by active/inactive status
+  const hotelReservations = reservations.filter((res: any) => roomIdsForHotel.includes(res.rooms));
+  
+  const categorizedReservations = hotelReservations.map((res: any) => {
+    const room = rooms.find((r: any) => r.id === res.rooms);
+    const resGuests = guests.filter((g: any) => res.guestIds?.includes(g._id));
+    
+    if (room && resGuests.length > 0) {
+      const status = determineReservationStatus(resGuests, room);
+      return { ...res, reservationStatus: status };
+    }
+    
+    return { 
+      ...res, 
+      reservationStatus: { 
+        isActive: false, 
+        reason: 'Room or guests not found', 
+        category: 'inactive' as const 
+      } 
+    };
+  });
+
+  const activeReservations = categorizedReservations.filter((res: any) => res.reservationStatus.isActive);
+  const inactiveReservations = categorizedReservations.filter((res: any) => !res.reservationStatus.isActive);
+
+  const currentReservations = activeTab === 0 ? activeReservations : inactiveReservations;
+
+  // Apply search filter to current reservations
+  const filteredReservations = currentReservations.filter((res: any) => {
+    if (!search) return true;
+    return (
+      res.id.toLowerCase().includes(search.toLowerCase()) ||
+      (res.guestIds && res.guestIds.some((gid: string) => {
+        const g = guests.find((gg: any) => gg._id === gid);
+        return g && g.name.toLowerCase().includes(search.toLowerCase());
+      })) ||
+      res.rooms.toLowerCase().includes(search.toLowerCase())
+    );
+  });
 
   // Only show available rooms for new reservations
-  const availableRooms = rooms.filter((r: any) => (r.status === 'available' || r.status === 'partially-reserved') && r.hotelConfigId === selectedConfigId);
+  const availableRooms = rooms.filter((r: any) => (r.status === 'available' || r.status === 'partially-reserved') && r.hotelId === hotelId);
 
   // Mutations
   const createMutation = useCreateReservation();
   const updateMutation = useUpdateReservation();
+  const deleteMutation = useDeleteReservation();
 
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -97,10 +128,13 @@ const ReservationsPage: React.FC = () => {
 
   const handleConfirmDelete = async () => {
     if (pendingDeleteId) {
-      enqueueSnackbar('Reservation deleted and guests released.', { variant: 'success' });
-      queryClient.invalidateQueries({ queryKey: ['reservations'] });
-      queryClient.invalidateQueries({ queryKey: ['guests'] });
-      setSelectedReservationId(null);
+      try {
+        await deleteMutation.mutateAsync(pendingDeleteId);
+        enqueueSnackbar('Reservation deleted successfully.', { variant: 'success' });
+        setSelectedReservationId(null);
+      } catch (error) {
+        enqueueSnackbar('Failed to delete reservation.', { variant: 'error' });
+      }
     }
     setDeleteDialogOpen(false);
     setPendingDeleteId(null);
@@ -123,7 +157,7 @@ const ReservationsPage: React.FC = () => {
     return 0;
   });
 
-  if (loadingReservations || loadingGuests || loadingRooms) {
+  if (hotelLoading || loadingReservations || loadingGuests || loadingRooms) {
     return <Box display="flex" justifyContent="center" alignItems="center" p={3}><CircularProgress /></Box>;
   }
 
@@ -131,9 +165,9 @@ const ReservationsPage: React.FC = () => {
     <Box p={3}>
       <Paper sx={{ p: 3, mb: 2 }}>
         <Typography variant="h5" gutterBottom>
-          {currentConfig ? (
-            <>Welcome to <b>{currentConfig.name}</b> Reservations
-              <Tooltip title={`View and manage all reservations for ${currentConfig.name}. All changes apply only to this hotel configuration.`}>
+          {currentHotel ? (
+            <>Welcome to <b>{currentHotel.name}</b> Reservations
+              <Tooltip title={`View and manage all reservations for ${currentHotel.name}. All changes apply only to this hotel.`}>
                 <InfoOutlinedIcon sx={{ ml: 1, fontSize: 20, verticalAlign: 'middle', color: 'text.secondary', cursor: 'pointer' }} />
               </Tooltip>
             </>
@@ -167,7 +201,7 @@ const ReservationsPage: React.FC = () => {
             startIcon={<EditIcon />}
             disabled={!selectedReservationId}
             onClick={() => {
-              const res = filteredReservations.find((r: any) => r.id === selectedReservationId);
+              const res = sortedReservations.find((r: any) => r.id === selectedReservationId);
               if (res) handleEdit(res);
             }}
           >
@@ -184,6 +218,10 @@ const ReservationsPage: React.FC = () => {
           </Button>
         </Box>
       </Paper>
+      <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
+        <Tab label={`Active (${activeReservations.length})`} />
+        <Tab label={`Inactive (${inactiveReservations.length})`} />
+      </Tabs>
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -201,13 +239,14 @@ const ReservationsPage: React.FC = () => {
             {sortedReservations.map((res: any) => {
               const guestNames = res.guestIds && Array.isArray(res.guestIds)
                 ? res.guestIds.map((gid: string) => {
-                    const g = guests.find((gg: any) => gg.id === gid);
+                    const g = guests.find((gg: any) => gg._id === gid);
                     return g ? g.name : gid;
                   })
                 : [];
               const firstGuest = guestNames[0] || '';
               const moreCount = guestNames.length - 1;
               const expanded = expandedRows[res.id];
+              const statusDisplay = getReservationStatusDisplay(res.reservationStatus);
               return (
                 <React.Fragment key={res.id}>
                   <TableRow
@@ -241,7 +280,19 @@ const ReservationsPage: React.FC = () => {
                     })()}</TableCell>
                     <TableCell>{res.dates}</TableCell>
                     <TableCell>{res.price}</TableCell>
-                    <TableCell>{res.status}</TableCell>
+                    <TableCell>
+                      <Tooltip title={statusDisplay.description} arrow>
+                        <Chip 
+                          label={statusDisplay.label}
+                          size="small"
+                          sx={{ 
+                            backgroundColor: statusDisplay.color,
+                            color: 'white',
+                            fontWeight: 'bold'
+                          }}
+                        />
+                      </Tooltip>
+                    </TableCell>
                     <TableCell>{res.notes}</TableCell>
                   </TableRow>
                   {moreCount > 0 && (
@@ -270,8 +321,8 @@ const ReservationsPage: React.FC = () => {
             multiple
             options={guests}
             getOptionLabel={(option: any) => option.name}
-            value={guests.filter((g: any) => form.guestIds?.includes(g.id))}
-            onChange={(_, value) => setForm(f => ({ ...f, guestIds: value.map((g: any) => g.id) }))}
+            value={guests.filter((g: any) => form.guestIds?.includes(g._id))}
+            onChange={(_, value) => setForm(f => ({ ...f, guestIds: value.map((g: any) => g._id) }))}
             renderInput={(params) => <TextField {...params} label="Guests" margin="normal" fullWidth />}
           />
           <Box display="flex" gap={2} alignItems="center" mt={1}>

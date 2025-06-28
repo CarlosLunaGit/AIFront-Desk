@@ -4,6 +4,8 @@ export type RoomStatus =
   | 'reserved'
   | 'partially-occupied'
   | 'occupied'
+  | 'deoccupied'
+  | 'partially-deoccupied'
   | 'cleaning'
   | 'maintenance';
 
