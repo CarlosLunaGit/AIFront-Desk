@@ -1,22 +1,29 @@
 import React, { useState } from 'react';
-import { Box, Typography, Paper, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, MenuItem, CircularProgress, Collapse, Tabs, Tab, Chip } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
+import {
+  Box, Paper, Typography, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  TextField, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, MenuItem,
+  Tabs, Tab, Collapse, IconButton, Tooltip, Chip, CircularProgress, Menu
+} from '@mui/material';
+import {
+  Search as SearchIcon, Edit as EditIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon,
+  InfoOutlined as InfoOutlinedIcon, MoreVert as MoreVertIcon, Cancel as CancelIcon, 
+  PersonOff as PersonOffIcon, Stop as StopIcon, Delete as DeleteIcon
+} from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import dayjs, { Dayjs } from 'dayjs';
-import Autocomplete from '@mui/material/Autocomplete';
-import SearchIcon from '@mui/icons-material/Search';
 import { useSnackbar } from 'notistack';
-import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import Tooltip from '@mui/material/Tooltip';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import dayjs, { Dayjs } from 'dayjs';
+import { useCurrentHotel } from '../services/hooks/useHotel';
 import { useReservations, useCreateReservation, useUpdateReservation, useDeleteReservation } from '../services/hooks/useReservations';
 import { useGuests } from '../services/hooks/useGuests';
 import { useRooms } from '../services/hooks/useRooms';
-import { useCurrentHotel } from '../services/hooks/useHotel';
-import { determineReservationStatus, getReservationStatusDisplay } from '../utils/reservationUtils';
+import type { ReservationAction } from '../types/index';
+import { 
+  calculateCancellationFee, 
+  createReservationAction,
+  generateConfirmationNumber,
+  determineReservationStatus,
+  getReservationStatusDisplay
+} from '../utils/reservationUtils';
 
 const ReservationsPage: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -34,22 +41,42 @@ const ReservationsPage: React.FC = () => {
 
   // Only show reservations for rooms in the current hotel
   const roomIdsForHotel = rooms.filter((r: any) => r.hotelId === hotelId).map((r: any) => r.id);
-  const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('dates');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [expandedRows, setExpandedRows] = useState<{ [id: string]: boolean }>({});
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = useState(0); // 0 = Active, 1 = Inactive
+
+  // Business action states (replacing delete dialog)
+  const [actionMenuAnchor, setActionMenuAnchor] = useState<null | HTMLElement>(null);
+  const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
+  const [businessActionDialog, setBusinessActionDialog] = useState<{
+    open: boolean;
+    action: string | null;
+    reservation: any | null;
+    cancellationFee?: number;
+  }>({ open: false, action: null, reservation: null });
+  const [actionReason, setActionReason] = useState('');
 
   // Filter reservations by hotel and categorize by active/inactive status
   const hotelReservations = reservations.filter((res: any) => roomIdsForHotel.includes(res.rooms));
   
+  // Debug logging to understand why reservations aren't showing
+  console.log('🔍 Reservations Debug:', {
+    totalReservations: reservations.length,
+    roomIdsForHotel,
+    hotelReservations: hotelReservations.length,
+    sampleReservation: reservations[0],
+    sampleRoom: rooms[0]
+  });
+
   const categorizedReservations = hotelReservations.map((res: any) => {
     const room = rooms.find((r: any) => r.id === res.rooms);
     const resGuests = guests.filter((g: any) => res.guestIds?.includes(g._id));
     
     if (room && resGuests.length > 0) {
-      const status = determineReservationStatus(resGuests, room);
+      // Use the new business status logic
+      const status = determineReservationStatus(resGuests, room, res.status);
       return { ...res, reservationStatus: status };
     }
     
@@ -63,8 +90,52 @@ const ReservationsPage: React.FC = () => {
     };
   });
 
-  const activeReservations = categorizedReservations.filter((res: any) => res.reservationStatus.isActive);
-  const inactiveReservations = categorizedReservations.filter((res: any) => !res.reservationStatus.isActive);
+  // Filter based on business status instead of just guest/room status
+  const activeReservations = categorizedReservations.filter((res: any) => {
+    // Debug logging to understand the filtering issue
+    console.log('🔍 Filtering reservation:', res.id, 'reservationStatus:', res.reservationStatus, 'status:', res.status);
+    
+    // A reservation is active if:
+    // 1. It has no reservationStatus (default active)
+    // 2. Its reservationStatus is 'active'
+    // 3. Its status is 'booked' (legacy support)
+    // 4. Its reservationStatus is not one of the inactive business states
+    // 5. If reservationStatus is an object, check the isActive property
+    
+    let isActive = false;
+    
+    if (typeof res.reservationStatus === 'string') {
+      // Handle business status strings
+      isActive = !res.reservationStatus || 
+                 res.reservationStatus === 'active' || 
+                 !['cancelled', 'no-show', 'terminated', 'completed'].includes(res.reservationStatus);
+    } else if (typeof res.reservationStatus === 'object' && res.reservationStatus !== null) {
+      // Handle status objects from determineReservationStatus
+      isActive = res.reservationStatus.isActive === true;
+    } else {
+      // No reservationStatus, check legacy status
+      isActive = res.status === 'booked' || res.status === 'active';
+    }
+    
+    console.log('📊 Reservation', res.id, 'is active:', isActive);
+    return isActive;
+  });
+  
+  const inactiveReservations = categorizedReservations.filter((res: any) => {
+    // A reservation is inactive if it has a specific inactive status
+    let isInactive = false;
+    
+    if (typeof res.reservationStatus === 'string') {
+      // Handle business status strings
+      isInactive = ['cancelled', 'no-show', 'terminated', 'completed'].includes(res.reservationStatus);
+    } else if (typeof res.reservationStatus === 'object' && res.reservationStatus !== null) {
+      // Handle status objects from determineReservationStatus
+      isInactive = res.reservationStatus.isActive === false;
+    }
+    
+    console.log('📊 Reservation', res.id, 'is inactive:', isInactive);
+    return isInactive;
+  });
 
   const currentReservations = activeTab === 0 ? activeReservations : inactiveReservations;
 
@@ -87,7 +158,7 @@ const ReservationsPage: React.FC = () => {
   // Mutations
   const createMutation = useCreateReservation();
   const updateMutation = useUpdateReservation();
-  const deleteMutation = useDeleteReservation();
+  const deleteMutation = useDeleteReservation(); // This will be renamed to handle business actions
 
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -95,9 +166,7 @@ const ReservationsPage: React.FC = () => {
   const [error, setError] = useState('');
   const [newGuest, setNewGuest] = useState({ name: '', email: '', phone: '' });
   const [newGuests, setNewGuests] = useState<any[]>([]);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-
+  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     if (name !== 'guests') { setForm(f => ({ ...f, [name]: value })); }
@@ -110,8 +179,25 @@ const ReservationsPage: React.FC = () => {
     if (!form.start || !form.end) { setError('Please select dates'); return; }
     const dates = `${form.start.format('YYYY-MM-DD')} to ${form.end.format('YYYY-MM-DD')}`;
     const payload = { ...form, dates, newGuests };
-    if (editId) { await updateMutation.mutateAsync({ id: editId, ...payload }); } else { await createMutation.mutateAsync(payload); }
-    setOpen(false); setEditId(null); setNewGuests([]);
+    
+    try {
+      if (editId) { 
+        await updateMutation.mutateAsync({ id: editId, ...payload }); 
+        enqueueSnackbar('Reservation updated successfully.', { variant: 'success' });
+      } else { 
+        const newReservation = await createMutation.mutateAsync(payload);
+        // Generate confirmation number for new reservations
+        if (newReservation && hotelId) {
+          const confirmationNumber = generateConfirmationNumber(hotelId, newReservation.id);
+          enqueueSnackbar(`Reservation created successfully. Confirmation: ${confirmationNumber}`, { variant: 'success' });
+        }
+      }
+      setOpen(false); 
+      setEditId(null); 
+      setNewGuests([]);
+    } catch (error) {
+      enqueueSnackbar('Failed to save reservation.', { variant: 'error' });
+    }
   };
 
   const handleEdit = (res: any) => {
@@ -121,23 +207,89 @@ const ReservationsPage: React.FC = () => {
     setOpen(true);
   };
 
-  const handleRequestDelete = (id: string) => {
-    setPendingDeleteId(id);
-    setDeleteDialogOpen(true);
+  // New business action handlers
+  const handleBusinessActionClick = (event: React.MouseEvent<HTMLElement>, reservation: any) => {
+    setActionMenuAnchor(event.currentTarget);
+    setSelectedReservationId(reservation.id);
   };
 
-  const handleConfirmDelete = async () => {
-    if (pendingDeleteId) {
-      try {
-        await deleteMutation.mutateAsync(pendingDeleteId);
-        enqueueSnackbar('Reservation deleted successfully.', { variant: 'success' });
-        setSelectedReservationId(null);
-      } catch (error) {
-        enqueueSnackbar('Failed to delete reservation.', { variant: 'error' });
+  const handleBusinessAction = (action: string) => {
+    const reservation = filteredReservations.find((r: any) => r.id === selectedReservationId);
+    if (!reservation) return;
+
+    // Calculate cancellation fee for cancel action
+    let cancellationFee = 0;
+    if (action === 'cancel') {
+      cancellationFee = calculateCancellationFee(reservation);
+    }
+
+    setBusinessActionDialog({
+      open: true,
+      action,
+      reservation,
+      cancellationFee
+    });
+    setActionMenuAnchor(null);
+  };
+
+  const handleConfirmBusinessAction = async () => {
+    const { action, reservation } = businessActionDialog;
+    if (!action || !reservation) return;
+
+    try {
+      if (action === 'delete') {
+        // Use DELETE endpoint for removing from system
+        await deleteMutation.mutateAsync({ 
+          id: reservation.id, 
+          reason: actionReason || 'Removed from system' 
+        });
+        enqueueSnackbar('Reservation removed from system successfully.', { variant: 'success' });
+      } else {
+        // Create the action payload with business logic for other actions
+        const actionPayload = createReservationAction(action as ReservationAction, reservation, actionReason, 'hotel-staff');
+        
+        // Update the reservation with new status
+        await updateMutation.mutateAsync({ 
+          id: reservation.id, 
+          ...actionPayload 
+        });
+
+        // Show appropriate success message
+        const actionMessages: Record<string, string> = {
+          cancel: 'Reservation cancelled successfully.',
+          'no-show': 'Reservation marked as no-show.',
+          terminate: 'Reservation terminated successfully.',
+          complete: 'Reservation completed successfully.'
+        };
+
+        enqueueSnackbar(actionMessages[action] || `${action} completed successfully.`, { variant: 'success' });
+      }
+      
+      setSelectedReservationId(null);
+    } catch (error) {
+      console.error('Business action error:', error);
+      if (action === 'delete') {
+        enqueueSnackbar('Failed to remove reservation from system.', { variant: 'error' });
+      } else {
+        enqueueSnackbar(`Failed to ${action} reservation.`, { variant: 'error' });
       }
     }
-    setDeleteDialogOpen(false);
-    setPendingDeleteId(null);
+
+    setBusinessActionDialog({ open: false, action: null, reservation: null });
+    setActionReason('');
+  };
+
+  // Administrative delete handler (for removing from active management)
+  const handleRequestDelete = (id: string) => {
+    const reservation = filteredReservations.find((r: any) => r.id === id);
+    if (reservation) {
+      setBusinessActionDialog({
+        open: true,
+        action: 'delete', // Use 'delete' action instead of 'cancel'
+        reservation,
+        cancellationFee: 0 // No fee for administrative deletion
+      });
+    }
   };
 
   const handleSort = (col: string) => {
@@ -156,6 +308,47 @@ const ReservationsPage: React.FC = () => {
     if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
     return 0;
   });
+
+  // Check business rules for actions
+  const getAvailableActions = (reservation: any) => {
+    console.log('🎯 getAvailableActions called for reservation:', reservation.id, 'status:', reservation.status, 'reservationStatus:', reservation.reservationStatus);
+    const actions = [];
+    
+    // For active reservations (most common case)
+    if (reservation.status === 'booked' || reservation.status === 'active' || !reservation.status || reservation.reservationStatus === 'active') {
+      console.log('✅ Reservation qualifies for active actions');
+      
+      // Cancel option - always available for active reservations
+      actions.push({ action: 'cancel', label: 'Cancel Reservation', icon: <CancelIcon /> });
+
+      // No-show option - available for future reservations
+      const reservationStart = new Date(reservation.dates?.split(' to ')[0] || '');
+      const now = new Date();
+      console.log('📅 Reservation start:', reservationStart, 'Now:', now, 'Is past?:', reservationStart <= now);
+      if (reservationStart <= now) {
+        actions.push({ action: 'no-show', label: 'Mark No-Show', icon: <PersonOffIcon /> });
+      }
+
+      // Terminate option - always available for active reservations
+      actions.push({ action: 'terminate', label: 'Terminate Early', icon: <StopIcon /> });
+    } else {
+      console.log('❌ Reservation does not qualify for active actions');
+    }
+
+    // Complete option - for checked-in guests
+    const associatedGuests = guests.filter((g: any) => reservation.guestIds?.includes(g._id));
+    const hasCheckedInGuests = associatedGuests.some((g: any) => g.status === 'checked-in');
+    console.log('👥 Associated guests:', associatedGuests.length, 'Has checked-in guests:', hasCheckedInGuests);
+    if (hasCheckedInGuests) {
+      actions.push({ action: 'complete', label: 'Complete Reservation', icon: <EditIcon /> });
+    }
+
+    // Administrative delete option (always available)
+    actions.push({ action: 'delete', label: 'Remove from System', icon: <DeleteIcon /> });
+
+    console.log('🎬 Final actions for reservation', reservation.id, ':', actions.map(a => a.label));
+    return actions;
+  };
 
   if (hotelLoading || loadingReservations || loadingGuests || loadingRooms) {
     return <Box display="flex" justifyContent="center" alignItems="center" p={3}><CircularProgress /></Box>;
@@ -209,15 +402,54 @@ const ReservationsPage: React.FC = () => {
           </Button>
           <Button
             variant="outlined"
-            color="error"
-            startIcon={<DeleteIcon />}
+            color="primary"
+            startIcon={<MoreVertIcon />}
             disabled={!selectedReservationId}
-            onClick={() => handleRequestDelete(selectedReservationId!)}
+            onClick={(e) => {
+              const res = sortedReservations.find((r: any) => r.id === selectedReservationId);
+              if (res) handleBusinessActionClick(e, res);
+            }}
           >
-            Delete
+            Actions
           </Button>
         </Box>
       </Paper>
+
+      {/* Business Actions Menu */}
+      <Menu
+        anchorEl={actionMenuAnchor}
+        open={Boolean(actionMenuAnchor)}
+        onClose={() => setActionMenuAnchor(null)}
+      >
+        {selectedReservationId && (() => {
+          const reservation = sortedReservations.find((r: any) => r.id === selectedReservationId);
+          const availableActions = reservation ? getAvailableActions(reservation) : [];
+          
+          return availableActions.map((actionItem, index) => (
+            <MenuItem 
+              key={actionItem.action}
+              onClick={() => {
+                if (actionItem.action === 'delete') {
+                  handleRequestDelete(selectedReservationId!);
+                  setActionMenuAnchor(null);
+                } else {
+                  handleBusinessAction(actionItem.action as string);
+                }
+              }}
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1,
+                color: actionItem.action === 'delete' ? 'error.main' : 'inherit'
+              }}
+            >
+              {actionItem.icon}
+              {actionItem.label}
+            </MenuItem>
+          ));
+        })()}
+      </Menu>
+
       <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
         <Tab label={`Active (${activeReservations.length})`} />
         <Tab label={`Inactive (${inactiveReservations.length})`} />
@@ -246,7 +478,8 @@ const ReservationsPage: React.FC = () => {
               const firstGuest = guestNames[0] || '';
               const moreCount = guestNames.length - 1;
               const expanded = expandedRows[res.id];
-              const statusDisplay = getReservationStatusDisplay(res.reservationStatus);
+              // Use business status for display
+              const statusDisplay = getReservationStatusDisplay(res.reservationStatus, res.status);
               return (
                 <React.Fragment key={res.id}>
                   <TableRow
@@ -279,7 +512,7 @@ const ReservationsPage: React.FC = () => {
                       return room ? room.number : res.rooms;
                     })()}</TableCell>
                     <TableCell>{res.dates}</TableCell>
-                    <TableCell>{res.price}</TableCell>
+                    <TableCell>${res.price}</TableCell>
                     <TableCell>
                       <Tooltip title={statusDisplay.description} arrow>
                         <Chip 
@@ -314,6 +547,8 @@ const ReservationsPage: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Create/Edit Reservation Dialog */}
       <Dialog open={open} onClose={() => { setOpen(false); setEditId(null); }}>
         <DialogTitle>{editId ? 'Edit Reservation' : 'Create Reservation'}</DialogTitle>
         <DialogContent>
@@ -371,13 +606,68 @@ const ReservationsPage: React.FC = () => {
           <Button variant="contained" color="primary" onClick={handleCreateOrEdit}>{editId ? 'Save' : 'Create'}</Button>
         </DialogActions>
       </Dialog>
-      <ConfirmDeleteDialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-        onConfirm={handleConfirmDelete}
-        title="Delete Reservation"
-        description="Are you sure you want to delete this reservation? Guests will be released but not deleted. This action cannot be undone."
-      />
+
+      {/* Business Action Confirmation Dialog */}
+      <Dialog 
+        open={businessActionDialog.open} 
+        onClose={() => setBusinessActionDialog({ open: false, action: null, reservation: null })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {businessActionDialog.action === 'cancel' && 'Cancel Reservation'}
+          {businessActionDialog.action === 'no-show' && 'Mark as No-Show'}
+          {businessActionDialog.action === 'terminate' && 'Terminate Reservation'}
+          {businessActionDialog.action === 'complete' && 'Complete Reservation'}
+          {businessActionDialog.action === 'delete' && 'Remove from System'}
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" gutterBottom>
+            {businessActionDialog.action === 'cancel' && 'Are you sure you want to cancel this reservation?'}
+            {businessActionDialog.action === 'no-show' && 'Mark this reservation as a no-show? Guest did not arrive.'}
+            {businessActionDialog.action === 'terminate' && 'Terminate this reservation early? This is for early checkout or eviction.'}
+            {businessActionDialog.action === 'complete' && 'Mark this reservation as completed?'}
+            {businessActionDialog.action === 'delete' && 'Permanently remove this reservation from the system? This action cannot be undone.'}
+          </Typography>
+          
+          {businessActionDialog.action === 'cancel' && businessActionDialog.cancellationFee !== undefined && (
+            <Box mt={2} p={2} bgcolor="warning.light" borderRadius={1}>
+              <Typography variant="subtitle2" color="warning.dark">
+                Cancellation Fee: ${businessActionDialog.cancellationFee.toFixed(2)}
+              </Typography>
+              <Typography variant="body2" color="warning.dark">
+                Refund Amount: ${((businessActionDialog.reservation?.price || 0) - businessActionDialog.cancellationFee).toFixed(2)}
+              </Typography>
+            </Box>
+          )}
+
+          <TextField
+            label="Reason (optional)"
+            value={actionReason}
+            onChange={(e) => setActionReason(e.target.value)}
+            fullWidth
+            margin="normal"
+            multiline
+            rows={3}
+            placeholder="Enter reason for this action..."
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBusinessActionDialog({ open: false, action: null, reservation: null })}>
+            Cancel
+          </Button>
+          <Button 
+            variant="contained" 
+            color={businessActionDialog.action === 'cancel' || businessActionDialog.action === 'delete' ? 'error' : 'primary'}
+            onClick={handleConfirmBusinessAction}
+          >
+            Confirm {businessActionDialog.action ? 
+              businessActionDialog.action.charAt(0).toUpperCase() + businessActionDialog.action.slice(1) : 
+              'Action'
+            }
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

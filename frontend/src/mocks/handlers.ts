@@ -1324,15 +1324,101 @@ function generateMockReservationsAndHistory() {
       const getEarliestDate = (dates: string[]) => dates.filter(Boolean).sort()[0] || '';
       const getLatestDate = (dates: string[]) => dates.filter(Boolean).sort().slice(-1)[0] || '';
       
+      // Determine business status based on guest statuses
+      const hasCheckedIn = guests.some(g => g.status === 'checked-in');
+      const hasCheckedOut = guests.some(g => g.status === 'checked-out');
+      const allBooked = guests.every(g => g.status === 'booked');
+      const allCheckedOut = guests.every(g => g.status === 'checked-out');
+      
+      console.log('🏨 Reservation generation for room:', room.number, 'guests:', guests.map(g => `${g.name}(${g.status})`).join(', '));
+      console.log('📊 Status analysis:', { hasCheckedIn, hasCheckedOut, allBooked, allCheckedOut });
+      
+      let reservationStatus: 'active' | 'cancelled' | 'no-show' | 'terminated' | 'completed';
+      if (allCheckedOut) {
+        // If ALL guests have checked out, mark as completed
+        reservationStatus = 'completed';
+        console.log('✅ Setting reservation to COMPLETED - all guests checked out');
+      } else if (hasCheckedOut && !hasCheckedIn) {
+        // If some have checked out but none checked in, mark as completed
+        reservationStatus = 'completed';
+        console.log('✅ Setting reservation to COMPLETED - guests checked out, none checked in');
+      } else if (hasCheckedIn) {
+        reservationStatus = 'active';
+        console.log('🟡 Setting reservation to ACTIVE - some guests checked in');
+      } else if (allBooked) {
+        reservationStatus = 'active';
+        console.log('🟡 Setting reservation to ACTIVE - all guests booked');
+      } else {
+        reservationStatus = 'active';
+        console.log('🟡 Setting reservation to ACTIVE - default fallback');
+      }
+
+      // Generate confirmation number
+      const confirmationNumber = `${room.hotelId?.slice(-4) || 'HTLX'}${String(reservationCount).padStart(4, '0')}`;
+      
+      const basePrice = 100 * guestIds.length;
+      const now = new Date().toISOString();
+      
       const reservation = {
         id: `mock-res-${reservationCount++}`,
+        hotelId: room.hotelId,
         rooms: room.id,
         guestIds,
         dates: `${getEarliestDate(startDates)} to ${getLatestDate(endDates)}`,
-        price: 100 * guestIds.length,
+        price: basePrice,
+        
+        // Legacy status for compatibility
         status: 'booked',
+        
+        // New business fields
+        reservationStatus,
+        confirmationNumber,
+        
+        // Financial tracking
+        financials: {
+          totalAmount: basePrice,
+          paidAmount: 0,
+          refundAmount: 0,
+          cancellationFee: 0,
+          currency: 'USD',
+          paymentMethod: 'credit_card',
+          paymentStatus: 'pending',
+          transactions: []
+        },
+        
+        // Audit trail
+        audit: {
+          statusHistory: [
+            {
+              status: reservationStatus,
+              timestamp: now,
+              performedBy: 'system',
+              reason: 'Initial reservation creation'
+            }
+          ],
+          actions: [
+            {
+              action: 'create',
+              timestamp: now,
+              performedBy: 'system',
+              details: {
+                guestCount: guestIds.length,
+                roomNumber: room.number
+              }
+            }
+          ]
+        },
+        
+        // Business-specific fields
+        cancelledAt: null,
+        cancelledBy: null,
+        cancellationReason: null,
+        noShowMarkedAt: null,
+        terminatedAt: null,
+        
         notes: `Generated reservation for ${guests.map(g => g.name).join(', ')}`,
-        hotelId: room.hotelId,
+        createdAt: now,
+        updatedAt: now
       };
       
       reservations.push(reservation);
@@ -1342,7 +1428,7 @@ function generateMockReservationsAndHistory() {
       history.push({
         id: `mock-history-${reservation.id}`,
         roomId: room.id,
-        timestamp: new Date().toISOString(),
+        timestamp: now,
         action: 'reservation_created',
         previousState: {},
         newState: { guestIds: Array.from(new Set(guestIds)) },
@@ -2146,9 +2232,29 @@ export const handlers: HttpHandler[] = [
 
   // Get all reservation history
   http.get('/api/reservation-history', () => {
-    // Only return history for the current hotel config
-    const roomIdsForConfig = mockRooms.filter(r => r.hotelId === currentConfigId).map(r => r.id);
-    const filtered = finalReservationHistory.filter((h: any) => roomIdsForConfig.includes(h.roomId));
+    // Get current hotel ID from the global state
+    let currentHotelId: string = '';
+    if (currentConfigId === 'mock-hotel-1') {
+      currentHotelId = '65b000000000000000000001';
+    } else if (currentConfigId === 'mock-hotel-2') {
+      currentHotelId = '65b000000000000000000002';
+    }
+    
+    // If no hotel ID found, return empty array
+    if (!currentHotelId) {
+      console.log('📋 No current hotel ID found, returning empty history');
+      return HttpResponse.json([]);
+    }
+    
+    // Filter history by rooms that belong to the current hotel
+    const roomIdsForHotel = mockRooms.filter(r => r.hotelId === currentHotelId).map(r => r.id);
+    const filtered = finalReservationHistory.filter((h: any) => roomIdsForHotel.includes(h.roomId));
+    
+    console.log('📋 Reservation History - Current Hotel ID:', currentHotelId);
+    console.log('📋 Room IDs for Hotel:', roomIdsForHotel);
+    console.log('📋 Total History Entries:', finalReservationHistory.length);
+    console.log('📋 Filtered History Entries:', filtered.length);
+    
     return HttpResponse.json(filtered);
   }),
 
@@ -2215,6 +2321,169 @@ export const handlers: HttpHandler[] = [
     console.log('📋 Reservations endpoint called, returning all reservations:', finalMockReservations.length);
     return HttpResponse.json(finalMockReservations);
   }),
+
+  // PATCH /api/reservations/:id - Handle business actions (cancel, no-show, terminate, etc.)
+  http.patch('/api/reservations/:id', async ({ params, request }) => {
+    const reservationId = params.id as string;
+    const idx = finalMockReservations.findIndex((r: any) => r.id === reservationId);
+    
+    if (idx === -1) {
+      console.log('❌ Reservation not found:', reservationId);
+      return new HttpResponse(JSON.stringify({ error: 'Reservation not found' }), { 
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    const data = await request.json();
+    const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+    
+    const reservation = finalMockReservations[idx];
+    const now = new Date().toISOString();
+    
+    console.log('🎯 Processing reservation action:', reservationId, 'action:', safeData.action, 'data:', safeData);
+    
+    // Handle business actions
+    if (safeData.action) {
+      // Initialize audit trail if needed
+      if (!reservation.audit) {
+        reservation.audit = { statusHistory: [], actions: [] };
+      }
+      
+      // Record the action
+      reservation.audit.actions.push({
+        action: safeData.action,
+        timestamp: now,
+        performedBy: safeData.performedBy || 'hotel-staff',
+        details: {
+          previousStatus: reservation.reservationStatus,
+          reason: safeData.reason || `${safeData.action} action performed`
+        }
+      });
+      
+      // Handle specific business actions
+      switch (safeData.action) {
+        case 'cancel':
+          reservation.reservationStatus = 'cancelled';
+          reservation.cancelledAt = now;
+          reservation.cancelledBy = safeData.cancelledBy || 'hotel';
+          reservation.cancellationReason = safeData.cancellationReason || safeData.reason || 'Cancelled by hotel';
+          
+          // Update financials with cancellation fee if provided
+          if (safeData.cancellationFee !== undefined) {
+            if (!reservation.financials) reservation.financials = { totalAmount: 0 };
+            reservation.financials.cancellationFee = safeData.cancellationFee;
+            reservation.financials.refundAmount = (reservation.financials.totalAmount || 0) - safeData.cancellationFee;
+          }
+          break;
+          
+        case 'no-show':
+          reservation.reservationStatus = 'no-show';
+          reservation.noShowMarkedAt = now;
+          reservation.noShowReason = safeData.reason || 'Guest did not arrive';
+          break;
+          
+        case 'terminate':
+          reservation.reservationStatus = 'terminated';
+          reservation.terminatedAt = now;
+          reservation.terminationReason = safeData.reason || 'Early termination by hotel';
+          break;
+          
+        case 'complete':
+          reservation.reservationStatus = 'completed';
+          reservation.completedAt = now;
+          break;
+          
+        case 'delete':
+          // For delete action, we'll handle it separately below
+          break;
+      }
+      
+      // Update status history
+      reservation.audit.statusHistory.push({
+        status: reservation.reservationStatus,
+        timestamp: now,
+        performedBy: safeData.performedBy || 'hotel-staff',
+        reason: safeData.reason || `${safeData.action} action performed`
+      });
+    }
+    
+    // Apply any other updates
+    Object.assign(reservation, { ...safeData, updatedAt: now });
+    
+    console.log('✅ Updated reservation:', reservation.id, 'new status:', reservation.reservationStatus);
+    return HttpResponse.json(reservation);
+  }),
+
+  // DELETE /api/reservations/:id - Remove reservation from system
+  http.delete('/api/reservations/:id', ({ params, request }) => {
+    const reservationId = params.id as string;
+    const idx = finalMockReservations.findIndex((r: any) => r.id === reservationId);
+    
+    if (idx === -1) {
+      console.log('❌ Reservation not found for deletion:', reservationId);
+      return new HttpResponse(JSON.stringify({ error: 'Reservation not found' }), { 
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    const reservation = finalMockReservations[idx];
+    
+    // Extract reason from query parameters
+    const url = new URL(request.url);
+    const reason = url.searchParams.get('reason') || 'Removed from system';
+    
+    console.log('🗑️ Deleting reservation from system:', reservationId, 'Reason:', reason);
+    
+    // Add deletion to reservation history BEFORE removing the reservation
+    finalReservationHistory.push({
+      id: `history-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      roomId: reservation.rooms,
+      timestamp: new Date().toISOString(),
+      action: 'reservation_deleted' as const,
+      previousState: {
+        guestIds: reservation.guestIds,
+        dates: [reservation.dates],
+        rooms: reservation.rooms,
+        status: reservation.reservationStatus || 'active',
+        price: reservation.totalPrice,
+        notes: reservation.notes
+      },
+      newState: {
+        guestIds: [],
+        dates: [],
+        rooms: '',
+        status: 'deleted',
+        price: 0,
+        notes: ''
+      },
+      performedBy: 'hotel-staff',
+      notes: reason // Use the custom reason instead of hardcoded message
+    });
+    
+    console.log('📝 Added deletion to reservation history with reason:', reason);
+    console.log('📋 History entry created:', finalReservationHistory[finalReservationHistory.length - 1]);
+    
+    // Clear room assignments for associated guests
+    if (Array.isArray(reservation.guestIds)) {
+      reservation.guestIds.forEach((gid: string) => {
+        const guest = mockGuests.find(g => g._id === gid);
+        if (guest) {
+          guest.roomId = '';
+          guest.keepOpen = false;
+          console.log('🧹 Cleared room assignment for guest:', guest.name);
+        }
+      });
+    }
+    
+    // Remove reservation from array
+    finalMockReservations.splice(idx, 1);
+    
+    console.log('✅ Reservation deleted successfully:', reservationId);
+    return HttpResponse.json({ message: 'Reservation deleted successfully' }, { status: 200 });
+  }),
+
   http.post('/api/reservations', async ({ request }) => {
     const data = await request.json();
     const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
@@ -2284,23 +2553,71 @@ export const handlers: HttpHandler[] = [
     const data = await request.json();
     const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
     
-    Object.assign(finalMockReservations[idx], safeData, { updatedAt: new Date().toISOString() });
+    const reservation = finalMockReservations[idx];
+    const now = new Date().toISOString();
+    
+    // Handle business actions
+    if (safeData.reservationStatus && safeData.reservationStatus !== reservation.reservationStatus) {
+      // Update audit trail
+      if (!reservation.audit) {
+        reservation.audit = { statusHistory: [], actions: [] };
+      }
+      
+      reservation.audit.statusHistory.push({
+        status: safeData.reservationStatus,
+        timestamp: now,
+        performedBy: safeData.performedBy || 'system',
+        reason: safeData.reason || 'Status updated'
+      });
+      
+      reservation.audit.actions.push({
+        action: safeData.reservationStatus,
+        timestamp: now,
+        performedBy: safeData.performedBy || 'system',
+        details: {
+          previousStatus: reservation.reservationStatus,
+          newStatus: safeData.reservationStatus,
+          reason: safeData.reason
+        }
+      });
+      
+      // Handle specific business status updates
+      if (safeData.reservationStatus === 'cancelled') {
+        reservation.cancelledAt = now;
+        reservation.cancelledBy = safeData.cancelledBy || 'hotel';
+        reservation.cancellationReason = safeData.cancellationReason || safeData.reason;
+        
+        // Update financials with cancellation fee
+        if (safeData.cancellationFee !== undefined) {
+          reservation.financials.cancellationFee = safeData.cancellationFee;
+          reservation.financials.refundAmount = reservation.financials.totalAmount - safeData.cancellationFee;
+        }
+      } else if (safeData.reservationStatus === 'no-show') {
+        reservation.noShowMarkedAt = now;
+      } else if (safeData.reservationStatus === 'terminated') {
+        reservation.terminatedAt = now;
+      }
+    }
+    
+    // Apply all updates
+    Object.assign(reservation, safeData, { updatedAt: now });
     
     // Update associated guests if dates or rooms changed
     if (safeData.dates || safeData.rooms) {
-      (finalMockReservations[idx].guestIds || []).forEach((gid: string) => {
+      (reservation.guestIds || []).forEach((gid: string) => {
         const guest = mockGuests.find(g => g._id === gid);
         if (guest) {
-          if (safeData.rooms && finalMockReservations[idx].rooms !== safeData.rooms) finalMockReservations[idx].rooms = safeData.rooms;
+          if (safeData.rooms && reservation.rooms !== safeData.rooms) reservation.rooms = safeData.rooms;
           if (safeData.dates) {
-            finalMockReservations[idx].reservationStart = safeData.dates.split(' to ')[0];
-            finalMockReservations[idx].reservationEnd = safeData.dates.split(' to ')[1];
+            reservation.reservationStart = safeData.dates.split(' to ')[0];
+            reservation.reservationEnd = safeData.dates.split(' to ')[1];
           }
         }
       });
     }
     
-    return HttpResponse.json(finalMockReservations[idx]);
+    console.log('✅ Updated reservation:', reservation.id, 'new status:', reservation.reservationStatus);
+    return HttpResponse.json(reservation);
   }),
   http.delete('/api/hotel/reservations/:id', ({ params }) => {
     const idx = finalMockReservations.findIndex((r: any) => r.id === params.id);
@@ -3391,23 +3708,71 @@ export const handlers: HttpHandler[] = [
     const data = await request.json();
     const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
     
-    Object.assign(finalMockReservations[idx], safeData, { updatedAt: new Date().toISOString() });
+    const reservation = finalMockReservations[idx];
+    const now = new Date().toISOString();
+    
+    // Handle business actions
+    if (safeData.reservationStatus && safeData.reservationStatus !== reservation.reservationStatus) {
+      // Update audit trail
+      if (!reservation.audit) {
+        reservation.audit = { statusHistory: [], actions: [] };
+      }
+      
+      reservation.audit.statusHistory.push({
+        status: safeData.reservationStatus,
+        timestamp: now,
+        performedBy: safeData.performedBy || 'system',
+        reason: safeData.reason || 'Status updated'
+      });
+      
+      reservation.audit.actions.push({
+        action: safeData.reservationStatus,
+        timestamp: now,
+        performedBy: safeData.performedBy || 'system',
+        details: {
+          previousStatus: reservation.reservationStatus,
+          newStatus: safeData.reservationStatus,
+          reason: safeData.reason
+        }
+      });
+      
+      // Handle specific business status updates
+      if (safeData.reservationStatus === 'cancelled') {
+        reservation.cancelledAt = now;
+        reservation.cancelledBy = safeData.cancelledBy || 'hotel';
+        reservation.cancellationReason = safeData.cancellationReason || safeData.reason;
+        
+        // Update financials with cancellation fee
+        if (safeData.cancellationFee !== undefined) {
+          reservation.financials.cancellationFee = safeData.cancellationFee;
+          reservation.financials.refundAmount = reservation.financials.totalAmount - safeData.cancellationFee;
+        }
+      } else if (safeData.reservationStatus === 'no-show') {
+        reservation.noShowMarkedAt = now;
+      } else if (safeData.reservationStatus === 'terminated') {
+        reservation.terminatedAt = now;
+      }
+    }
+    
+    // Apply all updates
+    Object.assign(reservation, safeData, { updatedAt: now });
     
     // Update associated guests if dates or rooms changed
     if (safeData.dates || safeData.rooms) {
-      (finalMockReservations[idx].guestIds || []).forEach((gid: string) => {
+      (reservation.guestIds || []).forEach((gid: string) => {
         const guest = mockGuests.find(g => g._id === gid);
         if (guest) {
-          if (safeData.rooms && finalMockReservations[idx].rooms !== safeData.rooms) finalMockReservations[idx].rooms = safeData.rooms;
+          if (safeData.rooms && reservation.rooms !== safeData.rooms) reservation.rooms = safeData.rooms;
           if (safeData.dates) {
-            finalMockReservations[idx].reservationStart = safeData.dates.split(' to ')[0];
-            finalMockReservations[idx].reservationEnd = safeData.dates.split(' to ')[1];
+            reservation.reservationStart = safeData.dates.split(' to ')[0];
+            reservation.reservationEnd = safeData.dates.split(' to ')[1];
           }
         }
       });
     }
     
-    return HttpResponse.json(finalMockReservations[idx]);
+    console.log('✅ Updated reservation:', reservation.id, 'new status:', reservation.reservationStatus);
+    return HttpResponse.json(reservation);
   }),
   http.delete('/api/hotel/reservations/:id', ({ params }) => {
     const idx = finalMockReservations.findIndex((r: any) => r.id === params.id);

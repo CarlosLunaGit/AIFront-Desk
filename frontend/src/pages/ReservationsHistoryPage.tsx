@@ -33,6 +33,7 @@ interface ReservationHistoryEntry {
     notes?: string;
   };
   performedBy: string;
+  notes?: string; // Top-level notes field for deletion reasons, etc.
 }
 
 const fetchAllHistory = async () => {
@@ -84,7 +85,7 @@ const ReservationsHistoryPage: React.FC = () => {
     const guestNames = [
       ...(entry.newState.guestIds || []),
       ...(entry.previousState.guestIds || [])
-    ].map(gid => guests.find((g: any) => g.id === gid)?.name || gid).join(', ');
+    ].map(gid => guests.find((g: any) => g._id === gid)?.name || gid).join(', ');
     const room = rooms.find((r: any) => r.id === entry.roomId || r.number === entry.roomId);
     return (
       matchesAction && (
@@ -193,7 +194,7 @@ const ReservationsHistoryPage: React.FC = () => {
                 ? entry.newState.guestIds
                 : entry.previousState.guestIds || [];
               const uniqueGuestIds = Array.from(new Set(guestIds));
-              const guestNames = uniqueGuestIds.map(gid => guests.find((g: any) => g.id === gid)?.name || gid);
+              const guestNames = uniqueGuestIds.map(gid => guests.find((g: any) => g._id === gid)?.name || gid);
               const firstGuest = guestNames[0] || '';
               const moreCount = guestNames.length - 1;
               const expanded = expandedRows[entry.id];
@@ -227,7 +228,7 @@ const ReservationsHistoryPage: React.FC = () => {
                       )}
                     </TableCell>
                     <TableCell>{entry.performedBy}</TableCell>
-                    <TableCell>{entry.newState.notes ?? entry.previousState.notes ?? ''}</TableCell>
+                    <TableCell>{(entry as any).notes ?? entry.newState.notes ?? entry.previousState.notes ?? ''}</TableCell>
                   </TableRow>
                   {moreCount > 0 && (
                     <TableRow>
@@ -259,9 +260,9 @@ const ReservationsHistoryPage: React.FC = () => {
                 const prevGuests = (selectedEntry?.previousState.guestIds || []).slice().sort();
                 const nextGuests = (selectedEntry?.newState.guestIds || []).slice().sort();
                 if (prevGuests.length === nextGuests.length && prevGuests.every((gid, i) => gid === nextGuests[i])) {
-                  return <Typography variant="body2" sx={{ color: 'text.disabled' }}><b>Guests:</b> {prevGuests.map(gid => guests.find((g: any) => g.id === gid)?.name || gid).join(', ') || '—'}</Typography>;
+                  return <Typography variant="body2" sx={{ color: 'text.disabled' }}><b>Guests:</b> {prevGuests.map(gid => guests.find((g: any) => g._id === gid)?.name || gid).join(', ') || '—'}</Typography>;
                 } else {
-                  return <Typography variant="body2" sx={{ color: 'text.primary' }}><b>Guests:</b> {prevGuests.map(gid => guests.find((g: any) => g.id === gid)?.name || gid).join(', ') || '—'}</Typography>;
+                  return <Typography variant="body2" sx={{ color: 'text.primary' }}><b>Guests:</b> {prevGuests.map(gid => guests.find((g: any) => g._id === gid)?.name || gid).join(', ') || '—'}</Typography>;
                 }
               })()}
               {/* Dates diff */}
@@ -303,10 +304,10 @@ const ReservationsHistoryPage: React.FC = () => {
                 const nextGuests = (selectedEntry?.newState.guestIds || []).slice().sort();
                 const added = nextGuests.filter(gid => !prevGuests.includes(gid));
                 if (prevGuests.length === nextGuests.length && prevGuests.every((gid, i) => gid === nextGuests[i])) {
-                  return <Typography variant="body2" sx={{ color: 'text.disabled' }}><b>Guests:</b> {nextGuests.map(gid => guests.find((g: any) => g.id === gid)?.name || gid).join(', ') || '—'}</Typography>;
+                  return <Typography variant="body2" sx={{ color: 'text.disabled' }}><b>Guests:</b> {nextGuests.map(gid => guests.find((g: any) => g._id === gid)?.name || gid).join(', ') || '—'}</Typography>;
                 } else {
                   return <Typography variant="body2" sx={{ color: 'text.primary' }}><b>Guests:</b> {nextGuests.map(gid => {
-                    const name = guests.find((g: any) => g.id === gid)?.name || gid;
+                    const name = guests.find((g: any) => g._id === gid)?.name || gid;
                     return added.includes(gid)
                       ? <span key={gid} style={{ color: '#388e3c', fontWeight: 600 }}>{name}</span>
                       : name;

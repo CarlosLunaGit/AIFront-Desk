@@ -5,7 +5,7 @@ This guide ensures MSW (Mock Service Worker) handlers stay synchronized with rea
 
 ## 📊 **Current Sync Status: ✅ FULLY SYNCHRONIZED & STABLE**
 
-**Last Updated:** June 26, 2024  
+**Last Updated:** June 28, 2024  
 **Status:** 🟢 **Fully Stable & Ready for Backend Integration**
 
 ### ✅ **Synchronized Endpoints**
@@ -44,6 +44,15 @@ This guide ensures MSW (Mock Service Worker) handlers stay synchronized with rea
 - `PATCH /api/guests/:id` - ✅ Synced (check-in/check-out operations)
 - `DELETE /api/guests/:id` - ✅ Synced
 
+#### **Reservations** (`/api/reservations/*`) - ✅ **FULLY IMPLEMENTED & TESTED**
+- `GET /api/reservations` - ✅ Synced & Fixed (hotel-specific filtering)
+- `PATCH /api/reservations/:id` - ✅ Synced (business actions: cancel, no-show, terminate, complete)
+- `DELETE /api/reservations/:id` - ✅ Synced (remove from system with reason logging)
+
+#### **Reservation History** (`/api/reservation-history`) - ✅ **FULLY IMPLEMENTED & TESTED**
+- `GET /api/reservation-history` - ✅ Synced & Fixed (hotel-specific filtering with proper guest name resolution)
+- History logging for all reservation business actions including deletion with custom reasons
+
 #### **Communications** (`/api/communications/*`)
 - `GET /api/communications/guest/:guestId` - ✅ Synced
 - `POST /api/communications/send` - ✅ Synced
@@ -62,6 +71,58 @@ This guide ensures MSW (Mock Service Worker) handlers stay synchronized with rea
 - `POST /api/communications/ai` (AI processing endpoint)
 
 ## 🏗️ **Data Structure Alignment - ✅ COMPLETED & STABLE**
+
+### **Reservations & History - ✅ CRITICAL FIXES APPLIED (June 28, 2024)**
+
+#### **Reservation Status Filtering Fixed**
+```typescript
+// ✅ FIXED: Proper status filtering logic
+const isActive = !reservationStatus || 
+                 reservationStatus === 'active' || 
+                 (typeof reservationStatus === 'object' && reservationStatus.isActive === true) ||
+                 reservationStatus === 'booked';
+
+const isInactive = reservationStatus === 'cancelled' || 
+                   reservationStatus === 'no-show' || 
+                   reservationStatus === 'terminated' || 
+                   reservationStatus === 'completed' ||
+                   (typeof reservationStatus === 'object' && reservationStatus.isActive === false);
+```
+
+#### **Guest Name Resolution Fixed**
+```typescript
+// ✅ FIXED: Guest names now display correctly in history
+const guestNames = [
+  ...(entry.newState.guestIds || []),
+  ...(entry.previousState.guestIds || [])
+].map(gid => guests.find((g: any) => g._id === gid)?.name || gid).join(', ');
+// Changed from g.id to g._id to match actual data structure
+```
+
+#### **Deletion Reason Logging Fixed**
+```typescript
+// ✅ FIXED: Custom deletion reasons now properly stored and displayed
+// Top-level notes field for deletion reasons
+interface ReservationHistoryEntry {
+  // ... other fields
+  notes?: string; // Top-level notes field for deletion reasons, etc.
+}
+
+// Display logic checks top-level notes first
+<TableCell>{(entry as any).notes || entry.newState.notes || entry.previousState.notes || ''}</TableCell>
+```
+
+#### **Reservation Business Actions - ✅ FULLY IMPLEMENTED**
+```typescript
+// All business actions properly implemented with status transitions:
+const businessActions = {
+  cancel: { newStatus: 'cancelled', movesToInactive: true },
+  'no-show': { newStatus: 'no-show', movesToInactive: true },
+  terminate: { newStatus: 'terminated', movesToInactive: true },
+  complete: { newStatus: 'completed', movesToInactive: true },
+  delete: { action: 'remove from system', movesToNowhere: true }
+};
+```
 
 ### **Room Types - ✅ CRITICAL FIX APPLIED**
 ```typescript
@@ -205,7 +266,46 @@ const hotelRooms = mockRooms.filter(r => r.hotelId === hotelId);
 }
 ```
 
-## 🔄 **Recent Critical Fixes (June 26, 2024)**
+## 🔄 **Recent Critical Fixes (June 28, 2024)**
+
+### **✅ Reservation Management System - FULLY IMPLEMENTED & TESTED**
+
+#### **1. Reservation Status Filtering Logic**
+- **Issue**: Reservations with status "completed" were showing in Active tab instead of Inactive
+- **Root Cause**: `determineReservationStatus` was returning complex objects but filtering logic expected simple strings
+- **Fix**: Enhanced filtering logic to handle both business status strings and status objects with `isActive` property
+- **Result**: Charlie Brown's completed reservation now correctly appears in Inactive tab
+
+#### **2. Reservation Business Actions Implementation**
+- **Issue**: Actions menu only showed "Remove from System" instead of full business actions
+- **Root Cause**: `getAvailableActions` function had restrictive conditions
+- **Fix**: Updated logic to show all appropriate actions based on reservation status:
+  - **Cancel Reservation**: Sets status to 'cancelled', moves to Inactive tab
+  - **Mark No-Show**: Sets status to 'no-show', moves to Inactive tab  
+  - **Terminate Early**: Sets status to 'terminated', moves to Inactive tab
+  - **Remove from System**: Deletes reservation entirely with reason logging
+- **Result**: Full business workflow now available with proper status transitions
+
+#### **3. Reservation Deletion with History Logging**
+- **Issue**: Delete action was calling PATCH endpoint instead of DELETE, no custom reason logging
+- **Root Cause**: Business action handler was using wrong API endpoint and not passing deletion reasons
+- **Fix**: 
+  - Added proper DELETE `/api/reservations/:id` endpoint in MSW
+  - Updated frontend to pass deletion reason as query parameter
+  - Enhanced history logging to capture custom deletion reasons in top-level `notes` field
+- **Result**: Deletion works correctly with custom reasons appearing in Reservation History
+
+#### **4. Reservation History Guest Name Resolution**
+- **Issue**: Guest names showing as "guest-3", "guest-8" instead of actual names like "Charlie Brown"
+- **Root Cause**: History page was looking for `g.id` but guest objects use `g._id`
+- **Fix**: Updated guest name mapping to use `g._id` instead of `g.id`
+- **Result**: Guest names now display correctly in Reservation History
+
+#### **5. Reservation History Notes Display**
+- **Issue**: Custom deletion reasons not appearing in Notes column
+- **Root Cause**: Display logic only checked `newState.notes` and `previousState.notes`, but deletion reasons stored in top-level `notes` field
+- **Fix**: Updated display logic to check top-level `notes` field first: `(entry as any).notes || entry.newState.notes || entry.previousState.notes`
+- **Result**: Custom deletion reasons now properly displayed in Reservation History
 
 ### **✅ Room Status Calculation Logic - FULLY IMPLEMENTED & TESTED**
 1. **Room Status Business Logic Fixed**:
@@ -299,6 +399,8 @@ const hotelRooms = mockRooms.filter(r => r.hotelId === hotelId);
 ### **✅ MSW Data Updates Applied**
 - **Room Types**: Updated to use `capacity.total` structure matching frontend expectations
 - **Dashboard Endpoint**: Fixed hotel room filtering logic
+- **Reservations**: Added complete business action support with status transitions
+- **Reservation History**: Enhanced with proper guest name resolution and deletion reason logging
 - **Reference Data**: Updated `db-dump/msw-reference-data/` files to match current structure
 - **Type Interfaces**: Aligned all TypeScript interfaces with MSW data structure
 
@@ -315,7 +417,8 @@ REACT_APP_SIMULATE_NEW_USER=false  # Existing user with data
 - Consistent test data  
 - Fast development iteration
 - No database dependencies
-- **Room Management**: Fully functional with correct data
+- **Reservation Management**: Fully functional with complete business workflow
+- **Reservation History**: Complete audit trail with guest names and custom notes
 
 ### **Real Backend Mode** (Integration Testing)
 ```bash  
@@ -335,6 +438,16 @@ REACT_APP_API_URL=http://localhost:3001
 - ✅ **Dashboard**: Shows accurate room statistics from MSW data
 - ✅ **Room Management**: Displays rooms with correct capacities and types
 - ✅ **Guest Management**: Full CRUD operations with hotel-specific filtering and loading states
+- ✅ **Reservation Management**: Complete business workflow with status transitions
+  - ✅ **Active/Inactive Filtering**: Proper status-based categorization
+  - ✅ **Business Actions**: Cancel, No-Show, Terminate, Complete, Delete
+  - ✅ **Status Transitions**: Actions properly move reservations between tabs
+  - ✅ **Custom Deletion Reasons**: Full reason logging and display
+- ✅ **Reservation History**: Complete audit trail with proper guest name resolution
+  - ✅ **Guest Names**: Display actual names instead of IDs
+  - ✅ **Custom Notes**: Deletion reasons and other custom notes properly displayed
+  - ✅ **Hotel Filtering**: History properly filtered by current hotel
+  - ✅ **Action Logging**: All business actions recorded with timestamps
 - ✅ **Hotel Switching**: Instant data updates across all components with visual feedback
 - ✅ **Hotel Configuration Wizard**: Complete with clickable step navigation
 - ✅ **Feature Icons**: Material Icons display with fallback support
@@ -348,6 +461,7 @@ REACT_APP_API_URL=http://localhost:3001
 - `backend/src/models/Hotel.ts` - ✅ Features, floors, roomTemplates included
 - `backend/src/models/Room.ts` - ✅ Aligned
 - `backend/src/models/Guest.ts` - ✅ Structure confirmed
+- `backend/src/models/Reservation.ts` - ✅ Business status support
 
 ### **MSW Handler Location:**
 - `frontend/src/mocks/handlers.ts` - ✅ Fully aligned and error-free
@@ -356,18 +470,22 @@ REACT_APP_API_URL=http://localhost:3001
 - `frontend/src/services/api/hotel.ts` - ✅ Updated for unified Hotel entity
 - `frontend/src/services/api/room.ts` - ✅ Aligned
 - `frontend/src/services/api/guest.ts` - ✅ Updated for new Guest structure
+- `frontend/src/services/api/reservation.ts` - ✅ Updated for business actions and deletion with reasons
 
 ## 🎯 **Next Steps**
 
 1. **✅ COMPLETED**: MSW TypeScript error resolution
 2. **✅ COMPLETED**: Room Management page functionality
-3. **✅ COMPLETED**: Reference data synchronization
-4. **🔄 Ready**: Switch to real backend integration testing
-5. **🔄 Ready**: Add missing auth endpoints  
-6. **🔄 Ready**: Validation script for automated sync checks
+3. **✅ COMPLETED**: Reservation Management with business actions
+4. **✅ COMPLETED**: Reservation History with proper logging
+5. **✅ COMPLETED**: Reference data synchronization
+6. **🔄 Ready**: Switch to real backend integration testing
+7. **🔄 Ready**: Add missing auth endpoints  
+8. **🔄 Ready**: Validation script for automated sync checks
 
 ## 📋 **Testing Checklist - ✅ ALL PASSING**
 
+### **Room Management**
 - [x] Dashboard shows correct room statistics
 - [x] Room Management page loads without errors
 - [x] Room types display with proper capacity values
@@ -376,10 +494,29 @@ REACT_APP_API_URL=http://localhost:3001
 - [x] Feature names display correctly (Air Conditioning, not feature-3)
 - [x] Guest names display correctly in room details (Bob Smith, not guest-2)
 - [x] Room status updates in real-time when guests are modified
+
+### **Guest Management**
 - [x] Guest Management page loads and displays hotel-specific guests
 - [x] Guest CRUD operations work correctly (add, edit, delete, check-in, check-out)
 - [x] Hotel switching works correctly with instant data updates
 - [x] Loading states provide proper user feedback during operations
+
+### **Reservation Management**
+- [x] Reservations display correctly in Active and Inactive tabs
+- [x] Reservation status filtering works correctly (completed reservations in Inactive tab)
+- [x] Actions menu shows all business actions (Cancel, No-Show, Terminate, Delete)
+- [x] Business actions properly transition reservations between tabs
+- [x] Custom deletion reasons are captured and stored
+- [x] Delete action removes reservation from both Active and Inactive tabs
+
+### **Reservation History**
+- [x] Reservation History page loads and displays hotel-specific history
+- [x] Guest names display correctly (Charlie Brown, not guest-3)
+- [x] Custom deletion reasons appear in Notes column
+- [x] All business actions are properly logged with timestamps
+- [x] History filtering works correctly by hotel
+
+### **Technical Quality**
 - [x] TypeScript compilation succeeds with no implicit any errors
 - [x] MSW data structure matches backend expectations
 - [x] Reference data files are up to date
@@ -388,6 +525,6 @@ REACT_APP_API_URL=http://localhost:3001
 
 ---
 
-**Last Updated**: June 26, 2024  
-**Major Changes**: Room status calculation logic completed, visual indicators enhanced, feature/guest name mapping fixed, Hotel entity migration completed, TypeScript compilation resolved  
+**Last Updated**: June 28, 2024  
+**Major Changes**: Reservation Management system completed with full business workflow, Reservation History enhanced with proper guest name resolution and deletion reason logging, all TypeScript compilation issues resolved  
 **Status**: 🟢 **Fully Stable & Ready for Backend Integration** 

@@ -15,6 +15,13 @@ export const updateReservation = async (id: string, reservation: any) => {
   return data;
 };
 
-export const deleteReservation = async (id: string) => {
-  await api.delete(`/api/reservations/${id}`);
+export const deleteReservation = async (params: string | { id: string; reason?: string }) => {
+  // Handle both old string format and new object format for backward compatibility
+  if (typeof params === 'string') {
+    await api.delete(`/api/reservations/${params}`);
+  } else {
+    // For DELETE requests, we can pass the reason as a query parameter
+    const queryParams = params.reason ? `?reason=${encodeURIComponent(params.reason)}` : '';
+    await api.delete(`/api/reservations/${params.id}${queryParams}`);
+  }
 }; 
