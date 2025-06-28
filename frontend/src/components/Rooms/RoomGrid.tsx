@@ -24,7 +24,6 @@ import type { RoomType, Floor, HotelFeature } from '../../types/hotel';
 import { useCreateRoomAction } from '../../services/hooks/useRooms';
 import Tooltip from '@mui/material/Tooltip';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import CircleIcon from '@mui/icons-material/Circle';
 import BuildIcon from '@mui/icons-material/Build';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 
@@ -57,8 +56,6 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
     return map;
   }, [features]);
 
-
-
   const handleMenuClose = () => {
     setAnchorEl(null);
     setSelectedRoom(null);
@@ -90,12 +87,62 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
       case 'reserved':
         return '#616161';
       case 'partially-occupied':
-        return 'warning.dark';
+        return 'orange';
       case 'partially-reserved':
         return '#BDBDBD';
       default:
         return 'grey.400';
     }
+  };
+
+  const getStatusInitials = (status: Room['status']) => {
+    switch (status) {
+      case 'available':
+        return 'A';
+      case 'occupied':
+        return 'O';
+      case 'maintenance':
+        return 'M';
+      case 'cleaning':
+        return 'C';
+      case 'reserved':
+        return 'R';
+      case 'partially-occupied':
+        return 'PO';
+      case 'partially-reserved':
+        return 'PR';
+      default:
+        return '?';
+    }
+  };
+
+  const StatusBadge: React.FC<{ status: Room['status'] }> = ({ status }) => {
+    const initials = getStatusInitials(status);
+    const color = getStatusColor(status);
+    const statusName = status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ');
+    
+    return (
+      <Tooltip title={statusName} arrow>
+        <Box
+          sx={{
+            width: 28,
+            height: 28,
+            borderRadius: '50%',
+            backgroundColor: color,
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            textShadow: '0 1px 1px rgba(0,0,0,0.5)',
+            flexShrink: 0,
+          }}
+        >
+          {initials}
+        </Box>
+      </Tooltip>
+    );
   };
 
   const handleSetMaintenance = async (room: Room) => {
@@ -115,7 +162,6 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
           {rooms.map((room) => {
             const roomType = roomTypes.find(rt => rt.id === room.typeId);
             const floor = floorMap[room.floorId];
-            const statusColor = getStatusColor(room.status);
             const isSelected = selectedRoomId === room.id;
             return (
               <Card
@@ -165,9 +211,7 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
                     </Box>
                   </Box>
                   <Box mt={2} display="flex" alignItems="center" gap={1}>
-                    <Tooltip title={room.status.charAt(0).toUpperCase() + room.status.slice(1)} arrow>
-                      <CircleIcon sx={{ color: statusColor, fontSize: 18 }} />
-                    </Tooltip>
+                    <StatusBadge status={room.status} />
                     <Chip
                       label={floor ? `Floor ${floor.number} - ${floor.name}` : `Floor ${room.floorId}`}
                       variant="outlined"
@@ -253,7 +297,6 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
         const isSelected = selectedRoomId === room.id;
         const roomType = roomTypes.find(rt => rt.id === room.typeId);
         const floor = floors.find(f => f.id === room.floorId);
-        const statusColor = getStatusColor(room.status);
         return (
           <Grid item xs={12} sm={6} md={4} lg={3} key={room.id}>
             <Card
@@ -278,9 +321,7 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
                   </Box>
                 </Box>
                 <Box mt={2} display="flex" alignItems="center" gap={1}>
-                  <Tooltip title={room.status.charAt(0).toUpperCase() + room.status.slice(1)} arrow>
-                    <CircleIcon sx={{ color: statusColor, fontSize: 18 }} />
-                  </Tooltip>
+                  <StatusBadge status={room.status} />
                   <Chip
                     label={floor ? `Floor ${floor.number} - ${floor.name}` : `Floor ${room.floorId}`}
                     variant="outlined"
@@ -308,7 +349,7 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
                   {room.features.map((featureId) => (
                     <Chip
                       key={featureId}
-                      label={featureId}
+                      label={featureMap[featureId] || featureId}
                       size="small"
                       variant="outlined"
                     />

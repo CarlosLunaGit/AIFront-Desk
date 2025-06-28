@@ -16,13 +16,17 @@ export const useCreateGuest = (hotelId?: string) => {
   return useMutation({
     mutationFn: guestApi.createGuest,
     onSuccess: () => {
-      // Invalidate both the specific hotel's guests and any general guest queries
-      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      // Invalidate guest queries for the current hotel
       if (hotelId) {
         queryClient.invalidateQueries({ queryKey: ['guests', hotelId] });
       }
-      // Also invalidate room data since guest assignments affect room status
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      
+      // CRITICAL: Also invalidate room queries since adding guests affects room status
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      
+      // Invalidate dashboard data since room statistics may have changed
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -32,12 +36,17 @@ export const useUpdateGuest = (hotelId?: string) => {
   return useMutation({
     mutationFn: ({ id, ...guest }: any) => guestApi.updateGuest(id, guest),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      // Invalidate guest queries for the current hotel
       if (hotelId) {
         queryClient.invalidateQueries({ queryKey: ['guests', hotelId] });
       }
-      // Invalidate room data since guest status changes affect room status
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      
+      // CRITICAL: Also invalidate room queries since guest keepOpen status affects room status
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      
+      // Invalidate dashboard data since room statistics may have changed
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -47,12 +56,17 @@ export const useDeleteGuest = (hotelId?: string) => {
   return useMutation({
     mutationFn: guestApi.deleteGuest,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      // Invalidate guest queries for the current hotel
       if (hotelId) {
         queryClient.invalidateQueries({ queryKey: ['guests', hotelId] });
       }
-      // Invalidate room data since guest removal affects room status
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      
+      // CRITICAL: Also invalidate room queries since removing guests affects room status
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      
+      // Invalidate dashboard data since room statistics may have changed  
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };

@@ -1,46 +1,45 @@
 import React, { useState, useMemo } from 'react';
 import {
   Box,
-  Grid,
   Paper,
   Typography,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
+  Grid,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Alert,
-  CircularProgress,
+  TextField,
   ToggleButtonGroup,
   ToggleButton,
-  Tooltip
+  Button,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import {
-  Edit as EditIcon,
+  Build as BuildIcon,
   CleaningServices as CleaningIcon,
   CheckCircle as CheckInIcon,
   Cancel as CheckOutIcon,
-  DeleteForever as DeleteForeverIcon,
+  Edit as EditIcon,
   Visibility as VisibilityIcon,
-  Info as InfoOutlinedIcon
+  DeleteForever as DeleteForeverIcon,
+  InfoOutlined as InfoOutlinedIcon,
 } from '@mui/icons-material';
-import { useRooms as useRoomsHook } from '../../services/hooks/useRooms';
-import type { Room } from '../../types/room';
-import { HotelConfigContext } from '../Layout/Layout';
-import { useCurrentHotel } from '../../services/hooks/useHotel';
+import RoomGrid from './RoomGrid';
+import { useQueryClient } from '@tanstack/react-query';
+import { useRooms, useUpdateRoom } from '../../services/hooks/useRooms';
 import { useHotelRoomTypes } from '../../services/hooks/useRoomTypes';
-import { Circle as CircleIcon } from '@mui/icons-material';
+import { useCurrentHotel } from '../../services/hooks/useHotel';
+import { useGuests } from '../../services/hooks/useGuests';
 import { bulkCreateRooms, updateRoomStatus, requestMaintenance, requestCleaning } from '../../services/api/room';
 import { checkInGuest, checkOutGuest, deleteGuest } from '../../services/api/guest';
-import RoomGrid from './RoomGrid';
-import BuildIcon from '@mui/icons-material/Build';
-import { useQueryClient } from '@tanstack/react-query';
-import { useUpdateRoom } from '../../services/hooks/useRooms';
+import type { Room } from '../../types/room';
+
 
 const RoomManagement: React.FC = () => {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
@@ -67,24 +66,55 @@ const RoomManagement: React.FC = () => {
   const [addRate, setAddRate] = useState<number | ''>('');
   const [addError, setAddError] = useState<string | null>(null);
   const [addLoading, setAddLoading] = useState(false);
-  const { currentConfig } = React.useContext(HotelConfigContext);
+  const [editRoom, setEditRoom] = useState<Room | null>(null);
+  const [viewRoom, setViewRoom] = useState<Room | null>(null);
+  const [editRoomState, setEditRoomState] = useState<Room | null>(null);
+
+  const { data: currentHotel, isLoading: hotelLoading } = useCurrentHotel();
+  const { data: roomTypes = [] } = useHotelRoomTypes(currentHotel?._id);
+  const { data: guests } = useGuests(currentHotel?._id);
+  const updateRoom = useUpdateRoom();
+  const queryClient = useQueryClient();
+
+  // Get rooms data
+  const {
+    data: rooms = [],
+    isLoading: roomsLoading,
+  } = useRooms({ hotelId: currentHotel?._id });
+
+  const isLoading = hotelLoading || roomsLoading;
+
+  // Memoize floors and features to avoid re-rendering issues
+  const floors = useMemo(() => {
+    return (currentHotel as any)?.floors || [
+      { id: 'floor-1', name: 'First Floor', number: 1, isActive: true },
+      { id: 'floor-2', name: 'Second Floor', number: 2, isActive: true },
+    ];
+  }, [currentHotel]);
   
-  // Use new backend hooks for real data
-  const { data: currentHotel } = useCurrentHotel();
-  const hotelId = currentHotel?._id;
-  const { data: roomTypes = [] } = useHotelRoomTypes(hotelId);
-  
-  // For backward compatibility, create mock floors and features if not available
-  const floors: Array<{ id: string; name: string; number: number; isActive: boolean }> = (currentConfig as any)?.floors || [
-    { id: 'floor-1', name: 'First Floor', number: 1, isActive: true },
-    { id: 'floor-2', name: 'Second Floor', number: 2, isActive: true },
-  ];
-  
-  const features: Array<{ id: string; name: string; type: 'feature' | 'amenity' }> = (currentConfig as any)?.features || [
-    { id: 'wifi', name: 'WiFi', type: 'feature' },
-    { id: 'tv', name: 'TV', type: 'feature' },
-    { id: 'ac', name: 'Air Conditioning', type: 'feature' },
-  ];
+  const features = useMemo(() => {
+    return (currentHotel as any)?.features || [
+      { id: 'wifi', name: 'WiFi', type: 'feature' },
+      { id: 'tv', name: 'TV', type: 'feature' },
+      { id: 'ac', name: 'Air Conditioning', type: 'feature' },
+    ];
+  }, [currentHotel]);
+
+  // Memoize a map of featureId to feature name
+  const featureMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const f of features) map[f.id] = f.name;
+    return map;
+  }, [features]);
+
+  // Memoize a map of guestId to guest name
+  const guestMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (guests) {
+      for (const g of guests) map[g._id] = g.name;
+    }
+    return map;
+  }, [guests]);
 
   // Convert backend RoomType to frontend compatible format for RoomGrid component
   const frontendRoomTypes = roomTypes.map(rt => ({
@@ -96,25 +126,6 @@ const RoomManagement: React.FC = () => {
     amenities: rt.amenities || [],
     features: rt.features || []
   }));
-
-  const {
-    data: rooms = [],
-    isLoading: roomsLoading,
-    isFetching: roomsFetching,
-    refetch: refetchRooms
-  } = useRoomsHook({ hotelId });
-  const isLoading = !currentConfig || roomsLoading || roomsFetching;
-  const [editRoom, setEditRoom] = useState<Room | null>(null);
-  const [viewRoom, setViewRoom] = useState<Room | null>(null);
-  const [editRoomState, setEditRoomState] = useState<Room | null>(null);
-  const queryClient = useQueryClient();
-  const updateRoom = useUpdateRoom();
-
-  React.useEffect(() => {
-    if (hotelId) {
-      refetchRooms();
-    }
-  }, [hotelId, refetchRooms]);
 
   const filteredRooms = useMemo(() => {
     return rooms.filter(room =>
@@ -294,6 +305,86 @@ const RoomManagement: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['guests'] });
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'available':
+        return 'success.main';
+      case 'occupied':
+        return 'error.main';
+      case 'maintenance':
+        return '#FFD600';
+      case 'cleaning':
+        return 'info.main';
+      case 'reserved':
+        return '#616161';
+      case 'partially-occupied':
+        return 'orange';
+      case 'partially-reserved':
+        return '#BDBDBD';
+      default:
+        return 'grey.400';
+    }
+  };
+
+  const getStatusInitials = (status: string) => {
+    switch (status) {
+      case 'available':
+        return 'A';
+      case 'occupied':
+        return 'O';
+      case 'maintenance':
+        return 'M';
+      case 'cleaning':
+        return 'C';
+      case 'reserved':
+        return 'R';
+      case 'partially-occupied':
+        return 'PO';
+      case 'partially-reserved':
+        return 'PR';
+      default:
+        return '?';
+    }
+  };
+
+  const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
+    // Map display labels to actual status values
+    const statusMap: Record<string, string> = {
+      'Available': 'available',
+      'Occupied': 'occupied',
+      'Partially Occupied': 'partially-occupied',
+      'Partially Reserved': 'partially-reserved',
+      'Reserved': 'reserved',
+      'Maintenance': 'maintenance',
+      'Cleaning': 'cleaning',
+    };
+    
+    const actualStatus = statusMap[status] || status;
+    const initials = getStatusInitials(actualStatus);
+    const color = getStatusColor(actualStatus);
+    
+    return (
+      <Box
+        sx={{
+          width: 20,
+          height: 20,
+          borderRadius: '50%',
+          backgroundColor: color,
+          color: 'white',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '8px',
+          fontWeight: 'bold',
+          textShadow: '0 1px 1px rgba(0,0,0,0.5)',
+          flexShrink: 0,
+        }}
+      >
+        {initials}
+      </Box>
+    );
+  };
+
   if (isLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
@@ -302,7 +393,7 @@ const RoomManagement: React.FC = () => {
     );
   }
 
-  if (!currentConfig) {
+  if (!currentHotel) {
     return (
       <Box p={3}>
         <Alert severity="warning">
@@ -316,8 +407,8 @@ const RoomManagement: React.FC = () => {
     <Box p={3}>
       <Paper sx={{ p: 3, mb: 2 }}>
         <Typography variant="h5" gutterBottom>
-          Welcome to <b>{currentConfig.name}</b> Room Management
-          <Tooltip title={`Manage rooms, floors, and features for ${currentConfig.name}. All changes apply only to this hotel configuration.`}>
+          Welcome to <b>{currentHotel.name}</b> Room Management
+          <Tooltip title={`Manage rooms, floors, and features for ${currentHotel.name}. All changes apply only to this hotel configuration.`}>
             <InfoOutlinedIcon sx={{ ml: 1, fontSize: 20, verticalAlign: 'middle', color: 'text.secondary', cursor: 'pointer' }} />
           </Tooltip>
         </Typography>
@@ -353,7 +444,7 @@ const RoomManagement: React.FC = () => {
                 <InputLabel>Floor</InputLabel>
                 <Select value={filterFloor} label="Floor" onChange={e => setFilterFloor(e.target.value)}>
                   <MenuItem value="">All</MenuItem>
-                  {floors.map(f => (
+                  {floors.map((f: any) => (
                     <MenuItem key={f.id} value={f.id}>{f.name} (Floor {f.number})</MenuItem>
                   ))}
                 </Select>
@@ -375,7 +466,7 @@ const RoomManagement: React.FC = () => {
               ].map(({ label, color, description }) => (
                 <Tooltip key={label} title={description} arrow>
                   <Box display="flex" alignItems="center" gap={0.5}>
-                    <CircleIcon sx={{ color, fontSize: 18 }} />
+                    <StatusBadge status={label} />
                     <Typography variant="body2">{label}</Typography>
                   </Box>
                 </Tooltip>
@@ -413,7 +504,7 @@ const RoomManagement: React.FC = () => {
               ].map(({ label, color, description }) => (
                 <Tooltip key={label} title={description} arrow>
                   <Box display="flex" alignItems="center" gap={0.5}>
-                    <CircleIcon sx={{ color, fontSize: 18 }} />
+                    <StatusBadge status={label} />
                     <Typography variant="body2">{label}</Typography>
                   </Box>
                 </Tooltip>
@@ -565,7 +656,7 @@ const RoomManagement: React.FC = () => {
           />
         ) : (
           <Box>
-            {floors.map(floor => (
+            {floors.map((floor: any) => (
               <Box key={floor.id} mb={3}>
                 <Typography variant="h6">Floor {floor.number} - {floor.name}</Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start' }}>
@@ -587,7 +678,7 @@ const RoomManagement: React.FC = () => {
             <FormControl fullWidth required size="small">
               <InputLabel>Floor</InputLabel>
               <Select value={bulkFloor} label="Floor" onChange={e => setBulkFloor(e.target.value)}>
-                {floors.map(f => (
+                {floors.map((f: any) => (
                   <MenuItem key={f.id} value={f.id}>{f.name} (Floor {f.number})</MenuItem>
                 ))}
               </Select>
@@ -615,9 +706,9 @@ const RoomManagement: React.FC = () => {
                 value={bulkFeatures}
                 onChange={e => setBulkFeatures(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
                 label="Features"
-                renderValue={selected => (selected as string[]).map(fid => features.find(f => f.id === fid)?.name).join(', ')}
+                renderValue={selected => (selected as string[]).map(fid => features.find((f: any) => f.id === fid)?.name).join(', ')}
               >
-                {features.map(f => (
+                {features.map((f: any) => (
                   <MenuItem key={f.id} value={f.id}>{f.name}</MenuItem>
                 ))}
               </Select>
@@ -653,7 +744,7 @@ const RoomManagement: React.FC = () => {
             <FormControl fullWidth required size="small">
               <InputLabel>Floor</InputLabel>
               <Select value={addFloor} label="Floor" onChange={e => setAddFloor(e.target.value)}>
-                {floors.map(f => (
+                {floors.map((f: any) => (
                   <MenuItem key={f.id} value={f.id}>{f.name} (Floor {f.number})</MenuItem>
                 ))}
               </Select>
@@ -681,9 +772,9 @@ const RoomManagement: React.FC = () => {
                 value={addFeatures}
                 onChange={e => setAddFeatures(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
                 label="Features"
-                renderValue={selected => (selected as string[]).map(fid => features.find(f => f.id === fid)?.name).join(', ')}
+                renderValue={selected => (selected as string[]).map(fid => features.find((f: any) => f.id === fid)?.name).join(', ')}
               >
-                {features.map(f => (
+                {features.map((f: any) => (
                   <MenuItem key={f.id} value={f.id}>{f.name}</MenuItem>
                 ))}
               </Select>
@@ -742,7 +833,7 @@ const RoomManagement: React.FC = () => {
                 onChange={e => setEditRoomState({ ...editRoomState, floorId: e.target.value })}
                 fullWidth
               >
-                {floors.map(f => (
+                {floors.map((f: any) => (
                   <option key={f.id} value={f.id}>{f.name} (Floor {f.number})</option>
                 ))}
               </TextField>
@@ -774,7 +865,7 @@ const RoomManagement: React.FC = () => {
                 SelectProps={{ multiple: true }}
                 fullWidth
               >
-                {features.map(f => (
+                {features.map((f: any) => (
                   <MenuItem key={f.id} value={f.id}>{f.name}</MenuItem>
                 ))}
               </TextField>
@@ -807,16 +898,18 @@ const RoomManagement: React.FC = () => {
             <Box display="flex" flexDirection="column" gap={2} mt={1}>
               <Typography><b>Room Number:</b> {viewRoom.number}</Typography>
               <Typography><b>Type:</b> {roomTypes.find(rt => rt._id === viewRoom.typeId)?.name || viewRoom.typeId}</Typography>
-              <Typography><b>Floor:</b> {floors.find(f => f.id === viewRoom.floorId)?.name || viewRoom.floorId}</Typography>
+              <Typography><b>Floor:</b> {floors.find((f: any) => f.id === viewRoom.floorId)?.name || viewRoom.floorId}</Typography>
               <Typography><b>Status:</b> {viewRoom.status}</Typography>
               <Typography><b>Capacity:</b> {viewRoom.capacity}</Typography>
               <Typography><b>Rate:</b> ${viewRoom.rate}/night</Typography>
               <Typography><b>Notes:</b> {viewRoom.notes}</Typography>
-              <Typography><b>Features:</b> {viewRoom.features.map(fid => features.find(f => f.id === fid)?.name || fid).join(', ')}</Typography>
+              <Typography><b>Features:</b> {viewRoom.features.map((fid: string) => featureMap[fid] || fid).join(', ')}</Typography>
               <Typography><b>keepOpen:</b> {viewRoom.keepOpen ? 'true' : 'false'}</Typography>
               <Typography><b>Assigned Guests:</b></Typography>
               <ul>
-                {viewRoom.assignedGuests.length === 0 ? <li>None</li> : viewRoom.assignedGuests.map(gid => <li key={gid}>{gid}</li>)}
+                {viewRoom.assignedGuests.length === 0 ? <li>None</li> : viewRoom.assignedGuests.map((gid: string) => (
+                  <li key={gid}>{guestMap[gid] || gid}</li>
+                ))}
               </ul>
             </Box>
           </DialogContent>
