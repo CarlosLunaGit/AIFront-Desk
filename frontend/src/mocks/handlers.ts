@@ -1,4 +1,4 @@
-// @ts-nocheck - Disable TypeScript checking for MSW handlers with complex room.assignedGuests logic
+// TypeScript fixes applied for room.assignedGuests logic
 import { http, HttpResponse } from 'msw';
 import type { HttpHandler } from 'msw';
 import type { Room, RoomAction, RoomStats, RoomStatus } from '../types/room';
@@ -1948,15 +1948,17 @@ export const handlers: HttpHandler[] = [
       return new HttpResponse('Missing or invalid guestId', { status: 400 });
     }
     // Log the guest assignment
-    // Add guest to assignedGuests if not already present
-    if (!room.assignedGuests) (room as any).assignedGuests = [];
+    // Add guest to assignedGuests if not already present - Fixed TypeScript errors
+    room.assignedGuests = room.assignedGuests || [];
     if (!room.assignedGuests.includes(body.guestId)) {
       room.assignedGuests.push(body.guestId);
     }
+    
     // Update status based on capacity and assigned guests
-    if (room.assignedGuests.length === 0) {
+    const assignedCount = room.assignedGuests?.length || 0;
+    if (assignedCount === 0) {
       room.status = 'available' as RoomStatus;
-    } else if (room.assignedGuests.length < (room.capacity || 1)) {
+    } else if (assignedCount < (room.capacity || 1)) {
       room.status = (room.status.startsWith('occupied') ? 'partially-occupied' : 'partially-reserved') as RoomStatus;
     } else {
       room.status = (room.status.startsWith('reserved') ? 'reserved' : 'occupied') as RoomStatus;
@@ -3052,15 +3054,17 @@ export const handlers: HttpHandler[] = [
       return new HttpResponse('Missing or invalid guestId', { status: 400 });
     }
     // Log the guest assignment
-    // Add guest to assignedGuests if not already present
-    if (!room.assignedGuests) (room as any).assignedGuests = [];
+    // Add guest to assignedGuests if not already present - Fixed TypeScript errors
+    room.assignedGuests = room.assignedGuests || [];
     if (!room.assignedGuests.includes(body.guestId)) {
       room.assignedGuests.push(body.guestId);
     }
+    
     // Update status based on capacity and assigned guests
-    if (room.assignedGuests.length === 0) {
+    const assignedCount = room.assignedGuests?.length || 0;
+    if (assignedCount === 0) {
       room.status = 'available' as RoomStatus;
-    } else if (room.assignedGuests.length < (room.capacity || 1)) {
+    } else if (assignedCount < (room.capacity || 1)) {
       room.status = (room.status.startsWith('occupied') ? 'partially-occupied' : 'partially-reserved') as RoomStatus;
     } else {
       room.status = (room.status.startsWith('reserved') ? 'reserved' : 'occupied') as RoomStatus;
