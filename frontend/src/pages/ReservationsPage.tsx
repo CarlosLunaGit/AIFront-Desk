@@ -164,7 +164,6 @@ const ReservationsPage: React.FC = () => {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ guestIds: [] as string[], rooms: '', notes: '', price: '', start: null as Dayjs | null, end: null as Dayjs | null });
   const [error, setError] = useState('');
-  const [newGuest, setNewGuest] = useState({ name: '', email: '', phone: '' });
   const [newGuests, setNewGuests] = useState<any[]>([]);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

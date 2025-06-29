@@ -4286,6 +4286,610 @@ export const handlers: HttpHandler[] = [
   }),
 
   // Communication endpoints (matches backend /api/communications/*)
+
+  // =============================================================================
+  // ENHANCED RESERVATION SYSTEM ENDPOINTS
+  // =============================================================================
+
+  // Room Availability API
+  http.get('/api/rooms/availability', ({ request }) => {
+    const url = new URL(request.url);
+    const checkInDate = url.searchParams.get('checkInDate') || '';
+    const checkOutDate = url.searchParams.get('checkOutDate') || '';
+    const totalGuests = parseInt(url.searchParams.get('totalGuests') || '1');
+    const hotelId = url.searchParams.get('hotelId') || '';
+    const preferences = url.searchParams.get('preferences');
+
+    console.log('🔍 Availability Query:', { checkInDate, checkOutDate, totalGuests, hotelId });
+
+    // Filter rooms for the hotel
+    const hotelRooms = mockRooms.filter(r => r.hotelId === hotelId);
+    const hotelRoomTypes = mockRoomTypes.filter(rt => rt.hotelId === hotelId);
+
+    // Simple availability check (rooms not occupied or reserved)
+    const availableRooms = hotelRooms
+      .filter(room => ['available', 'cleaning'].includes(room.status))
+      .map(room => {
+        const roomType = hotelRoomTypes.find(rt => rt._id === room.roomTypeId);
+        if (!roomType) return null;
+
+        const capacity = roomType.capacity?.total || room.capacity || 2;
+        const baseRate = room.price || 100;
+        const nights = Math.ceil((new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60 * 24));
+        
+        // Simple pricing calculation
+        const subtotal = baseRate * nights;
+        const weekendSurcharge = nights * 20; // $20 per night weekend surcharge
+        const finalAmount = subtotal + weekendSurcharge;
+
+        // Recommendation score based on capacity match
+        let recommendationScore = 50;
+        const utilizationRatio = totalGuests / capacity;
+        if (utilizationRatio >= 0.8 && utilizationRatio <= 1) {
+          recommendationScore = 90;
+        } else if (utilizationRatio >= 0.5) {
+          recommendationScore = 75;
+        } else if (utilizationRatio > 1) {
+          recommendationScore = 20;
+        }
+
+        return {
+          room,
+          roomType,
+          isAvailable: true,
+          unavailableDates: [],
+          pricing: {
+            baseRate,
+            totalNights: nights,
+            subtotal,
+            adjustments: [
+              {
+                type: 'weekend',
+                description: 'Weekend surcharge',
+                amount: weekendSurcharge
+              }
+            ],
+            finalAmount
+          },
+          recommendationScore,
+          reasonsUnavailable: []
+        };
+      })
+      .filter(Boolean)
+      .sort((a: any, b: any) => b.recommendationScore - a.recommendationScore);
+
+    // Generate room assignment suggestions
+    const suggestions = [];
+    if (availableRooms.length > 0) {
+      // Single room suggestion
+      const bestRoom = availableRooms[0];
+      if (bestRoom && (bestRoom.roomType.capacity?.total || 2) >= totalGuests) {
+        suggestions.push({
+          assignments: [{
+            roomId: bestRoom.room.id,
+            room: bestRoom.room,
+            suggestedGuests: [],
+            capacityUtilization: totalGuests / (bestRoom.roomType.capacity?.total || 2),
+            preferenceMatch: bestRoom.recommendationScore / 100
+          }],
+          totalPrice: bestRoom.pricing.finalAmount,
+          matchScore: bestRoom.recommendationScore,
+          reasoning: `Single ${bestRoom.roomType.name} room accommodates all ${totalGuests} guests`
+        });
+      }
+    }
+
+    return HttpResponse.json({
+      query: { checkInDate, checkOutDate, totalGuests, hotelId },
+      availableRooms,
+      totalAvailable: availableRooms.length,
+      suggestions,
+      unavailableReasons: {}
+    });
+  }),
+
+  // Detailed available rooms
+  http.get('/api/rooms/available-detailed', ({ request }) => {
+    const url = new URL(request.url);
+    const checkInDate = url.searchParams.get('checkInDate') || '';
+    const checkOutDate = url.searchParams.get('checkOutDate') || '';
+    const guestCount = parseInt(url.searchParams.get('guestCount') || '1');
+    const hotelId = url.searchParams.get('hotelId') || '';
+
+    const hotelRooms = mockRooms.filter(r => r.hotelId === hotelId && ['available', 'cleaning'].includes(r.status));
+    const hotelRoomTypes = mockRoomTypes.filter(rt => rt.hotelId === hotelId);
+
+    const detailedRooms = hotelRooms.map(room => {
+      const roomType = hotelRoomTypes.find(rt => rt._id === room.roomTypeId);
+      return {
+        ...room,
+        roomType,
+        isAvailable: true,
+        suitableForGuests: (roomType?.capacity?.total || 2) >= guestCount
+      };
+    });
+
+    return HttpResponse.json(detailedRooms);
+  }),
+
+  // Pricing calculation API
+  http.post('/api/pricing/calculate', async ({ request }) => {
+    const body = await request.json() as any;
+    const { roomIds, checkInDate, checkOutDate, guestCount, hotelId } = body;
+
+    const nights = Math.ceil((new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60 * 24));
+    const breakdown: any[] = [];
+    let subtotal = 0;
+
+    roomIds.forEach((roomId: string) => {
+      const room = mockRooms.find(r => r.id === roomId);
+      const roomType = mockRoomTypes.find(rt => rt._id === room?.roomTypeId);
+      
+      if (room && roomType) {
+        const baseRate = room.price || 100;
+        const baseAmount = baseRate * nights;
+        const weekendSurcharge = nights * 20;
+        const finalAmount = baseAmount + weekendSurcharge;
+
+        breakdown.push({
+          roomId: room.id,
+          roomNumber: room.number,
+          roomType: roomType.name,
+          description: `${roomType.name} - ${nights} night${nights > 1 ? 's' : ''}`,
+          baseAmount,
+          adjustments: [
+            {
+              type: 'weekend',
+              description: 'Weekend surcharge',
+              amount: weekendSurcharge
+            }
+          ],
+          finalAmount
+        });
+
+        subtotal += finalAmount;
+      }
+    });
+
+    const taxes = subtotal * 0.13; // 13% tax
+    const fees = nights * 15; // $15 per night resort fee
+    const total = subtotal + taxes + fees;
+
+    return HttpResponse.json({
+      pricing: {
+        breakdown,
+        subtotal,
+        taxes,
+        fees,
+        total,
+        currency: 'USD'
+      },
+      breakdown,
+      recommendations: {
+        savings: [],
+        upgrades: []
+      }
+    });
+  }),
+
+  // Room pricing API
+  http.post('/api/pricing/rooms', async ({ request }) => {
+    const body = await request.json() as any;
+    const { roomIds, checkInDate, checkOutDate, hotelId } = body;
+
+    const nights = Math.ceil((new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60 * 24));
+    const roomPricing = roomIds.map((roomId: string) => {
+      const room = mockRooms.find(r => r.id === roomId);
+      if (!room) return null;
+
+      const baseRate = room.price || 100;
+      const subtotal = baseRate * nights;
+      const adjustments = [
+        {
+          type: 'weekend',
+          description: 'Weekend surcharge',
+          amount: nights * 20
+        }
+      ];
+      const finalAmount = subtotal + adjustments.reduce((sum, adj) => sum + adj.amount, 0);
+
+      return {
+        roomId,
+        baseRate,
+        totalNights: nights,
+        subtotal,
+        adjustments,
+        finalAmount
+      };
+    }).filter(Boolean);
+
+    return HttpResponse.json(roomPricing);
+  }),
+
+  // Room assignment suggestions
+  http.post('/api/rooms/assignment-suggestions', async ({ request }) => {
+    const body = await request.json() as any;
+    const { availableRoomIds, totalGuests, preferences } = body;
+
+    const suggestions = [];
+    const rooms = availableRoomIds.map((id: string) => mockRooms.find(r => r.id === id)).filter(Boolean);
+    const roomTypes = mockRoomTypes;
+
+    // Single room suggestion
+    for (const room of rooms) {
+      const roomType = roomTypes.find(rt => rt._id === room.roomTypeId);
+      if (roomType && (roomType.capacity?.total || 2) >= totalGuests) {
+        const baseRate = room.price || 100;
+        suggestions.push({
+          assignments: [{
+            roomId: room.id,
+            room,
+            suggestedGuests: [],
+            capacityUtilization: totalGuests / (roomType.capacity?.total || 2),
+            preferenceMatch: 0.8
+          }],
+          totalPrice: baseRate * 3, // Assume 3 nights
+          matchScore: 85,
+          reasoning: `Single ${roomType.name} room accommodates all ${totalGuests} guests`
+        });
+        break;
+      }
+    }
+
+    return HttpResponse.json(suggestions);
+  }),
+
+  // Multi-room reservations CRUD
+  http.get('/api/reservations/multi-room', ({ request }) => {
+    const url = new URL(request.url);
+    const hotelId = url.searchParams.get('hotelId') || '';
+    const status = url.searchParams.get('status');
+
+    // Convert existing reservations to multi-room format
+    let multiRoomReservations = finalMockReservations
+      .filter((r: any) => r.hotelId === hotelId || r.rooms?.includes(hotelId))
+      .map((r: any) => {
+        const primaryGuest = mockGuests.find(g => r.guestIds?.[0] === g._id) || {
+          _id: 'guest-placeholder',
+          name: 'Guest',
+          email: 'guest@example.com',
+          phone: '+1234567890'
+        };
+
+        const roomAssignments = [{
+          roomId: r.rooms || 'room-101',
+          room: mockRooms.find(room => room.id === r.rooms),
+          guests: (r.guestIds || []).map((gId: string) => mockGuests.find(g => g._id === gId)).filter(Boolean),
+          roomSpecificNotes: r.notes || '',
+          checkInStatus: 'pending' as const
+        }];
+
+        return {
+          id: r.id,
+          primaryGuest,
+          roomAssignments,
+          checkInDate: r.dates?.split(' to ')[0] || new Date().toISOString().split('T')[0],
+          checkOutDate: r.dates?.split(' to ')[1] || new Date().toISOString().split('T')[0],
+          pricing: {
+            breakdown: [{
+              roomId: r.rooms || 'room-101',
+              roomNumber: mockRooms.find(room => room.id === r.rooms)?.number || '101',
+              roomType: 'Standard',
+              description: 'Standard Room - 3 nights',
+              baseAmount: r.price || 300,
+              adjustments: [],
+              finalAmount: r.price || 300
+            }],
+            subtotal: r.price || 300,
+            taxes: (r.price || 300) * 0.13,
+            fees: 45,
+            total: (r.price || 300) * 1.13 + 45,
+            currency: 'USD'
+          },
+          status: r.reservationStatus || 'confirmed',
+          notes: r.notes || '',
+          specialRequests: [],
+          hotelId: hotelId,
+          createdBy: 'system',
+          createdAt: r.createdDate || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+      });
+
+    if (status) {
+      multiRoomReservations = multiRoomReservations.filter((r: any) => r.status === status);
+    }
+
+    return HttpResponse.json(multiRoomReservations);
+  }),
+
+  http.get('/api/reservations/multi-room/:id', ({ params }) => {
+    const reservationId = params.id as string;
+    const reservation = finalMockReservations.find((r: any) => r.id === reservationId);
+    
+    if (!reservation) {
+      return new HttpResponse(null, { status: 404 });
+    }
+
+    // Convert to multi-room format
+    const primaryGuest = mockGuests.find(g => reservation.guestIds?.[0] === g._id) || {
+      _id: 'guest-placeholder',
+      name: 'Guest',
+      email: 'guest@example.com',
+      phone: '+1234567890'
+    };
+
+    const multiRoomReservation = {
+      id: reservation.id,
+      primaryGuest,
+      roomAssignments: [{
+        roomId: reservation.rooms || 'room-101',
+        room: mockRooms.find(room => room.id === reservation.rooms),
+        guests: (reservation.guestIds || []).map((gId: string) => mockGuests.find(g => g._id === gId)).filter(Boolean),
+        roomSpecificNotes: reservation.notes || '',
+        checkInStatus: 'pending' as const
+      }],
+      checkInDate: reservation.dates?.split(' to ')[0] || new Date().toISOString().split('T')[0],
+      checkOutDate: reservation.dates?.split(' to ')[1] || new Date().toISOString().split('T')[0],
+      pricing: {
+        breakdown: [{
+          roomId: reservation.rooms || 'room-101',
+          roomNumber: mockRooms.find(room => room.id === reservation.rooms)?.number || '101',
+          roomType: 'Standard',
+          description: 'Standard Room - 3 nights',
+          baseAmount: reservation.price || 300,
+          adjustments: [],
+          finalAmount: reservation.price || 300
+        }],
+        subtotal: reservation.price || 300,
+        taxes: (reservation.price || 300) * 0.13,
+        fees: 45,
+        total: (reservation.price || 300) * 1.13 + 45,
+        currency: 'USD'
+      },
+      status: reservation.reservationStatus || 'confirmed',
+      notes: reservation.notes || '',
+      specialRequests: [],
+      hotelId: reservation.hotelId || currentConfigId,
+      createdBy: 'system',
+      createdAt: reservation.createdDate || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    return HttpResponse.json(multiRoomReservation);
+  }),
+
+  http.post('/api/reservations/multi-room', async ({ request }) => {
+    const newReservation = await request.json() as any;
+    
+    // Convert multi-room reservation to legacy format for compatibility
+    const legacyReservation = {
+      id: `MR-${(finalMockReservations.length + 1).toString().padStart(3, '0')}`,
+      guestIds: [newReservation.primaryGuest._id],
+      guests: [newReservation.primaryGuest.name],
+      rooms: newReservation.roomAssignments[0]?.roomId || '',
+      dates: `${newReservation.checkInDate} to ${newReservation.checkOutDate}`,
+      status: 'Confirmed',
+      reservationStatus: newReservation.status || 'confirmed',
+      notes: newReservation.notes || '',
+      price: newReservation.pricing?.total || 0,
+      hotelId: newReservation.hotelId,
+      createdDate: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    finalMockReservations.push(legacyReservation);
+
+    // Return in multi-room format
+    const multiRoomResponse = {
+      ...newReservation,
+      id: legacyReservation.id,
+      createdAt: legacyReservation.createdAt,
+      updatedAt: legacyReservation.updatedAt
+    };
+
+    console.log('✅ Created multi-room reservation:', multiRoomResponse.id);
+    return HttpResponse.json(multiRoomResponse, { status: 201 });
+  }),
+
+  http.patch('/api/reservations/multi-room/:id', async ({ params, request }) => {
+    const reservationId = params.id as string;
+    const updates = await request.json() as any;
+    
+    const reservationIndex = finalMockReservations.findIndex((r: any) => r.id === reservationId);
+    if (reservationIndex === -1) {
+      return new HttpResponse(null, { status: 404 });
+    }
+
+    // Update legacy reservation
+    const reservation = finalMockReservations[reservationIndex];
+    Object.assign(reservation, {
+      notes: updates.notes || reservation.notes,
+      reservationStatus: updates.status || reservation.reservationStatus,
+      updatedAt: new Date().toISOString()
+    });
+
+    // Return in multi-room format
+    const multiRoomResponse = {
+      id: reservation.id,
+      primaryGuest: mockGuests.find(g => reservation.guestIds?.[0] === g._id) || {
+        _id: 'guest-placeholder',
+        name: 'Guest',
+        email: 'guest@example.com',
+        phone: '+1234567890'
+      },
+      roomAssignments: [{
+        roomId: reservation.rooms || 'room-101',
+        room: mockRooms.find(room => room.id === reservation.rooms),
+        guests: (reservation.guestIds || []).map((gId: string) => mockGuests.find(g => g._id === gId)).filter(Boolean),
+        roomSpecificNotes: reservation.notes || '',
+        checkInStatus: 'pending' as const
+      }],
+      checkInDate: reservation.dates?.split(' to ')[0] || new Date().toISOString().split('T')[0],
+      checkOutDate: reservation.dates?.split(' to ')[1] || new Date().toISOString().split('T')[0],
+      pricing: updates.pricing || {
+        breakdown: [],
+        subtotal: reservation.price || 0,
+        taxes: 0,
+        fees: 0,
+        total: reservation.price || 0,
+        currency: 'USD'
+      },
+      status: reservation.reservationStatus || 'confirmed',
+      notes: reservation.notes || '',
+      specialRequests: updates.specialRequests || [],
+      hotelId: reservation.hotelId || currentConfigId,
+      createdBy: 'system',
+      createdAt: reservation.createdDate || new Date().toISOString(),
+      updatedAt: reservation.updatedAt
+    };
+
+    return HttpResponse.json(multiRoomResponse);
+  }),
+
+  // Guest management for reservations
+  http.post('/api/reservations/:reservationId/guests', async ({ params, request }) => {
+    const { reservationId } = params;
+    const { roomId, guest } = await request.json() as any;
+
+    // Add guest to the system
+    const newGuest = {
+      _id: `guest-${Date.now()}`,
+      ...guest,
+      roomId,
+      status: 'booked',
+      hotelId: currentConfigId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    mockGuests.push(newGuest);
+
+    // Update reservation
+    const reservation = finalMockReservations.find((r: any) => r.id === reservationId);
+    if (reservation) {
+      reservation.guestIds = reservation.guestIds || [];
+      reservation.guestIds.push(newGuest._id);
+    }
+
+    return HttpResponse.json(newGuest, { status: 201 });
+  }),
+
+  // Validation endpoints
+  http.post('/api/reservations/validate', async ({ request }) => {
+    const reservationData = await request.json() as any;
+    
+    const errors: any = {};
+    
+    if (!reservationData.checkInDate) {
+      errors.checkInDate = 'Check-in date is required';
+    }
+    
+    if (!reservationData.checkOutDate) {
+      errors.checkOutDate = 'Check-out date is required';
+    }
+    
+    if (!reservationData.primaryGuest?.name) {
+      errors.primaryGuest = 'Primary guest name is required';
+    }
+
+    const isValid = Object.keys(errors).length === 0;
+
+    return HttpResponse.json({
+      isValid,
+      errors: isValid ? null : errors
+    });
+  }),
+
+  http.post('/api/reservations/check-conflicts', async ({ request }) => {
+    const { roomIds, checkInDate, checkOutDate, excludeReservationId } = await request.json() as any;
+    
+    const conflicts = finalMockReservations
+      .filter((r: any) => r.id !== excludeReservationId)
+      .filter((r: any) => roomIds.includes(r.rooms))
+      .filter((r: any) => {
+        const resStart = new Date(r.dates?.split(' to ')[0] || r.checkInDate);
+        const resEnd = new Date(r.dates?.split(' to ')[1] || r.checkOutDate);
+        const reqStart = new Date(checkInDate);
+        const reqEnd = new Date(checkOutDate);
+        
+        return resStart < reqEnd && resEnd > reqStart;
+      });
+
+    return HttpResponse.json({
+      hasConflicts: conflicts.length > 0,
+      conflicts: conflicts.map((r: any) => ({
+        reservationId: r.id,
+        roomId: r.rooms,
+        guestName: r.guests?.[0] || 'Unknown Guest',
+        dates: r.dates
+      }))
+    });
+  }),
+
+  // Upgrade recommendations
+  http.get('/api/reservations/:reservationId/upgrade-recommendations', ({ params }) => {
+    const reservationId = params.reservationId as string;
+    const reservation = finalMockReservations.find((r: any) => r.id === reservationId);
+    
+    if (!reservation) {
+      return new HttpResponse(null, { status: 404 });
+    }
+
+    const currentRoom = mockRooms.find(r => r.id === reservation.rooms);
+    if (!currentRoom) {
+      return HttpResponse.json([]);
+    }
+
+    // Find upgrade options (higher price rooms)
+    const upgradeOptions = mockRooms
+      .filter(r => r.hotelId === currentRoom.hotelId && r.price > currentRoom.price && r.status === 'available')
+      .slice(0, 2)
+      .map(upgradeRoom => {
+        const additionalCost = (upgradeRoom.price - currentRoom.price) * 3; // 3 nights
+        return {
+          roomId: currentRoom.id,
+          currentRoom,
+          upgradeRoom,
+          additionalCost,
+          benefits: [
+            `Upgrade to ${upgradeRoom.type || 'Premium'} room`,
+            'Better amenities',
+            'Enhanced comfort'
+          ]
+        };
+      });
+
+    return HttpResponse.json(upgradeOptions);
+  }),
+
+  // Analytics endpoint
+  http.get('/api/reservations/analytics', ({ request }) => {
+    const url = new URL(request.url);
+    const hotelId = url.searchParams.get('hotelId') || '';
+    const startDate = url.searchParams.get('startDate') || '';
+    const endDate = url.searchParams.get('endDate') || '';
+
+    const hotelReservations = finalMockReservations.filter((r: any) => r.hotelId === hotelId);
+    
+    return HttpResponse.json({
+      totalReservations: hotelReservations.length,
+      totalRevenue: hotelReservations.reduce((sum: number, r: any) => sum + (r.price || 0), 0),
+      averageStayLength: 3.2,
+      occupancyRate: 0.75,
+      topRoomTypes: [
+        { name: 'Standard', count: 15, revenue: 4500 },
+        { name: 'Deluxe', count: 8, revenue: 3200 }
+      ],
+      monthlyTrends: [
+        { month: 'Jan', reservations: 45, revenue: 13500 },
+        { month: 'Feb', reservations: 52, revenue: 15600 },
+        { month: 'Mar', reservations: 48, revenue: 14400 }
+      ]
+    });
+  })
+
 ];
 // REMOVED DUPLICATE ENDPOINTS - they were duplicated during the sync process
 
