@@ -4310,11 +4310,11 @@ export const handlers: HttpHandler[] = [
     const availableRooms = hotelRooms
       .filter(room => ['available', 'cleaning'].includes(room.status))
       .map(room => {
-        const roomType = hotelRoomTypes.find(rt => rt._id === room.roomTypeId);
+        const roomType = hotelRoomTypes.find(rt => rt._id === room.typeId);
         if (!roomType) return null;
 
         const capacity = roomType.capacity?.total || room.capacity || 2;
-        const baseRate = room.price || 100;
+        const baseRate = room.rate || 100; // Fixed: use rate instead of price
         const nights = Math.ceil((new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60 * 24));
         
         // Simple pricing calculation
@@ -4400,7 +4400,7 @@ export const handlers: HttpHandler[] = [
     const hotelRoomTypes = mockRoomTypes.filter(rt => rt.hotelId === hotelId);
 
     const detailedRooms = hotelRooms.map(room => {
-      const roomType = hotelRoomTypes.find(rt => rt._id === room.roomTypeId);
+      const roomType = hotelRoomTypes.find(rt => rt._id === room.typeId);
       return {
         ...room,
         roomType,
@@ -4423,10 +4423,10 @@ export const handlers: HttpHandler[] = [
 
     roomIds.forEach((roomId: string) => {
       const room = mockRooms.find(r => r.id === roomId);
-      const roomType = mockRoomTypes.find(rt => rt._id === room?.roomTypeId);
+      const roomType = mockRoomTypes.find(rt => rt._id === room?.typeId);
       
       if (room && roomType) {
-        const baseRate = room.price || 100;
+        const baseRate = room.rate || 100;
         const baseAmount = baseRate * nights;
         const weekendSurcharge = nights * 20;
         const finalAmount = baseAmount + weekendSurcharge;
@@ -4482,7 +4482,7 @@ export const handlers: HttpHandler[] = [
       const room = mockRooms.find(r => r.id === roomId);
       if (!room) return null;
 
-      const baseRate = room.price || 100;
+      const baseRate = room.rate || 100;
       const subtotal = baseRate * nights;
       const adjustments = [
         {
@@ -4517,9 +4517,9 @@ export const handlers: HttpHandler[] = [
 
     // Single room suggestion
     for (const room of rooms) {
-      const roomType = roomTypes.find(rt => rt._id === room.roomTypeId);
+      const roomType = roomTypes.find(rt => rt._id === room.typeId);
       if (roomType && (roomType.capacity?.total || 2) >= totalGuests) {
-        const baseRate = room.price || 100;
+        const baseRate = room.rate || 100;
         suggestions.push({
           assignments: [{
             roomId: room.id,
@@ -4844,17 +4844,19 @@ export const handlers: HttpHandler[] = [
 
     // Find upgrade options (higher price rooms)
     const upgradeOptions = mockRooms
-      .filter(r => r.hotelId === currentRoom.hotelId && r.price > currentRoom.price && r.status === 'available')
+      .filter(r => r.hotelId === currentRoom.hotelId && 
+                   (r.rate || 0) > (currentRoom.rate || 0) && 
+                   r.status === 'available')
       .slice(0, 2)
       .map(upgradeRoom => {
-        const additionalCost = (upgradeRoom.price - currentRoom.price) * 3; // 3 nights
+        const additionalCost = ((upgradeRoom.rate || 0) - (currentRoom.rate || 0)) * 3; // 3 nights
         return {
           roomId: currentRoom.id,
           currentRoom,
           upgradeRoom,
           additionalCost,
           benefits: [
-            `Upgrade to ${upgradeRoom.type || 'Premium'} room`,
+            `Upgrade to ${upgradeRoom.typeId || 'Premium'} room`,
             'Better amenities',
             'Enhanced comfort'
           ]

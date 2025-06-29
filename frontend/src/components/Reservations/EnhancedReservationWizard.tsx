@@ -71,8 +71,31 @@ import type {
   ReservationWizardState,
   AvailableRoom,
   RoomAssignment,
-  ReservationPricing
+  ReservationPricing,
+  RoomCheckInStatus
 } from '../../types/reservation';
+import type { Room } from '../../types/index';
+
+// Local interface for wizard state - allows mixed guest types
+interface WizardRoomAssignment {
+  roomId?: string;
+  room?: Room;
+  guests?: any[]; // Allow any type for wizard state (numbers during wizard, Guest objects in final)
+  roomSpecificNotes?: string;
+  checkInStatus?: RoomCheckInStatus;
+}
+
+// Local wizard state interface that uses WizardRoomAssignment
+interface LocalWizardState {
+  currentStep: number;
+  data: Partial<MultiRoomReservation>;
+  availableRooms?: AvailableRoom[];
+  selectedRooms?: string[];
+  roomAssignments?: WizardRoomAssignment[]; // Use local type instead of Partial<RoomAssignment>[]
+  pricing?: ReservationPricing;
+  errors?: Record<string, string>;
+  isValid?: boolean;
+}
 
 interface EnhancedReservationWizardProps {
   open: boolean;
@@ -103,7 +126,7 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
   const createReservationMutation = useCreateMultiRoomReservation();
 
   // Wizard state
-  const [wizardState, setWizardState] = useState<ReservationWizardState>({
+  const [wizardState, setWizardState] = useState<LocalWizardState>({
     currentStep: 0,
     data: {
       checkInDate: format(new Date(), 'yyyy-MM-dd'),
@@ -298,34 +321,54 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
     });
   };
 
-  // Room assignment
+  // Remove guest from room assignment
+  const removeGuestFromRoom = (guestIndex: number, roomId: string) => {
+    setWizardState(prev => {
+      const assignments = [...(prev.roomAssignments || [])];
+      const roomAssignment = assignments.find(a => a.roomId === roomId);
+      
+      if (roomAssignment && roomAssignment.guests) {
+        // Filter out the guest index (number) from the guests array
+        roomAssignment.guests = roomAssignment.guests.filter((guestIdx: any) => {
+          // Convert guest to index if it's an object
+          const idx = typeof guestIdx === 'number' ? guestIdx : guests.findIndex(g => g._id === guestIdx._id);
+          return idx !== guestIndex;
+        });
+      }
+      
+      return {
+        ...prev,
+        roomAssignments: assignments
+      };
+    });
+  };
+
+  // Assign guest to room
   const assignGuestToRoom = (guestIndex: number, roomId: string) => {
     setWizardState(prev => {
       const assignments = [...(prev.roomAssignments || [])];
-      
-      // Remove guest from current assignment
-      assignments.forEach(assignment => {
-        if (assignment.guests) {
-          assignment.guests = assignment.guests.filter(g => g !== guestIndex);
-        }
-      });
-      
-      // Add guest to new room
       let roomAssignment = assignments.find(a => a.roomId === roomId);
+      
       if (!roomAssignment) {
         roomAssignment = {
           roomId,
-          guests: [],
-          roomSpecificNotes: '',
-          checkInStatus: 'pending'
+          guests: [] as any[] // Use any[] for wizard state to allow numbers
         };
         assignments.push(roomAssignment);
       }
       
+      // Ensure guests array exists
       if (!roomAssignment.guests) {
         roomAssignment.guests = [];
       }
-      roomAssignment.guests.push(guestIndex);
+      
+      // Add the guest index (number) to the room assignment
+      if (!roomAssignment.guests.some((guestIdx: any) => {
+        const idx = typeof guestIdx === 'number' ? guestIdx : guests.findIndex(g => g._id === guestIdx._id);
+        return idx === guestIndex;
+      })) {
+        roomAssignment.guests.push(guestIndex); // Now works because guests is any[]
+      }
       
       return {
         ...prev,
@@ -352,10 +395,23 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
         status: 'booked',
         hotelId: currentHotel?._id || ''
       },
-      roomAssignments: (wizardState.roomAssignments || []).map(assignment => ({
-        ...assignment,
-        guests: (assignment.guests || []).map(guestIndex => guests[guestIndex]).filter(Boolean) as Guest[]
-      })),
+      roomAssignments: (wizardState.roomAssignments || [])
+        .filter(assignment => assignment.roomId) // Ensure roomId exists
+        .map(assignment => ({
+          roomId: assignment.roomId as string, // Ensure string type
+          room: assignment.room,
+          guests: (assignment.guests || [])
+            .map((guestIndex: any) => {
+              // Handle both number indices and Guest objects
+              if (typeof guestIndex === 'number') {
+                return guests[guestIndex];
+              }
+              return guestIndex;
+            })
+            .filter(Boolean) as Guest[],
+          roomSpecificNotes: assignment.roomSpecificNotes,
+          checkInStatus: assignment.checkInStatus || 'pending'
+        })),
       checkInDate: wizardState.data.checkInDate || '',
       checkOutDate: wizardState.data.checkOutDate || '',
       pricing: wizardState.pricing || {
@@ -418,13 +474,14 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
                       }
                     }}
                     minDate={new Date()}
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                        error: !!wizardState.errors?.checkInDate,
-                        helperText: wizardState.errors?.checkInDate
-                      }
-                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        fullWidth
+                        error={!!wizardState.errors?.checkInDate}
+                        helperText={wizardState.errors?.checkInDate}
+                      />
+                    )}
                   />
                 </LocalizationProvider>
               </Grid>
@@ -446,13 +503,14 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
                       }
                     }}
                     minDate={wizardState.data.checkInDate ? addDays(new Date(wizardState.data.checkInDate), 1) : addDays(new Date(), 1)}
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                        error: !!wizardState.errors?.checkOutDate,
-                        helperText: wizardState.errors?.checkOutDate
-                      }
-                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        fullWidth
+                        error={!!wizardState.errors?.checkOutDate}
+                        helperText={wizardState.errors?.checkOutDate}
+                      />
+                    )}
                   />
                 </LocalizationProvider>
               </Grid>
@@ -542,7 +600,7 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
               <Grid container spacing={2} sx={{ mt: 2 }}>
                 {availabilityQuery.data.availableRooms.map((availableRoom: AvailableRoom) => {
                   const isSelected = wizardState.selectedRooms?.includes(availableRoom.room.id) || false;
-                  const capacity = availableRoom.roomType.capacity?.total || 2;
+                  const capacity = availableRoom.roomType.defaultCapacity || 2;
                   
                   return (
                     <Grid item xs={12} sm={6} md={4} key={availableRoom.room.id}>
@@ -632,7 +690,7 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
                       Room {room.number} - {roomType.name}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" gutterBottom>
-                      Capacity: {roomType.capacity?.total || 2} guests
+                      Capacity: {roomType.defaultCapacity || 2} guests
                     </Typography>
 
                     <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
@@ -645,23 +703,20 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
                       </Typography>
                     ) : (
                       <Stack spacing={1}>
-                        {assignedGuestIndexes.map(guestIndex => (
-                          <Chip
-                            key={guestIndex}
-                            label={`Guest ${guestIndex + 1}${guestIndex === 0 ? ' (Primary)' : ''}`}
-                            onDelete={() => {
-                              // Remove guest from this room
-                              setWizardState(prev => {
-                                const assignments = [...(prev.roomAssignments || [])];
-                                const roomAssignment = assignments.find(a => a.roomId === roomId);
-                                if (roomAssignment && roomAssignment.guests) {
-                                  roomAssignment.guests = roomAssignment.guests.filter(g => g !== guestIndex);
-                                }
-                                return { ...prev, roomAssignments: assignments };
-                              });
-                            }}
-                          />
-                        ))}
+                        {assignedGuestIndexes.map((guestIndex: any) => {
+                          // Ensure guestIndex is a number
+                          const idx = typeof guestIndex === 'number' ? guestIndex : guests.findIndex(g => g._id === guestIndex._id);
+                          return (
+                            <Chip
+                              key={`guest-${idx}`}
+                              label={`Guest ${idx + 1}${idx === 0 ? ' (Primary)' : ''}`}
+                              onDelete={() => {
+                                // Remove guest from this room
+                                removeGuestFromRoom(idx, roomId);
+                              }}
+                            />
+                          );
+                        })}
                       </Stack>
                     )}
 
@@ -671,9 +726,15 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
                     
                     <Stack direction="row" spacing={1} flexWrap="wrap">
                       {Array.from({ length: guestCount }, (_, index) => {
-                        const isAssignedHere = assignedGuestIndexes.includes(index);
+                        const isAssignedHere = assignedGuestIndexes.some((guestIdx: any) => {
+                          const idx = typeof guestIdx === 'number' ? guestIdx : guests.findIndex(g => g._id === guestIdx._id);
+                          return idx === index;
+                        });
                         const isAssignedElsewhere = wizardState.roomAssignments?.some(a => 
-                          a.roomId !== roomId && a.guests?.includes(index)
+                          a.roomId !== roomId && a.guests?.some((guestIdx: any) => {
+                            const idx = typeof guestIdx === 'number' ? guestIdx : guests.findIndex(g => g._id === guestIdx._id);
+                            return idx === index;
+                          })
                         );
                         
                         if (isAssignedHere || isAssignedElsewhere) return null;
@@ -684,7 +745,7 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
                             size="small"
                             variant="outlined"
                             onClick={() => assignGuestToRoom(index, roomId)}
-                            disabled={assignedGuestIndexes.length >= (roomType.capacity?.total || 2)}
+                            disabled={assignedGuestIndexes.length >= (roomType.defaultCapacity || 2)}
                           >
                             Guest {index + 1}{index === 0 ? ' (Primary)' : ''}
                           </Button>
@@ -759,7 +820,7 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
                       <Typography variant="body1">${item.finalAmount}</Typography>
                     </Box>
                     
-                    {index < wizardState.pricing.breakdown.length - 1 && <Divider sx={{ mt: 1 }} />}
+                    {index < (wizardState.pricing?.breakdown.length || 0) - 1 && <Divider sx={{ mt: 1 }} />}
                   </Box>
                 ))}
 

@@ -30,7 +30,7 @@ export function calculateRoomAvailability(
   return rooms
     .filter(room => room.hotelId === query.hotelId)
     .map(room => {
-      const roomType = roomTypes.find(rt => rt._id === room.roomTypeId);
+      const roomType = roomTypes.find(rt => rt.id === room.typeId);
       if (!roomType) {
         return null;
       }
@@ -51,7 +51,7 @@ export function calculateRoomAvailability(
         unavailableDates: availability.unavailableDates,
         pricing,
         recommendationScore,
-        reasonsUnavailable: availability.reasons
+        reasonsUnavailable: availability.reasons || []
       };
     })
     .filter((room): room is AvailableRoom => room !== null)
@@ -126,12 +126,12 @@ export function checkRoomAvailability(
   }
 
   // Remove duplicates and sort
-  const uniqueUnavailableDates = [...new Set(unavailableDates)].sort();
+  const uniqueUnavailableDates = Array.from(new Set(unavailableDates)).sort();
 
   return {
     isAvailable: uniqueUnavailableDates.length === 0,
     unavailableDates: uniqueUnavailableDates,
-    reasons: [...new Set(reasons)]
+    reasons: Array.from(new Set(reasons))
   };
 }
 
@@ -141,7 +141,7 @@ export function calculateRoomPricing(
   roomType: RoomType,
   dateRange: DateRange
 ): RoomPricing {
-  const baseRate = room.price || 100; // Fallback price
+  const baseRate = room.rate || 100; // Fallback price
   const totalNights = dateRange.nights;
   const subtotal = baseRate * totalNights;
   
@@ -205,7 +205,7 @@ export function calculateRecommendationScore(
   let score = 50; // Base score
 
   // Capacity matching (most important factor)
-  const capacity = roomType.capacity?.total || room.capacity || 2;
+  const capacity = roomType.defaultCapacity || room.capacity || 2;
   if (guestCount <= capacity) {
     // Perfect fit gets highest score
     const utilizationRatio = guestCount / capacity;
@@ -222,12 +222,12 @@ export function calculateRecommendationScore(
   }
 
   // Room type preferences
-  if (preferences?.roomTypeIds?.includes(roomType._id)) {
+  if (preferences?.roomTypeIds?.includes(roomType.id)) {
     score += 15;
   }
 
   // Price considerations (lower price = higher score for budget-conscious)
-  const roomPrice = room.price || 100;
+  const roomPrice = room.rate || 100;
   if (roomPrice <= 100) {
     score += 10; // Budget-friendly
   } else if (roomPrice >= 200) {
@@ -236,7 +236,7 @@ export function calculateRecommendationScore(
 
   // Amenity matching
   if (preferences?.amenities) {
-    const matchingAmenities = room.amenities?.filter(amenity => 
+    const matchingAmenities = room.features?.filter((amenity: string) => 
       preferences.amenities.includes(amenity)
     ).length || 0;
     score += matchingAmenities * 2;
@@ -265,7 +265,7 @@ export function generateRoomAssignmentSuggestions(
   
   // Strategy 1: Single room if possible
   const singleRoomOptions = availableRooms.filter(room => 
-    (room.roomType.capacity?.total || room.room.capacity || 2) >= totalGuests
+    (room.roomType.defaultCapacity || room.room.capacity || 2) >= totalGuests
   );
   
   if (singleRoomOptions.length > 0) {
@@ -275,7 +275,7 @@ export function generateRoomAssignmentSuggestions(
         roomId: bestSingleRoom.room.id,
         room: bestSingleRoom.room,
         suggestedGuests: [], // Will be filled when guests are defined
-        capacityUtilization: totalGuests / (bestSingleRoom.roomType.capacity?.total || 2),
+        capacityUtilization: totalGuests / (bestSingleRoom.roomType.defaultCapacity || 2),
         preferenceMatch: bestSingleRoom.recommendationScore / 100
       }],
       totalPrice: bestSingleRoom.pricing.finalAmount,
@@ -461,7 +461,7 @@ function generateMultiRoomSuggestion(
 ): RoomAssignmentSuggestion | null {
   // Simple strategy: try to fit guests in 2 rooms
   const doubleRooms = availableRooms.filter(room => 
-    (room.roomType.capacity?.total || room.room.capacity || 2) >= 2
+    (room.roomType.defaultCapacity || room.room.capacity || 2) >= 2
   );
 
   if (doubleRooms.length >= 2) {
@@ -476,14 +476,14 @@ function generateMultiRoomSuggestion(
           roomId: room1.room.id,
           room: room1.room,
           suggestedGuests: [],
-          capacityUtilization: Math.min(totalGuests / 2, 1) / (room1.roomType.capacity?.total || 2),
+          capacityUtilization: Math.min(totalGuests / 2, 1) / (room1.roomType.defaultCapacity || 2),
           preferenceMatch: room1.recommendationScore / 100
         },
         {
           roomId: room2.room.id,
           room: room2.room,
           suggestedGuests: [],
-          capacityUtilization: Math.max(totalGuests - 2, 0) / (room2.roomType.capacity?.total || 2),
+          capacityUtilization: Math.max(totalGuests - 2, 0) / (room2.roomType.defaultCapacity || 2),
           preferenceMatch: room2.recommendationScore / 100
         }
       ],

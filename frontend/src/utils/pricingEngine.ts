@@ -25,7 +25,7 @@ export function calculateReservationPricing(
   const breakdown: PricingBreakdown[] = [];
   
   for (const room of rooms) {
-    const roomType = roomTypes.find(rt => rt._id === room.roomTypeId);
+    const roomType = roomTypes.find(rt => rt.id === room.typeId);
     if (!roomType) continue;
 
     const roomBreakdown = calculateRoomBreakdown(room, roomType, dateRange);
@@ -60,7 +60,7 @@ export function calculateRoomBreakdown(
   roomType: RoomType,
   dateRange: DateRange
 ): PricingBreakdown {
-  const baseRate = room.price || roomType.basePrice || 100;
+  const baseRate = room.rate || roomType.baseRate || 100;
   const baseAmount = baseRate * dateRange.nights;
   const adjustments: PriceAdjustment[] = [];
 
@@ -400,20 +400,20 @@ export function calculateUpgradeRecommendations(
   }> = [];
 
   for (const currentRoom of selectedRooms) {
-    const currentRoomType = roomTypes.find(rt => rt._id === currentRoom.roomTypeId);
+    const currentRoomType = roomTypes.find(rt => rt.id === currentRoom.typeId);
     if (!currentRoomType) continue;
 
     // Find potential upgrades (higher price, better amenities)
     const upgradeOptions = availableRooms.filter(room => {
-      const roomType = roomTypes.find(rt => rt._id === room.roomTypeId);
+      const roomType = roomTypes.find(rt => rt.id === room.typeId);
       return roomType && 
-             room.price > currentRoom.price && 
+             room.rate > currentRoom.rate && 
              room.id !== currentRoom.id &&
              !selectedRooms.find(sr => sr.id === room.id);
     });
 
     for (const upgradeRoom of upgradeOptions.slice(0, 2)) { // Limit to top 2 upgrades
-      const upgradeRoomType = roomTypes.find(rt => rt._id === upgradeRoom.roomTypeId);
+      const upgradeRoomType = roomTypes.find(rt => rt.id === upgradeRoom.typeId);
       if (!upgradeRoomType) continue;
 
       const currentPricing = calculateRoomBreakdown(currentRoom, currentRoomType, dateRange);
@@ -447,8 +447,8 @@ function calculateUpgradeBenefits(
   const benefits: string[] = [];
 
   // Capacity increase
-  const currentCapacity = currentRoomType.capacity?.total || currentRoom.capacity || 2;
-  const upgradeCapacity = upgradeRoomType.capacity?.total || upgradeRoom.capacity || 2;
+  const currentCapacity = currentRoomType.defaultCapacity || currentRoom.capacity || 2;
+  const upgradeCapacity = upgradeRoomType.defaultCapacity || upgradeRoom.capacity || 2;
   if (upgradeCapacity > currentCapacity) {
     benefits.push(`Accommodates ${upgradeCapacity} guests (vs ${currentCapacity})`);
   }
@@ -459,9 +459,9 @@ function calculateUpgradeBenefits(
   }
 
   // Additional amenities
-  const currentAmenities = new Set(currentRoom.amenities || []);
-  const upgradeAmenities = upgradeRoom.amenities || [];
-  const additionalAmenities = upgradeAmenities.filter(amenity => !currentAmenities.has(amenity));
+  const currentAmenities = new Set(currentRoom.features || []);
+  const upgradeAmenities = upgradeRoom.features || [];
+  const additionalAmenities = upgradeAmenities.filter((amenity: string) => !currentAmenities.has(amenity));
   
   if (additionalAmenities.length > 0) {
     benefits.push(`Additional amenities: ${additionalAmenities.slice(0, 3).join(', ')}`);
@@ -493,10 +493,4 @@ function createDateRange(checkIn: string, checkOut: string): DateRange {
 function extractFloorFromRoomNumber(roomNumber: string): number {
   const match = roomNumber.match(/^(\d)/);
   return match ? parseInt(match[1]) : 1;
-}
-
-// Export utility functions for external use
-export {
-  getFeeBreakdown,
-  calculateUpgradeRecommendations
-}; 
+} 

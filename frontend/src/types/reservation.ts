@@ -1,6 +1,12 @@
 // Enhanced Reservation System Types
 // Multi-room, multi-guest reservation support with detailed pricing
 
+// Import and re-export existing types for compatibility
+import type { Room } from './index';
+import type { RoomType } from './hotel';
+export type { Room } from './index';
+export type { RoomType } from './hotel';
+
 export interface MultiRoomReservation {
   id: string;
   primaryGuest: Guest;           // Main booker/contact person
@@ -132,7 +138,7 @@ export interface AvailableRoom {
   unavailableDates: string[];   // ISO date strings
   pricing: RoomPricing;
   recommendationScore: number;  // 0-100, based on capacity match, preferences
-  reasonsUnavailable?: string[];
+  reasonsUnavailable: string[]; // Made required instead of optional
 }
 
 export interface RoomPricing {
@@ -167,7 +173,13 @@ export interface DateRange {
 }
 
 // Enhanced Room Type with Operational Fields
-export interface EnhancedRoom extends Room {
+export interface EnhancedRoom extends Omit<Room, 'assignedGuests'> {
+  // Enhanced guest tracking - override the assignedGuests property
+  assignedGuests?: Guest[];
+  checkoutPendingGuests?: Guest[];
+  expectedCheckouts?: string[];  // ISO date strings
+  expectedCheckins?: string[];   // ISO date strings
+  
   // Operational status fields
   maintenanceScheduled?: {
     start: string;
@@ -189,12 +201,6 @@ export interface EnhancedRoom extends Room {
   needsCleaning?: boolean;
   lastCleaned?: string;
   lastInspected?: string;
-  
-  // Enhanced guest tracking
-  assignedGuests?: Guest[];
-  checkoutPendingGuests?: Guest[];
-  expectedCheckouts?: string[];  // ISO date strings
-  expectedCheckins?: string[];   // ISO date strings
 }
 
 // Reservation Wizard State
@@ -237,7 +243,4 @@ export interface PricingCalculationResponse {
       benefits: string[];
     }[];
   };
-}
-
-// Import existing types for compatibility
-import type { Room, RoomType } from './index'; 
+} 
