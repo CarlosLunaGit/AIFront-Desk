@@ -1,80 +1,63 @@
 // Enhanced Reservation Wizard
 // Full-screen mobile-friendly wizard for creating multi-room, multi-guest reservations
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
+  Box,
+  Typography,
   Stepper,
   Step,
   StepLabel,
-  Box,
-  Typography,
   Button,
-  Paper,
+  IconButton,
   Grid,
+  TextField,
+  Paper,
   Card,
   CardContent,
-  CardActions,
-  Chip,
-  IconButton,
-  useTheme,
-  useMediaQuery,
-  LinearProgress,
   Alert,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Checkbox,
-  FormControlLabel,
+  LinearProgress,
   Stack,
-  Avatar
+  Chip,
+  Divider,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Close,
-  CalendarToday,
-  People,
-  Hotel,
-  AttachMoney,
-  CreditCard,
-  CheckCircle,
   ArrowBack,
   ArrowForward,
+  CheckCircle,
   Add,
   Remove,
-  Person,
-  Email,
-  Phone,
-  LocationOn,
-  Star,
-  LocalOffer,
-  Info
+  People,
+  CalendarToday,
+  Hotel,
+  AttachMoney
 } from '@mui/icons-material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format, addDays, differenceInDays } from 'date-fns';
 import { useSnackbar } from 'notistack';
 
-import { useRoomAvailability, useReservationPricing, useCreateMultiRoomReservation } from '../../services/hooks/useEnhancedReservations';
-import { useCurrentHotel } from '../../services/hooks/useHotel';
-import type { 
-  MultiRoomReservation, 
-  Guest, 
-  ReservationWizardState,
+// Types
+import {
+  MultiRoomReservation,
   AvailableRoom,
-  RoomAssignment,
   ReservationPricing,
   RoomCheckInStatus
 } from '../../types/reservation';
-import type { Room } from '../../types/index';
+import { Guest, Room } from '../../types';
+
+// Hooks
+import { useCurrentHotel } from '../../services/hooks/useHotel';
+import { 
+  useRoomAvailability, 
+  useReservationPricing, 
+  useCreateMultiRoomReservation 
+} from '../../services/hooks/useEnhancedReservations';
 
 // Local interface for wizard state - allows mixed guest types
 interface WizardRoomAssignment {
@@ -187,7 +170,7 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
   }, [pricingQuery.data]);
 
   // Step validation
-  const validateCurrentStep = (): boolean => {
+  const validateCurrentStep = useCallback((): boolean => {
     const step = wizardState.currentStep;
     const errors: Record<string, string> = {};
 
@@ -251,7 +234,7 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
     }));
 
     return Object.keys(errors).length === 0;
-  };
+  }, [wizardState.currentStep, wizardState.data.checkInDate, wizardState.data.checkOutDate, guestCount, wizardState.selectedRooms, wizardState.roomAssignments, guests]);
 
   // Navigation functions
   const handleNext = () => {
@@ -271,14 +254,27 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
   };
 
   const handleStepClick = (stepIndex: number) => {
-    // Allow clicking on completed steps or the next step
-    if (stepIndex <= wizardState.currentStep + 1) {
+    // Only allow clicking on completed steps or the current step
+    // Do not allow jumping to future steps
+    if (stepIndex <= wizardState.currentStep) {
       setWizardState(prev => ({
         ...prev,
         currentStep: stepIndex
       }));
     }
   };
+
+  // Auto-validate steps when data changes
+  useEffect(() => {
+    validateCurrentStep();
+  }, [
+    wizardState.data.checkInDate, 
+    wizardState.data.checkOutDate, 
+    guestCount, 
+    wizardState.selectedRooms, 
+    wizardState.roomAssignments,
+    guests
+  ]);
 
   // Guest management
   const updateGuestCount = (newCount: number) => {
@@ -330,8 +326,8 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
       if (roomAssignment && roomAssignment.guests) {
         // Filter out the guest index (number) from the guests array
         roomAssignment.guests = roomAssignment.guests.filter((guestIdx: any) => {
-          // Convert guest to index if it's an object
-          const idx = typeof guestIdx === 'number' ? guestIdx : guests.findIndex(g => g._id === guestIdx._id);
+          // Handle both number indices and guest objects
+          const idx = typeof guestIdx === 'number' ? guestIdx : guestIndex;
           return idx !== guestIndex;
         });
       }
@@ -364,7 +360,7 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
       
       // Add the guest index (number) to the room assignment
       if (!roomAssignment.guests.some((guestIdx: any) => {
-        const idx = typeof guestIdx === 'number' ? guestIdx : guests.findIndex(g => g._id === guestIdx._id);
+        const idx = typeof guestIdx === 'number' ? guestIdx : guestIndex;
         return idx === guestIndex;
       })) {
         roomAssignment.guests.push(guestIndex); // Now works because guests is any[]
@@ -399,7 +395,7 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
         .filter(assignment => assignment.roomId) // Ensure roomId exists
         .map(assignment => ({
           roomId: assignment.roomId as string, // Ensure string type
-          room: assignment.room,
+          room: assignment.room as any, // Type assertion to resolve compatibility
           guests: (assignment.guests || [])
             .map((guestIndex: any) => {
               // Handle both number indices and Guest objects
@@ -705,7 +701,7 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
                       <Stack spacing={1}>
                         {assignedGuestIndexes.map((guestIndex: any) => {
                           // Ensure guestIndex is a number
-                          const idx = typeof guestIndex === 'number' ? guestIndex : guests.findIndex(g => g._id === guestIndex._id);
+                          const idx = typeof guestIndex === 'number' ? guestIndex : 0;
                           return (
                             <Chip
                               key={`guest-${idx}`}
@@ -727,12 +723,12 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
                     <Stack direction="row" spacing={1} flexWrap="wrap">
                       {Array.from({ length: guestCount }, (_, index) => {
                         const isAssignedHere = assignedGuestIndexes.some((guestIdx: any) => {
-                          const idx = typeof guestIdx === 'number' ? guestIdx : guests.findIndex(g => g._id === guestIdx._id);
+                          const idx = typeof guestIdx === 'number' ? guestIdx : 0;
                           return idx === index;
                         });
                         const isAssignedElsewhere = wizardState.roomAssignments?.some(a => 
                           a.roomId !== roomId && a.guests?.some((guestIdx: any) => {
-                            const idx = typeof guestIdx === 'number' ? guestIdx : guests.findIndex(g => g._id === guestIdx._id);
+                            const idx = typeof guestIdx === 'number' ? guestIdx : 0;
                             return idx === index;
                           })
                         );
@@ -1048,16 +1044,39 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
             alternativeLabel={!isMobile}
             orientation={isMobile ? 'horizontal' : 'horizontal'}
           >
-            {WIZARD_STEPS.map((label, index) => (
-              <Step 
-                key={label} 
-                completed={index < wizardState.currentStep}
-                sx={{ cursor: 'pointer' }}
-                onClick={() => handleStepClick(index)}
-              >
-                <StepLabel>{!isMobile ? label : ''}</StepLabel>
-              </Step>
-            ))}
+            {WIZARD_STEPS.map((label, index) => {
+              const isCompleted = index < wizardState.currentStep;
+              const isCurrent = index === wizardState.currentStep;
+              const isClickable = index <= wizardState.currentStep;
+              
+              return (
+                <Step 
+                  key={label} 
+                  completed={isCompleted}
+                  sx={{ 
+                    cursor: isClickable ? 'pointer' : 'default',
+                    opacity: isClickable ? 1 : 0.5,
+                    '&:hover': isClickable ? {
+                      '& .MuiStepLabel-root': {
+                        color: 'primary.main'
+                      }
+                    } : {}
+                  }}
+                  onClick={() => isClickable && handleStepClick(index)}
+                >
+                  <StepLabel 
+                    sx={{
+                      '& .MuiStepLabel-label': {
+                        fontSize: isMobile ? '0.75rem' : '0.875rem',
+                        fontWeight: isCurrent ? 600 : 400
+                      }
+                    }}
+                  >
+                    {!isMobile ? label : ''}
+                  </StepLabel>
+                </Step>
+              );
+            })}
           </Stepper>
         </Box>
 

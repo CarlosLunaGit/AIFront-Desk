@@ -4287,113 +4287,15 @@ export const handlers: HttpHandler[] = [
 
   // Communication endpoints (matches backend /api/communications/*)
 
-  // =============================================================================
-  // ENHANCED RESERVATION SYSTEM ENDPOINTS
-  // =============================================================================
-
-  // Room Availability API
-  http.get('/api/rooms/availability', ({ request }) => {
-    const url = new URL(request.url);
-    const checkInDate = url.searchParams.get('checkInDate') || '';
-    const checkOutDate = url.searchParams.get('checkOutDate') || '';
-    const totalGuests = parseInt(url.searchParams.get('totalGuests') || '1');
-    const hotelId = url.searchParams.get('hotelId') || '';
-    const preferences = url.searchParams.get('preferences');
-
-    console.log('🔍 Availability Query:', { checkInDate, checkOutDate, totalGuests, hotelId });
-
-    // Filter rooms for the hotel
-    const hotelRooms = mockRooms.filter(r => r.hotelId === hotelId);
-    const hotelRoomTypes = mockRoomTypes.filter(rt => rt.hotelId === hotelId);
-
-    // Simple availability check (rooms not occupied or reserved)
-    const availableRooms = hotelRooms
-      .filter(room => ['available', 'cleaning'].includes(room.status))
-      .map(room => {
-        const roomType = hotelRoomTypes.find(rt => rt._id === room.typeId);
-        if (!roomType) return null;
-
-        const capacity = roomType.capacity?.total || room.capacity || 2;
-        const baseRate = room.rate || 100; // Fixed: use rate instead of price
-        const nights = Math.ceil((new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60 * 24));
-        
-        // Simple pricing calculation
-        const subtotal = baseRate * nights;
-        const weekendSurcharge = nights * 20; // $20 per night weekend surcharge
-        const finalAmount = subtotal + weekendSurcharge;
-
-        // Recommendation score based on capacity match
-        let recommendationScore = 50;
-        const utilizationRatio = totalGuests / capacity;
-        if (utilizationRatio >= 0.8 && utilizationRatio <= 1) {
-          recommendationScore = 90;
-        } else if (utilizationRatio >= 0.5) {
-          recommendationScore = 75;
-        } else if (utilizationRatio > 1) {
-          recommendationScore = 20;
-        }
-
-        return {
-          room,
-          roomType,
-          isAvailable: true,
-          unavailableDates: [],
-          pricing: {
-            baseRate,
-            totalNights: nights,
-            subtotal,
-            adjustments: [
-              {
-                type: 'weekend',
-                description: 'Weekend surcharge',
-                amount: weekendSurcharge
-              }
-            ],
-            finalAmount
-          },
-          recommendationScore,
-          reasonsUnavailable: []
-        };
-      })
-      .filter(Boolean)
-      .sort((a: any, b: any) => b.recommendationScore - a.recommendationScore);
-
-    // Generate room assignment suggestions
-    const suggestions = [];
-    if (availableRooms.length > 0) {
-      // Single room suggestion
-      const bestRoom = availableRooms[0];
-      if (bestRoom && (bestRoom.roomType.capacity?.total || 2) >= totalGuests) {
-        suggestions.push({
-          assignments: [{
-            roomId: bestRoom.room.id,
-            room: bestRoom.room,
-            suggestedGuests: [],
-            capacityUtilization: totalGuests / (bestRoom.roomType.capacity?.total || 2),
-            preferenceMatch: bestRoom.recommendationScore / 100
-          }],
-          totalPrice: bestRoom.pricing.finalAmount,
-          matchScore: bestRoom.recommendationScore,
-          reasoning: `Single ${bestRoom.roomType.name} room accommodates all ${totalGuests} guests`
-        });
-      }
-    }
-
-    return HttpResponse.json({
-      query: { checkInDate, checkOutDate, totalGuests, hotelId },
-      availableRooms,
-      totalAvailable: availableRooms.length,
-      suggestions,
-      unavailableReasons: {}
-    });
-  }),
-
-  // Detailed available rooms
+  // Enhanced Reservation System Endpoints
   http.get('/api/rooms/available-detailed', ({ request }) => {
     const url = new URL(request.url);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const checkInDate = url.searchParams.get('checkInDate') || '';
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const checkOutDate = url.searchParams.get('checkOutDate') || '';
     const guestCount = parseInt(url.searchParams.get('guestCount') || '1');
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const hotelId = url.searchParams.get('hotelId') || '';
 
     const hotelRooms = mockRooms.filter(r => r.hotelId === hotelId && ['available', 'cleaning'].includes(r.status));
@@ -4415,6 +4317,7 @@ export const handlers: HttpHandler[] = [
   // Pricing calculation API
   http.post('/api/pricing/calculate', async ({ request }) => {
     const body = await request.json() as any;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { roomIds, checkInDate, checkOutDate, guestCount, hotelId } = body;
 
     const nights = Math.ceil((new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60 * 24));
@@ -4475,6 +4378,7 @@ export const handlers: HttpHandler[] = [
   // Room pricing API
   http.post('/api/pricing/rooms', async ({ request }) => {
     const body = await request.json() as any;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { roomIds, checkInDate, checkOutDate, hotelId } = body;
 
     const nights = Math.ceil((new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60 * 24));
@@ -4509,6 +4413,7 @@ export const handlers: HttpHandler[] = [
   // Room assignment suggestions
   http.post('/api/rooms/assignment-suggestions', async ({ request }) => {
     const body = await request.json() as any;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { availableRoomIds, totalGuests, preferences } = body;
 
     const suggestions = [];
@@ -4870,7 +4775,9 @@ export const handlers: HttpHandler[] = [
   http.get('/api/reservations/analytics', ({ request }) => {
     const url = new URL(request.url);
     const hotelId = url.searchParams.get('hotelId') || '';
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const startDate = url.searchParams.get('startDate') || '';
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const endDate = url.searchParams.get('endDate') || '';
 
     const hotelReservations = finalMockReservations.filter((r: any) => r.hotelId === hotelId);
@@ -4890,7 +4797,13 @@ export const handlers: HttpHandler[] = [
         { month: 'Mar', reservations: 48, revenue: 14400 }
       ]
     });
-  })
+  }),
+
+  // Enhanced Reservation System Endpoints have been moved to modular structure
+  // See: frontend/src/mocks/handlers/reservations/enhanced.ts
+  // - /api/rooms/availability
+  // - /api/reservations/pricing  
+  // - /api/reservations/enhanced
 
 ];
 // REMOVED DUPLICATE ENDPOINTS - they were duplicated during the sync process
@@ -4903,8 +4816,6 @@ function ensureRoomDefaults(room: any) {
     notes: typeof room.notes === 'string' ? room.notes : '',
   };
 }
-
-
 
 function recalculateRoomStatus(room: any, performedBy: string = 'system', notes: string = 'Room status recalculated') {
   if (!room) return;

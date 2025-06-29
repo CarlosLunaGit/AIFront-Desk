@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@date-io/date-fns": "^2.17.0",
     "@date-io/dayjs": "^2.17.0",
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",
@@ -21,7 +22,7 @@
     "@types/react-icons": "^3.0.0",
     "autoprefixer": "^10.4.17",
     "axios": "^1.6.7",
-    "date-fns": "^3.3.1",
+    "date-fns": "^2.30.0",
     "dayjs": "^1.11.13",
     "notistack": "^3.0.2",
     "postcss": "^8.4.35",

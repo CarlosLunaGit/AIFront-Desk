@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSW Endpoint Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        button { margin: 5px; padding: 10px 20px; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>MSW Enhanced Reservation Endpoints Test</h1>
+    
+    <button onclick="testRoomAvailability()">Test Room Availability</button>
+    <button onclick="testReservationPricing()">Test Reservation Pricing</button>
+    <button onclick="testCreateReservation()">Test Create Reservation</button>
+    <button onclick="clearResults()">Clear Results</button>
+    
+    <div id="results"></div>
+
+    <script>
+        // Initialize MSW (this should be done by the main app)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/mockServiceWorker.js')
+                .then(() => console.log('MSW Service Worker registered'))
+                .catch(err => console.error('MSW Service Worker registration failed:', err));
+        }
+
+        function addResult(title, success, data) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${success ? 'success' : 'error'}`;
+            div.innerHTML = `
+                <h3>${title}</h3>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+            results.appendChild(div);
+        }
+
+        async function testRoomAvailability() {
+            try {
+                const response = await fetch('/api/rooms/availability?checkInDate=2025-06-29&checkOutDate=2025-07-02&totalGuests=2&hotelId=65b000000000000000000001');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult('✅ Room Availability Test', true, data);
+                } else {
+                    addResult('❌ Room Availability Test Failed', false, data);
+                }
+            } catch (error) {
+                addResult('❌ Room Availability Test Error', false, { error: error.message });
+            }
+        }
+
+        async function testReservationPricing() {
+            try {
+                const response = await fetch('/api/reservations/pricing?roomIds=room-101,room-102&checkInDate=2025-06-29&checkOutDate=2025-07-02&guestCount=2&hotelId=65b000000000000000000001');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult('✅ Reservation Pricing Test', true, data);
+                } else {
+                    addResult('❌ Reservation Pricing Test Failed', false, data);
+                }
+            } catch (error) {
+                addResult('❌ Reservation Pricing Test Error', false, { error: error.message });
+            }
+        }
+
+        async function testCreateReservation() {
+            try {
+                const reservationData = {
+                    checkInDate: '2025-06-29',
+                    checkOutDate: '2025-07-02',
+                    hotelId: '65b000000000000000000001',
+                    roomAssignments: [
+                        {
+                            roomId: 'room-101',
+                            guests: [{ name: 'Test Guest', email: 'test@example.com', phone: '+1234567890' }]
+                        }
+                    ],
+                    pricing: { total: 450, currency: 'USD' }
+                };
+
+                const response = await fetch('/api/reservations/enhanced', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(reservationData)
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult('✅ Create Reservation Test', true, data);
+                } else {
+                    addResult('❌ Create Reservation Test Failed', false, data);
+                }
+            } catch (error) {
+                addResult('❌ Create Reservation Test Error', false, { error: error.message });
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+    </script>
+</body>
+</html> 

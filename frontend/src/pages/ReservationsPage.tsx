@@ -24,6 +24,8 @@ import {
   determineReservationStatus,
   getReservationStatusDisplay
 } from '../utils/reservationUtils';
+// Import the Enhanced Reservation Wizard
+import { EnhancedReservationWizard } from '../components/Reservations/EnhancedReservationWizard';
 
 const ReservationsPage: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -167,6 +169,9 @@ const ReservationsPage: React.FC = () => {
   const [newGuests, setNewGuests] = useState<any[]>([]);
   const [newGuest, setNewGuest] = useState({ name: '', email: '', phone: '' });
   
+  // Enhanced Reservation Wizard state
+  const [enhancedWizardOpen, setEnhancedWizardOpen] = useState(false);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     if (name !== 'guests') { setForm(f => ({ ...f, [name]: value })); }
@@ -383,7 +388,7 @@ const ReservationsPage: React.FC = () => {
           <Button
             variant="contained"
             color="primary"
-            onClick={() => setOpen(true)}
+            onClick={() => setEnhancedWizardOpen(true)}
             sx={{ ml: 'auto' }}
           >
             CREATE RESERVATION
@@ -668,6 +673,31 @@ const ReservationsPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Enhanced Reservation Wizard */}
+      <EnhancedReservationWizard
+        open={enhancedWizardOpen}
+        onClose={() => setEnhancedWizardOpen(false)}
+        onSuccess={(reservation) => {
+          // Close wizard and show success message
+          setEnhancedWizardOpen(false);
+          
+          // Generate confirmation number
+          if (hotelId) {
+            const confirmationNumber = generateConfirmationNumber(hotelId, reservation.id);
+            enqueueSnackbar(`Enhanced reservation created successfully! Confirmation: ${confirmationNumber}`, { 
+              variant: 'success',
+              autoHideDuration: 6000 
+            });
+          } else {
+            enqueueSnackbar('Enhanced reservation created successfully!', { 
+              variant: 'success' 
+            });
+          }
+          
+          // Note: React Query will automatically refetch the reservations due to the mutation
+        }}
+      />
     </Box>
   );
 };
