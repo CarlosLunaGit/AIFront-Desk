@@ -4566,16 +4566,75 @@ export const handlers: HttpHandler[] = [
 
   http.post('/api/reservations/multi-room', async ({ request }) => {
     const newReservation = await request.json() as any;
+    console.log('🎯 Creating Enhanced Reservation:', JSON.stringify(newReservation, null, 2));
+    
+    // Create guest records for all guests in room assignments
+    const createdGuestIds: string[] = [];
+    const createdGuests: any[] = [];
+    
+    // Create primary guest
+    const primaryGuestId = `guest-${Date.now()}-primary`;
+    const primaryGuest = {
+      _id: primaryGuestId,
+      name: newReservation.primaryGuest.name || '',
+      email: newReservation.primaryGuest.email || '',
+      phone: newReservation.primaryGuest.phone || '',
+      status: 'booked',
+      roomId: newReservation.roomAssignments[0]?.roomId || '',
+      reservationStart: newReservation.checkInDate,
+      reservationEnd: newReservation.checkOutDate,
+      checkIn: null,
+      checkOut: null,
+      hotelId: newReservation.hotelId || '',
+      keepOpen: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    mockGuests.push(primaryGuest);
+    createdGuestIds.push(primaryGuestId);
+    createdGuests.push(primaryGuest);
+    console.log('✅ Created primary guest:', primaryGuest.name, 'ID:', primaryGuestId);
+    
+    // Create additional guests from room assignments
+    newReservation.roomAssignments?.forEach((assignment: any, roomIndex: number) => {
+      assignment.guests?.forEach((guest: any, guestIndex: number) => {
+        if (guest && guest.name && guestIndex > 0) { // Skip primary guest (index 0)
+          const guestId = `guest-${Date.now()}-${roomIndex}-${guestIndex}`;
+          const newGuest = {
+            _id: guestId,
+            name: guest.name || '',
+            email: guest.email || '',
+            phone: guest.phone || '',
+            status: 'booked',
+            roomId: assignment.roomId || '',
+            reservationStart: newReservation.checkInDate,
+            reservationEnd: newReservation.checkOutDate,
+            checkIn: null,
+            checkOut: null,
+            hotelId: newReservation.hotelId || '',
+            keepOpen: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          
+          mockGuests.push(newGuest);
+          createdGuestIds.push(guestId);
+          createdGuests.push(newGuest);
+          console.log('✅ Created additional guest:', newGuest.name, 'ID:', guestId);
+        }
+      });
+    });
     
     // Convert multi-room reservation to legacy format for compatibility
     const legacyReservation = {
       id: `MR-${(finalMockReservations.length + 1).toString().padStart(3, '0')}`,
-      guestIds: [newReservation.primaryGuest._id],
-      guests: [newReservation.primaryGuest.name],
+      guestIds: createdGuestIds,
+      guests: createdGuests.map(g => g.name),
       rooms: newReservation.roomAssignments[0]?.roomId || '',
       dates: `${newReservation.checkInDate} to ${newReservation.checkOutDate}`,
       status: 'Confirmed',
-      reservationStatus: newReservation.status || 'confirmed',
+      reservationStatus: 'active', // Set as active since guests are booked
       notes: newReservation.notes || '',
       price: newReservation.pricing?.total || 0,
       hotelId: newReservation.hotelId,
@@ -4585,16 +4644,25 @@ export const handlers: HttpHandler[] = [
     };
 
     finalMockReservations.push(legacyReservation);
+    
+    // Recalculate room status after adding guests
+    newReservation.roomAssignments?.forEach((assignment: any) => {
+      const room = mockRooms.find(r => r.id === assignment.roomId);
+      if (room) {
+        recalculateRoomStatus(room, 'reservation-system', 'Enhanced reservation created');
+      }
+    });
 
     // Return in multi-room format
     const multiRoomResponse = {
       ...newReservation,
       id: legacyReservation.id,
+      primaryGuest: primaryGuest,
       createdAt: legacyReservation.createdAt,
       updatedAt: legacyReservation.updatedAt
     };
 
-    console.log('✅ Created multi-room reservation:', multiRoomResponse.id);
+    console.log('✅ Created multi-room reservation:', multiRoomResponse.id, 'with', createdGuestIds.length, 'guests');
     return HttpResponse.json(multiRoomResponse, { status: 201 });
   }),
 
