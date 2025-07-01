@@ -38,7 +38,7 @@ This document defines the comprehensive room status lifecycle and reservation ma
    Guest is staying → Room: Occupied/Partially Occupied → Reservation: ACTIVE
    
 4. 🚪 CHECK-OUT PHASE
-   Guest leaves → Room: Deoccupied → Reservation: INACTIVE
+   Guest leaves → Room: Deoccupied/Partially Deoccupied → Reservation: INACTIVE
    
 5. 🧹 CLEANING PHASE
    Housekeeping cleans → Room: Cleaning → Reservation: INACTIVE

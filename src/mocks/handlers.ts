@@ -466,7 +466,7 @@ export const handlers: HttpHandler[] = [
 
     return HttpResponse.json(filteredRooms);
   }),
-
+  // TODO: Remove this endpoint
   http.get('/api/rooms/:id', ({ params }) => {
     const room = mockRooms.find(r => r.id === params.id);
     if (!room) {
@@ -489,6 +489,7 @@ export const handlers: HttpHandler[] = [
     return HttpResponse.json(updatedRoom);
   }),
 
+  // TODO: Remove this endpoint
   http.get('/api/rooms/stats', () => {
     return HttpResponse.json(mockRoomStats);
   }),
