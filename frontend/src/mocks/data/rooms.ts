@@ -159,5 +159,37 @@ export const mockRooms = [
     notes: '',
     createdAt: new Date('2024-01-01T00:00:00Z').toISOString(),
     updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'room-303',
+    _id: 'room-303',
+    number: '303',
+    typeId: 'type-1',
+    status: 'available' as const,
+    rate: 150,
+    capacity: 2,
+    features: ['feature-3'],
+    description: 'Standard room with city view',
+    hotelId: '65b000000000000000000001',
+    assignedGuests: [],
+    notes: '',
+    createdAt: new Date('2024-01-01T00:00:00Z').toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'room-304',
+    _id: 'room-304',
+    number: '304',
+    typeId: 'type-1',
+    status: 'available' as const,
+    rate: 150,
+    capacity: 2,
+    features: ['feature-3'],
+    description: 'Standard room with city view',
+    hotelId: '65b000000000000000000001',
+    assignedGuests: ['guest-1', 'guest-4'],
+    notes: '',
+    createdAt: new Date('2024-01-01T00:00:00Z').toISOString(),
+    updatedAt: new Date().toISOString()
   }
 ]; 

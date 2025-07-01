@@ -1,6 +1,6 @@
 // Hotel mock data - extracted for modularity
 // NEW USER ONBOARDING: Toggle this for testing different scenarios
-const SIMULATE_NEW_USER = process.env.REACT_APP_SIMULATE_NEW_USER === 'true';
+export const SIMULATE_NEW_USER = process.env.REACT_APP_SIMULATE_NEW_USER === 'true';
 
 const mockHotelsData = [
   {
@@ -20,7 +20,7 @@ const mockHotelsData = [
       email: 'contact@aifrontdesk.com',
       website: 'https://www.aifrontdesk.com'
     },
-    // Hotel amenity features for guests
+    // Hotel amenity features for guests (hotel-level amenities only)
     features: [
       {
         id: 'feature-1',
@@ -61,8 +61,89 @@ const mockHotelsData = [
         icon: 'fitness_center',
         type: 'amenity' as const,
         category: 'recreation'
+      },
+      {
+        id: 'feature-6',
+        name: 'Spa Services',
+        description: 'Full-service spa with massage and treatments',
+        icon: 'spa',
+        type: 'amenity' as const,
+        category: 'wellness'
+      },
+      {
+        id: 'feature-7',
+        name: 'Restaurant',
+        description: 'On-site restaurant serving international cuisine',
+        icon: 'restaurant',
+        type: 'amenity' as const,
+        category: 'dining'
+      },
+      {
+        id: 'feature-8',
+        name: 'Business Center',
+        description: 'Computers, printers, and meeting facilities',
+        icon: 'business_center',
+        type: 'feature' as const,
+        category: 'business'
+      },
+      {
+        id: 'feature-9',
+        name: 'Concierge Service',
+        description: '24/7 concierge assistance',
+        icon: 'support_agent',
+        type: 'amenity',
+        category: 'service'
+      },
+      {
+        id: 'feature-10',
+        name: 'Valet Parking',
+        description: 'Complimentary valet parking service',
+        icon: 'local_parking',
+        type: 'feature' as const,
+        category: 'transport'
+      },
+      {
+        id: 'feature-11',
+        name: 'Pet Friendly',
+        description: 'Pets welcome with special amenities',
+        icon: 'pets',
+        type: 'feature' as const,
+        category: 'policies'
+      },
+      {
+        id: 'feature-12',
+        name: 'Airport Shuttle',
+        description: 'Complimentary shuttle to/from airport',
+        icon: 'airport_shuttle',
+        type: 'feature' as const,
+        category: 'transport'
+      },
+      {
+        id: 'feature-13',
+        name: 'Balcony/Terrace',
+        description: 'Private balcony or terrace',
+        icon: 'deck',
+        type: 'feature',
+        category: 'room'
+      },
+      {
+        id: 'feature-14',
+        name: 'Minibar',
+        description: 'In-room minibar with beverages and snacks',
+        icon: 'kitchen',
+        type: 'feature' as const,
+        category: 'room'
+      },
+      {
+        id: 'feature-15',
+        name: 'Safe',
+        description: 'In-room safe for valuables',
+        icon: 'security',
+        type: 'feature' as const,
+        category: 'security'
       }
     ],
+    // Hotel configuration data (floors, room types, templates)
     floors: [
       {
         id: 'floor-1',
@@ -77,6 +158,52 @@ const mockHotelsData = [
         number: 2,
         description: 'Guest rooms and amenities',
         isActive: true
+      },
+      {
+        id: 'floor-3',
+        name: 'Third Floor',
+        number: 3,
+        description: 'Premium rooms and suites',
+        isActive: true
+      },
+      {
+        id: 'floor-4',
+        name: 'Fourth Floor',
+        number: 4,
+        description: 'Executive floor with concierge service',
+        isActive: true
+      }
+    ],
+    roomTemplates: [
+      {
+        id: 'template-101',
+        typeId: 'type-1',
+        floorId: 'floor-1',
+        name: 'Standard Room 101',
+        capacity: 2,
+        features: ['feature-3'],
+        rate: 150,
+        notes: 'Near lobby, easy access'
+      },
+      {
+        id: 'template-201',
+        typeId: 'type-2',
+        floorId: 'floor-2',
+        name: 'Deluxe Room 201',
+        capacity: 2,
+        features: ['feature-3'],
+        rate: 250,
+        notes: 'City view, balcony'
+      },
+      {
+        id: 'template-301',
+        typeId: 'type-3',
+        floorId: 'floor-3',
+        name: 'Premium Suite 301',
+        capacity: 4,
+        features: ['feature-3'],
+        rate: 450,
+        notes: 'Corner suite, panoramic view'
       }
     ],
     communicationChannels: {
@@ -137,7 +264,7 @@ const mockHotelsData = [
     _id: '65b000000000000000000002',
     name: 'Seaside Resort',
     slug: 'seaside-resort',
-    description: 'A beautiful beachfront resort with stunning ocean views.',
+    description: 'A beautiful beachfront resort with stunning ocean views and world-class amenities.',
     address: {
       street: '456 Ocean Drive',
       city: 'Miami Beach',
@@ -166,8 +293,17 @@ const mockHotelsData = [
         icon: 'waves',
         type: 'feature' as const,
         category: 'location'
+      },
+      {
+        id: 'feature-beach-3',
+        name: 'Water Sports',
+        description: 'Kayaking, snorkeling, and paddleboarding',
+        icon: 'surfing',
+        type: 'amenity' as const,
+        category: 'recreation'
       }
     ],
+    // Floors for Seaside Resort
     floors: [
       {
         id: 'floor-beach-1',
@@ -175,6 +311,52 @@ const mockHotelsData = [
         number: 1,
         description: 'Lobby, restaurant, and beach access',
         isActive: true
+      },
+      {
+        id: 'floor-beach-2',
+        name: 'Second Floor',
+        number: 2,
+        description: 'Ocean view rooms',
+        isActive: true
+      },
+      {
+        id: 'floor-beach-3',
+        name: 'Third Floor',
+        number: 3,
+        description: 'Premium ocean view suites',
+        isActive: true
+      }
+    ],
+    roomTemplates: [
+      {
+        id: 'template-beach-101',
+        typeId: 'roomtype-ocean-001',
+        floorId: 'floor-beach-1',
+        name: 'Ocean View Room 101',
+        capacity: 2,
+        features: ['feature-beach-2'],
+        rate: 300,
+        notes: 'Ground floor with easy beach access'
+      },
+      {
+        id: 'template-beach-201',
+        typeId: 'roomtype-ocean-001',
+        floorId: 'floor-beach-2',
+        name: 'Ocean View Room 201',
+        capacity: 2,
+        features: ['feature-beach-2'],
+        rate: 350,
+        notes: 'Elevated ocean views'
+      },
+      {
+        id: 'template-beach-301',
+        typeId: 'roomtype-ocean-ste-001',
+        floorId: 'floor-beach-3',
+        name: 'Ocean Suite 301',
+        capacity: 4,
+        features: ['feature-beach-2'],
+        rate: 600,
+        notes: 'Premium suite with panoramic ocean views'
       }
     ],
     communicationChannels: {
@@ -182,6 +364,14 @@ const mockHotelsData = [
         phoneNumber: '+1-555-0456',
         verified: true,
         businessAccountId: 'whatsapp_business_002'
+      },
+      sms: {
+        phoneNumber: '+1-555-0456',
+        verified: true
+      },
+      email: {
+        address: 'info@seasideresort.com',
+        verified: true
       }
     },
     subscription: {
@@ -233,3 +423,4 @@ if (process.env.NODE_ENV === 'development') {
   console.log(`🏨 MSW Hotel Mode: ${SIMULATE_NEW_USER ? 'NEW USER ONBOARDING' : 'EXISTING USER WITH DATA'}`);
   console.log(`📊 Mock Hotels Count: ${mockHotels.length}`);
 } 
+

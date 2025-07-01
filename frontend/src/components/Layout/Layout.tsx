@@ -40,6 +40,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAllHotels, useCurrentHotel, useCurrentConfig, useSetCurrentHotel } from '../../services/hooks/useHotel';
 import type { HotelConfiguration } from '../../types/hotel';
+import { CurrentHotelService } from '../../services/currentHotel'; // 👈 Import the service
 
 // Create a context for the selected hotel configuration
 export const HotelConfigContext = React.createContext<{
@@ -108,6 +109,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const newHotelId = event.target.value;
     setSelectedHotelId(newHotelId);
     
+    console.log('[Layout.tsx] Switching to hotel:', newHotelId);
+    CurrentHotelService.setCurrentHotelId(newHotelId);
     // Actually switch the hotel using the API
     console.log('🔄 Switching to hotel:', newHotelId);
     setCurrentHotelMutation.mutate(newHotelId, {
