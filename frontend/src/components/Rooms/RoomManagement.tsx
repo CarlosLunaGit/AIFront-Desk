@@ -294,7 +294,7 @@ const RoomManagement: React.FC = () => {
     const roomGuests = allGuests.filter((g: any) => g.roomId === selectedRoom.id);
     const allKeepOpen = roomGuests.length > 0 && roomGuests.every((g: any) => g.keepOpen);
     await Promise.all(roomGuests.map((g: any) =>
-      fetch(`/api/guests/${g.id}`, {
+      fetch(`/api/guests/${g._id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ keepOpen: !allKeepOpen }),

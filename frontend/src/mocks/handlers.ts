@@ -1046,14 +1046,7 @@ export const handlers: HttpHandler[] = [
     return HttpResponse.json(room);
   }),
 
-  // Mock GET /api/hotel/config/current
-  http.get('/api/hotel/config/current', () => {
-    const currentConfig = mockHotelConfigs.find(config => config.id === currentConfigId);
-    if (!currentConfig) {
-      return new HttpResponse(null, { status: 404 });
-    }
-    return HttpResponse.json(currentConfig);
-  }),
+  
 
   // Mock GET /api/hotel/config
   http.get('/api/hotel/config', () => {
@@ -1818,11 +1811,13 @@ export const handlers: HttpHandler[] = [
 
   // Hotel rooms endpoints (matches backend /api/hotel/rooms)
   http.get('/api/hotel/rooms', () => {
+    console.log('Debug Rooms /api/hotel/rooms Line 1814');
     // Return empty array for new users - they'll add rooms after hotel setup
     return HttpResponse.json(mockHotels.length === 0 ? [] : mockRooms);
   }),
 
   http.post('/api/hotel/rooms', async ({ request }) => {
+    console.log('Debug Rooms /api/hotel/rooms Line 1820');
     const newRoom = await request.json() as any;
     const room = {
       id: `room-${mockRooms.length + 1}`,
@@ -1835,6 +1830,7 @@ export const handlers: HttpHandler[] = [
   }),
 
   http.patch('/api/hotel/rooms/:id', async ({ params, request }) => {
+    console.log('Debug Rooms /api/hotel/rooms/:id Line 1833');
     const roomId = params.id as string;
     const updates = await request.json() as any;
     const roomIndex = mockRooms.findIndex(r => r.id === roomId);
@@ -1853,6 +1849,7 @@ export const handlers: HttpHandler[] = [
   }),
 
   http.delete('/api/hotel/rooms/:id', ({ params }) => {
+    console.log('Debug Rooms /api/hotel/rooms/:id Line 1852');
     const roomId = params.id as string;
     const roomIndex = mockRooms.findIndex(r => r.id === roomId);
     
@@ -1866,12 +1863,14 @@ export const handlers: HttpHandler[] = [
 
   // Communication endpoints (matches backend /api/communications/*)
   http.get('/api/communications/guest/:guestId', ({ params }) => {
+    console.log('Debug Rooms /api/communications/guest/:guestId Line 1866');
     const guestId = params.guestId as string;
     const communications = mockCommunications.filter((c: any) => c.guestId === guestId);
     return HttpResponse.json(communications);
   }),
 
   http.post('/api/communications/send', async ({ request }) => {
+    console.log('Debug Rooms /api/communications/send Line 1873');
     const body = await request.json() as any;
     const communication = {
       _id: `65c00000000000000000000${mockCommunications.length + 1}`,
@@ -1890,6 +1889,7 @@ export const handlers: HttpHandler[] = [
 
   // Subscription plans (matches backend GET /api/subscription/plans)
   http.get('/api/subscription/plans', () => {
+    console.log('Debug Rooms /api/subscription/plans Line 1892');
     return HttpResponse.json([
       {
         id: 'basic',
@@ -1951,30 +1951,14 @@ export const handlers: HttpHandler[] = [
 
   // Get all hotel configurations (matches backend GET /api/hotel/config)
   http.get('/api/hotel/config', () => {
+    console.log('Debug Rooms /api/hotel/config Line 1954');
     // Return empty array for new users - triggers configuration wizard
     return HttpResponse.json(mockHotelConfigs);
   }),
 
-  // Get current hotel configuration (matches backend GET /api/hotel/config/current)
-  http.get('/api/hotel/config/current', () => {
-    // Return 404 for new users with no configurations - triggers configuration wizard
-    if (mockHotelConfigs.length === 0) {
-      return new HttpResponse(
-        JSON.stringify({ 
-          message: 'No hotel configuration found. Please complete hotel configuration.',
-          code: 'NO_CONFIG_FOUND',
-          action: 'CREATE_CONFIG'
-        }), 
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-    // Return first active configuration for existing users
-    const activeConfig = mockHotelConfigs.find((c: any) => c.isActive) || mockHotelConfigs[0];
-    return HttpResponse.json(activeConfig);
-  }),
-
   // Create hotel configuration (matches backend POST /api/hotel/config)
   http.post('/api/hotel/config', async ({ request }) => {
+    console.log('Debug Rooms /api/hotel/config Line 1961');
     const newConfig = await request.json() as any;
     
     // Generate IDs for nested items if not provided
@@ -2012,6 +1996,7 @@ export const handlers: HttpHandler[] = [
 
   // Update hotel configuration (matches backend PATCH /api/hotel/config/:id)
   http.patch('/api/hotel/config/:id', async ({ params, request }) => {
+    console.log('Debug Rooms /api/hotel/config/:id Line 1999');
     const configId = params.id as string;
     const updates = await request.json() as any;
     const configIndex = mockHotelConfigs.findIndex((c: any) => c._id === configId);
@@ -2048,6 +2033,7 @@ export const handlers: HttpHandler[] = [
 
   // Get hotel configuration by ID (matches backend GET /api/hotel/config/:id)
   http.get('/api/hotel/config/:id', ({ params }) => {
+    console.log('Debug Rooms /api/hotel/config/:id Line 2036');
     const configId = params.id as string;
     const config = mockHotelConfigs.find((c: any) => c._id === configId);
     
@@ -2061,27 +2047,9 @@ export const handlers: HttpHandler[] = [
   // Communication endpoints (matches backend /api/communications/*)
 
   // Guest endpoints (matching frontend API calls)
-  http.get('/api/guests', ({ request }) => {
-    const url = new URL(request.url);
-    const hotelId = url.searchParams.get('hotelId');
-    
-    console.log('🔍 GET /api/guests called with hotelId:', hotelId);
-    console.log('📊 Total mockGuests:', mockGuests.length);
-    
-    if (hotelId) {
-      const filteredGuests = mockGuests.filter(g => g.hotelId === hotelId);
-      console.log('✅ Filtered guests for hotelId', hotelId + ':', filteredGuests.length, 'guests');
-      return HttpResponse.json(filteredGuests);
-    } else {
-      // Legacy fallback
-      const configHotelId = currentConfigId === 'mock-hotel-1' ? '65b000000000000000000001' : '65b000000000000000000002';
-      const filteredGuests = mockGuests.filter(g => g.hotelId === configHotelId);
-      console.log('✅ Fallback guests for configId', currentConfigId + ':', filteredGuests.length, 'guests');
-      return HttpResponse.json(filteredGuests);
-    }
-  }),
 
   http.get('/api/guests/:id', ({ params }) => {
+    console.log('Debug Rooms /api/guests/:id Line 2072');
     const guest = mockGuests.find(g => g._id === params.id);
     if (!guest) {
       return new HttpResponse(null, { status: 404 });
@@ -2090,6 +2058,7 @@ export const handlers: HttpHandler[] = [
   }),
 
   http.post('/api/guests', async ({ request }) => {
+    console.log('Debug Rooms /api/guests Line 2061');
     const guestData = await request.json() as any;
     const newGuest = {
       _id: `guest-${Date.now()}`,
@@ -2110,83 +2079,9 @@ export const handlers: HttpHandler[] = [
     return HttpResponse.json(newGuest);
   }),
 
-  http.patch('/api/guests/:id', async ({ params, request }) => {
-    const guestId = params.id as string;
-    const updates = await request.json() as any;
-    
-    const guestIndex = mockGuests.findIndex(g => g._id === guestId);
-    if (guestIndex === -1) {
-      return new HttpResponse(null, { status: 404 });
-    }
-
-    // Update guest
-    mockGuests[guestIndex] = {
-      ...mockGuests[guestIndex],
-      ...updates,
-      updatedAt: new Date().toISOString()
-    };
-
-    const guest = mockGuests[guestIndex];
-    console.log('🔄 Guest updated:', guest.name, 'keepOpen:', guest.keepOpen);
-
-    // Update room status based on guest status change
-    const room = mockRooms.find(r => r.id === guest.roomId && r.hotelId === guest.hotelId);
-    if (room) {
-      recalculateRoomStatus(room, 'system', 'Triggered by guest status change');
-    }
-
-    return HttpResponse.json(guest);
-  }),
-
-  http.delete('/api/guests/:id', ({ params }) => {
-    const guestId = params.id as string;
-    const guestIndex = mockGuests.findIndex(g => g._id === guestId);
-    
-    if (guestIndex === -1) {
-      return new HttpResponse(null, { status: 404 });
-    }
-    
-    const guest = mockGuests[guestIndex];
-    
-    // Remove guest from rooms before deleting - Fix null check
-    mockRooms.forEach(r => {
-      if (r.assignedGuests) {
-        r.assignedGuests = r.assignedGuests.filter((gid: string) => gid !== guestId);
-      }
-    });
-    
-    // Update room status after guest removal
-    if (guest.roomId) {
-      const room = mockRooms.find(r => r.id === guest.roomId && r.hotelId === guest.hotelId);
-      if (room) {
-        recalculateRoomStatus(room, 'system', 'Triggered by guest removal');
-      }
-    }
-    
-    mockGuests.splice(guestIndex, 1);
-    return new HttpResponse(null, { status: 204 });
-  }),
-
   // Room endpoints  
-
-  // Room actions endpoints
-
-  // http.post('/api/rooms/actions', async ({ request }: any) => {
-  //   const action = await request.json() as RoomActionRequest;
-  //   const newAction: RoomAction = {
-  //     id: Date.now().toString(),
-  //     ...action,
-  //     status: 'pending',
-  //     requestedBy: 'staff',
-  //     requestedAt: new Date().toISOString(),
-  //   };
-  //   mockRoomActions.push(newAction);
-  //   return HttpResponse.json(newAction);
-  // }),
-
-  
-
   http.post('/api/rooms/:id/assign', async ({ params, request }) => {
+    console.log('Debug Rooms /api/rooms/:id/assign Line 2145');
     const room = mockRooms.find(r => r.id === params.id);
     if (!room) {
       return new HttpResponse(null, { status: 404 });
@@ -2214,80 +2109,9 @@ export const handlers: HttpHandler[] = [
     return HttpResponse.json(room);
   }),
 
-  // Mock GET /api/hotel/config/current
-  http.get('/api/hotel/config/current', () => {
-    const currentConfig = mockHotelConfigs.find(config => config.id === currentConfigId);
-    if (!currentConfig) {
-      return new HttpResponse(null, { status: 404 });
-    }
-    return HttpResponse.json(currentConfig);
-  }),
-
-  // Mock GET /api/hotel/config
-  http.get('/api/hotel/config', () => {
-    return HttpResponse.json(mockHotelConfigs);
-  }),
-
-  // Mock GET /api/hotel/config/:id
-  http.get('/api/hotel/config/:id', ({ params }: any) => {
-    if (params.id === 'current') {
-      const currentConfig = mockHotelConfigs.find(config => config.id === currentConfigId);
-      if (!currentConfig) {
-        return new HttpResponse(null, { status: 404 });
-      }
-      return HttpResponse.json(currentConfig);
-    }
-    const config = mockHotelConfigs.find(config => config.id === params.id);
-    if (!config) {
-      return new HttpResponse(null, { status: 404 });
-    }
-    return HttpResponse.json(config);
-  }),
-
-  // Mock POST /api/hotel/config
-  http.post('/api/hotel/config', async ({ request }: any) => {
-    const data = await request.json() as HotelConfigFormData;
-    const newConfig: HotelConfigDocument = {
-      id: `mock-hotel-${mockHotelConfigs.length + 1}`,
-      ...data,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      ownerId: 'owner-1',
-      isActive: true,
-    } as HotelConfigDocument;
-    mockHotelConfigs.push(newConfig);
-    return HttpResponse.json(newConfig);
-  }),
-
-  // Mock PATCH /api/hotel/config/:id
-  http.patch('/api/hotel/config/:id', async ({ params, request }: any) => {
-    const config = mockHotelConfigs.find(config => config.id === params.id);
-    if (!config) {
-      return new HttpResponse(null, { status: 404 });
-    }
-    const updates = await request.json() as Partial<HotelConfigFormData>;
-    const updatedConfig = {
-      ...config,
-      ...updates,
-      updatedAt: new Date(),
-    } as HotelConfigDocument;
-    const index = mockHotelConfigs.findIndex(c => c.id === params.id);
-    mockHotelConfigs[index] = updatedConfig;
-    return HttpResponse.json(updatedConfig);
-  }),
-
-  // Mock POST /api/hotel/config/current
-  http.post('/api/hotel/config/current', async ({ request }: any) => {
-    const { configId } = await request.json() as SetCurrentConfigRequest;
-    const config = mockHotelConfigs.find(config => config.id === configId);
-    if (!config) {
-      return new HttpResponse(null, { status: 404 });
-    }
-    currentConfigId = configId;
-    return HttpResponse.json(config);
-  }),
 
   http.post('/api/rooms/bulk', async ({ request }) => {
+    console.log('Debug Rooms /api/rooms/bulk Line 2114');
     const data = await request.json();
     if (!Array.isArray(data)) {
       return new HttpResponse('Invalid payload', { status: 400 });
@@ -2314,9 +2138,11 @@ export const handlers: HttpHandler[] = [
 
   // Guests endpoints
   http.get('/api/hotel/guests', () => {
+    console.log('Debug Rooms /api/hotel/guests Line 2141');
     return HttpResponse.json(mockGuests.filter(g => g.hotelId === currentConfigId));
   }),
   http.get('/api/hotel/guests/:id', ({ params }) => {
+    console.log('Debug Rooms /api/hotel/guests/:id Line 2145');
     const guest = mockGuests.find(g => g._id === params.id && g.hotelId === currentConfigId);
     if (!guest) {
       return new HttpResponse(null, { status: 404 });
@@ -2324,6 +2150,7 @@ export const handlers: HttpHandler[] = [
     return HttpResponse.json(guest);
   }),
   http.post('/api/hotel/guests', async ({ request }) => {
+    console.log('Debug Rooms /api/hotel/guests Line 2153');
     const guestData = await request.json() as any;
     const newGuest = {
       _id: `guest-${Date.now()}`,
@@ -2340,6 +2167,7 @@ export const handlers: HttpHandler[] = [
     return HttpResponse.json(newGuest);
   }),
   http.patch('/api/hotel/guests/:id', async ({ params, request }) => {
+    console.log('Debug Rooms /api/hotel/guests/:id Line 2170');
     const updates = await request.json() as any;
     const guest = mockGuests.find(g => g._id === params.id);
     if (!guest) {
@@ -2354,6 +2182,7 @@ export const handlers: HttpHandler[] = [
     return HttpResponse.json(guest);
   }),
   http.delete('/api/hotel/guests/:id', ({ params }) => {
+    console.log('Debug Rooms /api/hotel/guests/:id Line 2185');
     const idx = mockGuests.findIndex(g => g._id === params.id);
     if (idx === -1) {
       return new HttpResponse(null, { status: 404 });
@@ -2938,24 +2767,6 @@ export const handlers: HttpHandler[] = [
   http.get('/api/hotel/config', () => {
     // Return empty array for new users - triggers configuration wizard
     return HttpResponse.json(mockHotelConfigs);
-  }),
-
-  // Get current hotel configuration (matches backend GET /api/hotel/config/current)
-  http.get('/api/hotel/config/current', () => {
-    // Return 404 for new users with no configurations - triggers configuration wizard
-    if (mockHotelConfigs.length === 0) {
-      return new HttpResponse(
-        JSON.stringify({ 
-          message: 'No hotel configuration found. Please complete hotel configuration.',
-          code: 'NO_CONFIG_FOUND',
-          action: 'CREATE_CONFIG'
-        }), 
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-    // Return first active configuration for existing users
-    const activeConfig = mockHotelConfigs.find((c: any) => c.isActive) || mockHotelConfigs[0];
-    return HttpResponse.json(activeConfig);
   }),
 
   // Create hotel configuration (matches backend POST /api/hotel/config)

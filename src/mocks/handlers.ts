@@ -551,13 +551,13 @@ export const handlers: HttpHandler[] = [
   }),
 
   // Mock GET /api/hotel/config/current
-  http.get('/api/hotel/config/current', () => {
-    const currentConfig = mockHotelConfigs.find(config => config.id === currentConfigId);
-    if (!currentConfig) {
-      return new HttpResponse(null, { status: 404 });
-    }
-    return HttpResponse.json(currentConfig);
-  }),
+  // http.get('/api/hotel/config/current', () => {
+  //   const currentConfig = mockHotelConfigs.find(config => config.id === currentConfigId);
+  //   if (!currentConfig) {
+  //     return new HttpResponse(null, { status: 404 });
+  //   }
+  //   return HttpResponse.json(currentConfig);
+  // }),
 
   // Mock GET /api/hotel/config
   http.get('/api/hotel/config', () => {

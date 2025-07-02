@@ -143,16 +143,16 @@ const ReservationsPage: React.FC = () => {
 
   // Apply search filter to current reservations
   const filteredReservations = currentReservations.filter((res: any) => {
-    if (!search) return true;
-    return (
-      res.id.toLowerCase().includes(search.toLowerCase()) ||
-      (res.guestIds && res.guestIds.some((gid: string) => {
+      if (!search) return true;
+      return (
+        res.id.toLowerCase().includes(search.toLowerCase()) ||
+        (res.guestIds && res.guestIds.some((gid: string) => {
         const g = guests.find((gg: any) => gg._id === gid);
-        return g && g.name.toLowerCase().includes(search.toLowerCase());
-      })) ||
-      res.rooms.toLowerCase().includes(search.toLowerCase())
-    );
-  });
+          return g && g.name.toLowerCase().includes(search.toLowerCase());
+        })) ||
+        res.rooms.toLowerCase().includes(search.toLowerCase())
+      );
+    });
 
   // Only show available rooms for new reservations
   const availableRooms = rooms.filter((r: any) => (r.status === 'available' || r.status === 'partially-reserved') && r.hotelId === hotelId);

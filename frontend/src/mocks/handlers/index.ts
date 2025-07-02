@@ -4,6 +4,7 @@ import { authEndpointsHandlers } from './auth/endpoints';
 import { enhancedReservationHandlers } from './reservations/endpoints';
 import { dashboardEndpointsHandlers } from './dashboard/endpoints';
 import { roomsEndpointsHandlers } from './rooms/endpoints';
+import { guestsEndpointsHandlers } from './guests/endpoints';
 
 // Import existing handlers from the main file temporarily
 // We'll gradually move these to their own modules
@@ -17,6 +18,7 @@ export const handlers = [
   ...communicationsEndpointsHandlers,
   ...enhancedReservationHandlers,
   ...roomsEndpointsHandlers,
+  ...guestsEndpointsHandlers,
   // Keep existing handlers for now but exclude ones we've modularized
   ...existingHandlers.filter(handler => {
     // Get the handler's URL pattern - MSW handlers have different structures
