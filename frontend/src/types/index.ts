@@ -1,4 +1,3 @@
-export type GuestStatus = 'booked' | 'checked-in' | 'checked-out';
 export type RoomStatus = 'available' | 'reserved' | 'partially-reserved' | 'occupied' | 'partially-occupied' | 'cleaning' | 'maintenance' | 'deoccupied' | 'partially-deoccupied';
 
 // Enhanced reservation business statuses
@@ -65,33 +64,3 @@ export interface Reservation {
 
 // Re-export communication types
 export * from './communication';
-
-export interface Guest {
-  id: string;
-  roomId: string;
-  hotelId: string;
-  status: GuestStatus;
-  keepOpen: boolean;
-  name: string;
-  email: string;
-  phone: string;
-  reservationStart: string;
-  reservationEnd: string;
-  checkIn: string;
-  checkOut: string;
-}
-
-export interface Room {
-  id: string;
-  number: string;
-  hotelId: string;
-  capacity: number;
-  assignedGuests: string[];
-  status: RoomStatus;
-  keepOpen: boolean;
-  features: string[];
-  typeId: string;
-  floorId: string;
-  rate: number;
-  notes: string;
-} 

@@ -1,7 +1,7 @@
 export type GuestStatus = 'booked' | 'checked-in' | 'checked-out';
 
 export interface Guest {
-  id: string;
+  _id: string;
   name: string;
   email: string;
   phone: string;
@@ -9,8 +9,10 @@ export interface Guest {
   roomId: string;
   reservationStart: string;
   reservationEnd: string;
-  checkIn?: string;
-  checkOut?: string;
+  checkIn?: string | null;
+  checkOut?: string | null;
   hotelId: string;
   keepOpen: boolean;
+  createdAt: string;
+  updatedAt: string;
 } 

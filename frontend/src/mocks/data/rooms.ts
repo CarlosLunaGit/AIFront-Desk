@@ -10,6 +10,8 @@ export const mockRoomTypes = [
     baseRate: 150,
     amenities: ['wifi', 'tv', 'ac'],
     hotelId: '65a000000000000000000001',
+    features: ['feature-1', 'feature-3'], // References to hotel features
+    isActive: true,
     createdAt: new Date('2024-01-01T00:00:00Z').toISOString(),
     updatedAt: new Date().toISOString()
   },
@@ -21,6 +23,8 @@ export const mockRoomTypes = [
     baseRate: 400,
     amenities: ['wifi', 'tv', 'ac', 'minibar', 'balcony'],
     hotelId: '65a000000000000000000001',
+    features: ['feature-1', 'feature-3'], // References to hotel features
+    isActive: true,
     createdAt: new Date('2024-01-01T00:00:00Z').toISOString(),
     updatedAt: new Date().toISOString()
   },
@@ -32,6 +36,8 @@ export const mockRoomTypes = [
     baseRate: 450,
     amenities: ['wifi', 'tv', 'ac', 'minibar', 'balcony', 'kitchenette'],
     hotelId: '65a000000000000000000001',
+    features: ['feature-1', 'feature-3'], // References to hotel features
+    isActive: true,
     createdAt: new Date('2024-01-01T00:00:00Z').toISOString(),
     updatedAt: new Date().toISOString()
   },
@@ -43,6 +49,8 @@ export const mockRoomTypes = [
     baseRate: 600,
     amenities: ['wifi', 'tv', 'ac', 'minibar', 'balcony', 'kitchenette', 'living_area'],
     hotelId: '65a000000000000000000001',
+    features: ['feature-1', 'feature-3'], // References to hotel features
+    isActive: true,
     createdAt: new Date('2024-01-01T00:00:00Z').toISOString(),
     updatedAt: new Date().toISOString()
   },
@@ -55,6 +63,8 @@ export const mockRoomTypes = [
     baseRate: 150,
     amenities: ['wifi', 'tv', 'ac'],
     hotelId: '65a000000000000000000002',
+    features: ['feature-1', 'feature-3'], // References to hotel features
+    isActive: true,
     createdAt: new Date('2024-01-01T00:00:00Z').toISOString(),
     updatedAt: new Date().toISOString()
   },
@@ -66,6 +76,8 @@ export const mockRoomTypes = [
     baseRate: 400,
     amenities: ['wifi', 'tv', 'ac', 'minibar', 'balcony'],
     hotelId: '65a000000000000000000002',
+    features: ['feature-1', 'feature-3'], // References to hotel features
+    isActive: true,
     createdAt: new Date('2024-01-01T00:00:00Z').toISOString(),
     updatedAt: new Date().toISOString()
   },
@@ -77,6 +89,8 @@ export const mockRoomTypes = [
     baseRate: 450,
     amenities: ['wifi', 'tv', 'ac', 'minibar', 'balcony', 'kitchenette'],
     hotelId: '65a000000000000000000002',
+    features: ['feature-1', 'feature-3'], // References to hotel features
+    isActive: true,
     createdAt: new Date('2024-01-01T00:00:00Z').toISOString(),
     updatedAt: new Date().toISOString()
   },
@@ -88,6 +102,8 @@ export const mockRoomTypes = [
     baseRate: 600,
     amenities: ['wifi', 'tv', 'ac', 'minibar', 'balcony', 'kitchenette', 'living_area'],
     hotelId: '65a000000000000000000002',
+    features: ['feature-1', 'feature-3'], // References to hotel features
+    isActive: true,
     createdAt: new Date('2024-01-01T00:00:00Z').toISOString(),
     updatedAt: new Date().toISOString()
   }

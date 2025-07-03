@@ -71,12 +71,16 @@ const Dashboard: React.FC = () => {
   let roomStatusPieChart: React.ReactNode = null;
   if (stats) {
     const reserved = stats.reservedRooms || 0;
-    const free = stats.availableRooms || 0;
+    const available = stats.availableRooms || 0;
     const occupied = stats.occupiedRooms || 0;
-    const total = reserved + free + occupied;
+    const maintenance = stats.maintenanceRooms || 0;
+    const cleaning = stats.cleaningRooms || 0;
+    const total = stats.totalRooms || 0;
     const reservedPct = total ? reserved / total : 0;
-    const freePct = total ? free / total : 0;
+    const freePct = total ? available / total : 0;
     const occupiedPct = total ? occupied / total : 0;
+    const maintenancePct = total ? maintenance / total : 0;
+    const cleaningPct = total ? cleaning / total : 0;
     const reservedAngle = reservedPct * 360;
     const freeAngle = freePct * 360;
     const r = 60;
@@ -85,28 +89,42 @@ const Dashboard: React.FC = () => {
     let start = 0;
     const reservedArc = describeArc(cx, cy, r, start, start + reservedAngle);
     start += reservedAngle;
-    const freeArc = describeArc(cx, cy, r, start, start + freeAngle);
+    const availableArc = describeArc(cx, cy, r, start, start + freeAngle);
     start += freeAngle;
     const occupiedArc = describeArc(cx, cy, r, start, start + occupiedPct * 360);
+    start += occupiedPct * 360;
+    const maintenanceArc = describeArc(cx, cy, r, start, start + maintenancePct * 360);
+    start += maintenancePct * 360;
+    const cleaningArc = describeArc(cx, cy, r, start, start + cleaningPct * 360);
     roomStatusPieChart = (
       <Box display="flex" alignItems="center" gap={2}>
         <svg width={160} height={160}>
           <path d={reservedArc} fill="#616161" />
-          <path d={freeArc} fill="#43a047" />
+          <path d={availableArc} fill="#43a047" />
           <path d={occupiedArc} fill="#d32f2f" />
+          <path d={maintenanceArc} fill="#ffa000" />
+          <path d={cleaningArc} fill="#00b0ff" />
         </svg>
         <Box>
+          <Box display="flex" alignItems="center" gap={1} mb={1}>
+            <Box width={16} height={16} borderRadius={8} bgcolor="#43a047" />
+            <Typography variant="body2">Available ({available})</Typography>
+          </Box>
+          <Box display="flex" alignItems="center" gap={1} mb={1}>
+            <Box width={16} height={16} borderRadius={8} bgcolor="#d32f2f" />
+            <Typography variant="body2">Occupied ({occupied})</Typography>
+          </Box>
           <Box display="flex" alignItems="center" gap={1} mb={1}>
             <Box width={16} height={16} borderRadius={8} bgcolor="#616161" />
             <Typography variant="body2">Reserved ({reserved})</Typography>
           </Box>
           <Box display="flex" alignItems="center" gap={1} mb={1}>
-            <Box width={16} height={16} borderRadius={8} bgcolor="#43a047" />
-            <Typography variant="body2">Free ({free})</Typography>
+            <Box width={16} height={16} borderRadius={8} bgcolor="#ffa000" />
+            <Typography variant="body2">Maintenance ({maintenance})</Typography>
           </Box>
-          <Box display="flex" alignItems="center" gap={1}>
-            <Box width={16} height={16} borderRadius={8} bgcolor="#d32f2f" />
-            <Typography variant="body2">Occupied ({occupied})</Typography>
+          <Box display="flex" alignItems="center" gap={1} mb={1}>
+            <Box width={16} height={16} borderRadius={8} bgcolor="#00b0ff" />
+            <Typography variant="body2">Cleaning ({cleaning})</Typography>
           </Box>
         </Box>
       </Box>
@@ -133,16 +151,24 @@ const Dashboard: React.FC = () => {
               <Typography variant="h4">{stats?.totalRooms || 0}</Typography>
             </Paper>
             <Paper sx={{ p: 2, flex: 1, minWidth: 180 }}>
-              <Typography variant="h6" gutterBottom>Reserved Rooms</Typography>
-              <Typography variant="h4">{stats?.reservedRooms || 0}</Typography>
-            </Paper>
-            <Paper sx={{ p: 2, flex: 1, minWidth: 180 }}>
-              <Typography variant="h6" gutterBottom>Free Rooms</Typography>
+              <Typography variant="h6" gutterBottom>Available Rooms</Typography>
               <Typography variant="h4">{stats?.availableRooms || 0}</Typography>
             </Paper>
             <Paper sx={{ p: 2, flex: 1, minWidth: 180 }}>
               <Typography variant="h6" gutterBottom>Occupied Rooms</Typography>
               <Typography variant="h4">{stats?.occupiedRooms || 0}</Typography>
+            </Paper>
+            <Paper sx={{ p: 2, flex: 1, minWidth: 180 }}>
+              <Typography variant="h6" gutterBottom>Reserved Rooms</Typography>
+              <Typography variant="h4">{stats?.reservedRooms || 0}</Typography>
+            </Paper>
+            <Paper sx={{ p: 2, flex: 1, minWidth: 180 }}>
+              <Typography variant="h6" gutterBottom>Maintenance Rooms</Typography>
+              <Typography variant="h4">{stats?.maintenanceRooms || 0}</Typography>
+            </Paper>
+            <Paper sx={{ p: 2, flex: 1, minWidth: 180 }}>
+              <Typography variant="h6" gutterBottom>Cleaning Rooms</Typography>
+              <Typography variant="h4">{stats?.cleaningRooms || 0}</Typography>
             </Paper>
           </Box>
         </Grid>
@@ -195,13 +221,13 @@ const Dashboard: React.FC = () => {
                 <ListItemText primary={`Occupied: ${stats?.occupiedRooms || 0}`} />
               </ListItem>
               <ListItem>
+                <ListItemText primary={`Reserved: ${stats?.reservedRooms || 0}`} />
+              </ListItem>
+              <ListItem>
                 <ListItemText primary={`Maintenance: ${stats?.maintenanceRooms || 0}`} />
               </ListItem>
               <ListItem>
                 <ListItemText primary={`Cleaning: ${stats?.cleaningRooms || 0}`} />
-              </ListItem>
-              <ListItem>
-                <ListItemText primary={`Reserved: ${stats?.reservedRooms || 0}`} />
               </ListItem>
             </List>
           </Paper>

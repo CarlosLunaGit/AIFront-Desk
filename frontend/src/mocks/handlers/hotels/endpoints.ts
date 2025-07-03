@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { CurrentHotelService } from '../../../services/currentHotel';
 import { mockHotels } from '../../data/hotels';
+import { mockRoomTypes } from '../../data/rooms';
 
 export const hotelsEndpointsHandlers = [
 
@@ -62,6 +63,22 @@ export const hotelsEndpointsHandlers = [
     const activeHotel = currentHotel || mockHotels.find((h: any) => h.isActive) || mockHotels[0];
     console.log('🏨 Returning current hotel:', activeHotel.name, 'Config ID:', currentHotelId);
     return HttpResponse.json(activeHotel);
+  }),
+
+  // NEW: Hotel room types endpoints (matches backend /api/hotel/:hotelId/room-types)
+  http.get('/api/hotel/:hotelId/room-types', ({ params }) => {
+    console.log('Debug Hotels 4');
+
+    const hotelId = params.hotelId as string;
+
+    // console.log('🔍 Room Types Request - Hotel ID:', hotelId);
+    // console.log('🏠 All Room Types:', mockRoomTypes);
+
+    const hotelRoomTypes = mockRoomTypes.filter(rt => rt.hotelId === hotelId);
+
+    console.log('✅ Filtered Room Types for Hotel:', hotelRoomTypes);
+
+    return HttpResponse.json(hotelRoomTypes);
   }),
 
 ];

@@ -6,12 +6,12 @@ import type {
   ReservationPricing,
   PricingBreakdown,
   PriceAdjustment,
-  Room,
   RoomType,
   DateRange,
   PricingCalculationRequest,
   PricingCalculationResponse
 } from '../types/reservation';
+import { Room } from '../types/room';
 
 // Main pricing calculation function
 export function calculateReservationPricing(
@@ -92,7 +92,7 @@ export function calculateRoomBreakdown(
   const finalAmount = Math.max(0, baseAmount + totalAdjustments);
 
   return {
-    roomId: room.id,
+    roomId: room._id,
     roomNumber: room.number,
     roomType: roomType.name,
     description: `${roomType.name} - ${dateRange.nights} night${dateRange.nights > 1 ? 's' : ''}`,
@@ -408,8 +408,8 @@ export function calculateUpgradeRecommendations(
       const roomType = roomTypes.find(rt => rt.id === room.typeId);
       return roomType && 
              room.rate > currentRoom.rate && 
-             room.id !== currentRoom.id &&
-             !selectedRooms.find(sr => sr.id === room.id);
+             room._id !== currentRoom._id &&
+             !selectedRooms.find(sr => sr._id === room._id);
     });
 
     for (const upgradeRoom of upgradeOptions.slice(0, 2)) { // Limit to top 2 upgrades
@@ -424,7 +424,7 @@ export function calculateUpgradeRecommendations(
 
       if (benefits.length > 0 && additionalCost <= currentPricing.finalAmount * 0.5) { // Max 50% increase
         recommendations.push({
-          roomId: currentRoom.id,
+          roomId: currentRoom._id,
           currentRoom,
           upgradeRoom,
           additionalCost,

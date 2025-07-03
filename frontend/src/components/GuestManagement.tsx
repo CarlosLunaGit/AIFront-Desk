@@ -26,6 +26,7 @@ import Tooltip from '@mui/material/Tooltip';
 import { HotelConfigContext } from './Layout/Layout';
 import { useGuests, useCreateGuest, useUpdateGuest, useDeleteGuest, useCheckInGuest, useCheckOutGuest, useToggleKeepOpen } from '../services/hooks/useGuests';
 import { useRooms } from '../services/hooks/useRooms';
+import { Room } from '../types/room';
 
 const GuestManagement: React.FC = () => {
   const { currentConfig } = useContext(HotelConfigContext);
@@ -47,13 +48,14 @@ const GuestManagement: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
 
-  // Fetch available rooms for assignment
-  const { data: rooms = [] } = useRooms({ hotelId: hotelId });
-  // Only rooms that are available or partially-reserved (not occupied/maintenance/cleaning/reserved/checked-in)
+  // const rooms = Has all available rooms within the hotel under selection
+  const { data: rooms = [] as Room[] } = useRooms({ hotelId: hotelId });
+  
+  // const availableRooms = Has only rooms that are available or partially-reserved (not occupied/maintenance/cleaning/reserved/checked-in)
   const availableRooms = rooms.filter(
     (room: any) =>
       (room.status === 'available' || room.status === 'partially-reserved') &&
-      (Array.isArray(guests) ? !guests.some((g: any) => g.roomId === room.id && g.status === 'checked-in') : true)
+      (Array.isArray(guests) ? !guests.some((g: any) => g.roomId === room._id && g.status === 'checked-in') : true)
   );
 
   // Filter guests by search
@@ -348,7 +350,7 @@ const GuestManagement: React.FC = () => {
                       <TableCell>{guest.email}</TableCell>
                       <TableCell>{guest.phone}</TableCell>
                       <TableCell>{guest.status}</TableCell>
-                      <TableCell>{guest.roomId}</TableCell>
+                      <TableCell>{rooms.find((room: Room) => room._id === guest.roomId)?.number}</TableCell>
                       <TableCell>{guest.keepOpen ? 'Open to more guests' : 'Closed room'}</TableCell>
                       <TableCell>{guest.keepOpen ? 'true' : 'false'}</TableCell>
                       <TableCell>{renderDateField(guest.reservationStart)}</TableCell>
@@ -373,7 +375,7 @@ const GuestManagement: React.FC = () => {
               <Typography><b>Email:</b> {viewGuest.email}</Typography>
               <Typography><b>Phone:</b> {viewGuest.phone}</Typography>
               <Typography><b>Status:</b> {viewGuest.status}</Typography>
-              <Typography><b>Room:</b> {viewGuest.roomId}</Typography>
+              <Typography><b>Room:</b> {availableRooms.find((room: Room) => room._id === viewGuest.roomId)?.number}</Typography>
               <Typography><b>Check-in:</b> {viewGuest.checkIn}</Typography>
               <Typography><b>Check-out:</b> {viewGuest.checkOut}</Typography>
             </Box>
@@ -446,7 +448,7 @@ const GuestManagement: React.FC = () => {
               >
                 <option value="">-- Select Room --</option>
                 {availableRooms.map((room: any) => (
-                  <option key={room.id} value={room.id}>
+                  <option key={room._id} value={room._id}>
                     {room.number}
                   </option>
                 ))}
@@ -543,7 +545,7 @@ const GuestManagement: React.FC = () => {
             >
               <option value="">-- Select Room --</option>
               {availableRooms.map((room: any) => (
-                <option key={room.id} value={room.id}>
+                <option key={room._id} value={room._id}>
                   {room.number}
                 </option>
               ))}

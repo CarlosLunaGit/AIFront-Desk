@@ -5,9 +5,7 @@ import { format, parseISO, isWithinInterval, eachDayOfInterval, isSameDay, addDa
 import type { 
   AvailabilityQuery, 
   AvailableRoom, 
-  Room, 
   RoomType, 
-  Guest, 
   MultiRoomReservation,
   EnhancedRoomStatus,
   RoomPricing,
@@ -16,6 +14,8 @@ import type {
   RoomAssignmentSuggestion,
   SuggestedRoomAssignment
 } from '../types/reservation';
+import { Room } from '../types/room';
+import { Guest } from '../types/guest';
 
 // Main availability calculation function
 export function calculateRoomAvailability(
@@ -92,7 +92,7 @@ export function checkRoomAvailability(
   }
 
   // Check existing reservations
-  const conflictingReservations = findConflictingReservations(room.id, dateRange, existingReservations);
+  const conflictingReservations = findConflictingReservations(room._id, dateRange, existingReservations);
   
   for (const reservation of conflictingReservations) {
     const reservationStart = parseISO(reservation.checkInDate);
@@ -117,7 +117,7 @@ export function checkRoomAvailability(
   }
 
   // Check guest occupancy
-  const roomGuests = guests.filter(g => g.roomId === room.id);
+  const roomGuests = guests.filter(g => g.roomId === room._id);
   const occupiedDates = getGuestOccupiedDates(roomGuests, dateRange);
   unavailableDates.push(...occupiedDates);
 
@@ -272,7 +272,7 @@ export function generateRoomAssignmentSuggestions(
     const bestSingleRoom = singleRoomOptions[0]; // Already sorted by recommendation score
     suggestions.push({
       assignments: [{
-        roomId: bestSingleRoom.room.id,
+        roomId: bestSingleRoom.room._id,
         room: bestSingleRoom.room,
         suggestedGuests: [], // Will be filled when guests are defined
         capacityUtilization: totalGuests / (bestSingleRoom.roomType.defaultCapacity || 2),
@@ -473,14 +473,14 @@ function generateMultiRoomSuggestion(
     return {
       assignments: [
         {
-          roomId: room1.room.id,
+          roomId: room1.room._id,
           room: room1.room,
           suggestedGuests: [],
           capacityUtilization: Math.min(totalGuests / 2, 1) / (room1.roomType.defaultCapacity || 2),
           preferenceMatch: room1.recommendationScore / 100
         },
         {
-          roomId: room2.room.id,
+          roomId: room2.room._id,
           room: room2.room,
           suggestedGuests: [],
           capacityUtilization: Math.max(totalGuests - 2, 0) / (room2.roomType.defaultCapacity || 2),
@@ -522,7 +522,7 @@ export function determineEnhancedRoomStatus(
   }
 
   // Check guest-based status
-  const roomGuests = guests.filter(g => g.roomId === room.id);
+  const roomGuests = guests.filter(g => g.roomId === room._id);
   const checkedInGuests = roomGuests.filter(g => g.status === 'checked-in');
   const bookedGuests = roomGuests.filter(g => g.status === 'booked');
   

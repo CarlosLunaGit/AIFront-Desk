@@ -2,8 +2,9 @@
 // Handles all room statuses including new operational statuses
 
 import { parseISO, isSameDay, isWithinInterval, addDays } from 'date-fns';
-import type { Room, Guest } from '../types';
+import type { Guest } from '../types/guest';
 import type { EnhancedRoomStatus, EnhancedRoom } from '../types/reservation';
+import { Room } from '../types/room';
 
 // Enhanced room status determination with all operational statuses
 export function determineEnhancedRoomStatus(
@@ -34,7 +35,7 @@ export function determineEnhancedRoomStatus(
   }
 
   // Check guest-based status
-  const roomGuests = guests.filter(g => g.roomId === room.id);
+  const roomGuests = guests.filter(g => g.roomId === room._id);
   const checkedInGuests = roomGuests.filter(g => g.status === 'checked-in');
   const bookedGuests = roomGuests.filter(g => g.status === 'booked');
   
@@ -385,7 +386,7 @@ export function roomNeedsAttention(
 
   // Check for overdue checkouts
   if (status === 'occupied') {
-    const roomGuests = guests.filter(g => g.roomId === room.id);
+    const roomGuests = guests.filter(g => g.roomId === room._id);
     const overdueGuests = roomGuests.filter(g => 
       g.status === 'checked-in' && 
       g.reservationEnd && 
@@ -446,7 +447,7 @@ export function getRecommendedRoomAction(
 
     case 'occupied':
       // Check for overdue checkouts
-      const roomGuests = guests.filter(g => g.roomId === room.id);
+      const roomGuests = guests.filter(g => g.roomId === room._id);
       const overdueGuests = roomGuests.filter(g => 
         g.status === 'checked-in' && 
         g.reservationEnd && 

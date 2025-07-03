@@ -2,10 +2,10 @@
 // Multi-room, multi-guest reservation support with detailed pricing
 
 // Import and re-export existing types for compatibility
-import type { Room } from './index';
 import type { RoomType } from './hotel';
-export type { Room } from './index';
+import type { Room } from './room';
 export type { RoomType } from './hotel';
+import { Guest } from './guest';
 
 export interface MultiRoomReservation {
   id: string;
@@ -29,31 +29,6 @@ export interface RoomAssignment {
   guests: Guest[];               // All guests assigned to this room
   roomSpecificNotes?: string;
   checkInStatus: RoomCheckInStatus;
-}
-
-export interface Guest {
-  _id?: string;                  // For existing guests
-  name: string;
-  email: string;
-  phone: string;
-  dateOfBirth?: string;
-  nationality?: string;
-  idDocument?: {
-    type: 'passport' | 'license' | 'id-card';
-    number: string;
-    expiryDate?: string;
-  };
-  preferences?: GuestPreferences;
-  status: GuestStatus;
-  roomId?: string;               // Current room assignment
-  reservationStart?: string;
-  reservationEnd?: string;
-  checkIn?: string;
-  checkOut?: string;
-  hotelId: string;
-  keepOpen?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
 }
 
 export interface GuestPreferences {

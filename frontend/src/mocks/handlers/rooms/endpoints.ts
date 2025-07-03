@@ -50,7 +50,7 @@ export const roomsEndpointsHandlers = [
           const guests = mockGuests.filter(g => g.roomId === room._id && g.hotelId === room.hotelId);
           const keepOpen = guests.length > 0 && guests.every(g => g.keepOpen === true);
           const roomWithKeepOpen = { ...room, keepOpen };
-          console.log('DEBUG /api/rooms:', room._id, 'keepOpen:', keepOpen, 'status:', room.status);
+          // console.log('DEBUG /api/rooms:', room._id, 'keepOpen:', keepOpen, 'status:', room.status);
           return roomWithKeepOpen;
         });
         return HttpResponse.json(rooms);
@@ -123,19 +123,5 @@ export const roomsEndpointsHandlers = [
         return HttpResponse.json(updatedAction);
     }),
 
-    // NEW: Hotel room types endpoints (matches backend /api/hotel/:hotelId/room-types)
-  http.get('/api/hotel/:hotelId/room-types', ({ params }) => {
-    console.log('Debug Rooms 5');
-
-    const hotelId = params.hotelId as string;
-
-    // console.log('🔍 Room Types Request - Hotel ID:', hotelId);
-    // console.log('🏠 All Room Types:', mockRoomTypes);
-
-    const hotelRoomTypes = mockRoomTypes.filter(rt => rt.hotelId === hotelId);
-
-    console.log('✅ Filtered Room Types for Hotel:', hotelRoomTypes);
-
-    return HttpResponse.json(hotelRoomTypes);
-  }),
+    
 ];
