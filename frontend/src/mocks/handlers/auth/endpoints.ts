@@ -18,7 +18,7 @@ export const authEndpointsHandlers = [
             email,
             name: email.split('@')[0],
             role: 'admin',
-            hotelId: '65b000000000000000000001'
+            hotelId: '65a000000000000000000001'
           };
     
           return HttpResponse.json({
@@ -39,7 +39,7 @@ export const authEndpointsHandlers = [
           email: 'admin@aifrontdesk.com',
           name: 'Admin User',
           role: 'admin',
-          hotelId: '65b000000000000000000001'
+          hotelId: '65a000000000000000000001'
         };
     
         return HttpResponse.json(user);

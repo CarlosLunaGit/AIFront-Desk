@@ -74,7 +74,7 @@ export const enhancedReservationHandlers = [
 
       return {
         room: {
-          id: room.id,
+          id: room._id,
           number: room.number,
           typeId: room.typeId,
           status: room.status,
@@ -159,7 +159,7 @@ export const enhancedReservationHandlers = [
     const breakdown = [];
 
     roomIds.forEach(roomId => {
-      const room = mockRooms.find(r => r.id === roomId);
+      const room = mockRooms.find(r => r._id === roomId);
       if (room) {
         const roomType = mockRoomTypes.find(rt => rt._id === room.typeId);
         const baseRate = room.rate || roomType?.baseRate || 100;
@@ -171,7 +171,7 @@ export const enhancedReservationHandlers = [
           description: `${roomType?.name || 'Room'} ${room.number} x ${nights} nights`,
           amount: roomSubtotal,
           details: {
-            roomId: room.id,
+            roomId: room._id,
             roomNumber: room.number,
             baseRate,
             nights

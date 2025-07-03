@@ -4,7 +4,7 @@ export const SIMULATE_NEW_USER = process.env.REACT_APP_SIMULATE_NEW_USER === 'tr
 
 const mockHotelsData = [
   {
-    _id: '65b000000000000000000001',
+    _id: '65a000000000000000000001',
     name: 'AI Front Desk Hotel',
     slug: 'ai-front-desk-hotel',
     description: 'A modern AI-powered hotel in the heart of downtown, offering personalized guest experiences through cutting-edge technology.',
@@ -250,7 +250,7 @@ const mockHotelsData = [
       checkOutTime: '11:00'
     },
     isActive: true,
-    createdBy: '65b000000000000000000011',
+    createdBy: '65a000000000000000000002',
     usage: {
       currentRooms: 7,
       aiResponsesThisMonth: 245,

@@ -30,7 +30,7 @@ export const communicationsEndpointsHandlers = [
         return HttpResponse.json([
         {
             id: 'conv-1',
-            guestId: 'guest-1',
+            guestId: '65d000000000000000000001',
             guestName: 'Sarah Johnson',
             guestPhone: '+1-555-0123',
             channel: 'whatsapp',
@@ -76,7 +76,7 @@ export const communicationsEndpointsHandlers = [
         },
         {
             id: 'conv-2',
-            guestId: 'guest-2',
+            guestId: '65d000000000000000000003',
             guestName: 'Carlos Mendez',
             guestPhone: '+1-555-0456',
             channel: 'whatsapp',
@@ -122,7 +122,7 @@ export const communicationsEndpointsHandlers = [
         },
         {
             id: 'conv-3',
-            guestId: 'guest-3',
+            guestId: '65d000000000000000000004',
             guestName: 'Emily Chen',
             guestPhone: '+1-555-0789',
             channel: 'sms',
@@ -176,7 +176,7 @@ export const communicationsEndpointsHandlers = [
         const mockConversations = [
         {
             id: 'conv-1',
-            guestId: 'guest-1',
+            guestId: '65d000000000000000000001',
             guestName: 'Sarah Johnson',
             guestPhone: '+1-555-0123',
             channel: 'whatsapp',
@@ -222,7 +222,7 @@ export const communicationsEndpointsHandlers = [
         },
         {
             id: 'conv-2',
-            guestId: 'guest-2',
+            guestId: '65d000000000000000000003',
             guestName: 'Carlos Mendez',
             guestPhone: '+1-555-0456',
             channel: 'whatsapp',
@@ -268,7 +268,7 @@ export const communicationsEndpointsHandlers = [
         },
         {
             id: 'conv-3',
-            guestId: 'guest-3',
+            guestId: '65d000000000000000000004',
             guestName: 'Emily Chen',
             guestPhone: '+1-555-0789',
             channel: 'sms',
@@ -344,7 +344,7 @@ export const communicationsEndpointsHandlers = [
         success: true,
         conversation: {
             id: params.id,
-            guestId: 'guest-1',
+            guestId: '65d000000000000000000001',
             guestName: 'Sarah Johnson',
             guestPhone: '+1-555-0123',
             channel: 'whatsapp',

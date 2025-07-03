@@ -12,20 +12,23 @@ export type RoomStatus =
 export type RoomFeature = 'wifi' | 'minibar' | 'balcony' | 'ocean-view' | 'jacuzzi' | 'king-bed';
 
 export interface Room {
-  id: string;
+  _id: string;
   number: string;
   typeId: string;
   floorId: string;
   status: RoomStatus;
-  features: string[];
-  capacity: number;
   rate: number;
+  capacity: number;
+  features: string[];
+  description: string;
   hotelId: string;
-  lastCleaned?: string;
-  lastMaintenance?: string;
   assignedGuests: string[];
   notes: string;
   keepOpen?: boolean;
+  lastCleaned?: string;
+  lastMaintenance?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface RoomAction {
@@ -44,7 +47,7 @@ export interface RoomFilter {
   status?: RoomStatus[];
   typeId?: string[];
   floor?: number[];
-  features?: RoomFeature[];
+  features?: string[];
   minCapacity?: number;
   maxRate?: number;
   searchTerm?: string;

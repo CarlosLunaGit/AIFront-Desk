@@ -1,5 +1,6 @@
 // Main handlers export - combines all modular handlers
 import { authEndpointsHandlers } from './auth/endpoints';
+import { hotelsEndpointsHandlers } from './hotels/endpoints';
 
 import { enhancedReservationHandlers } from './reservations/endpoints';
 import { dashboardEndpointsHandlers } from './dashboard/endpoints';
@@ -14,6 +15,7 @@ import { communicationsEndpointsHandlers } from './communications/endpoints';
 // Combine all handlers - put modular handlers first so they take precedence
 export const handlers = [
   ...authEndpointsHandlers,
+  ...hotelsEndpointsHandlers,
   ...dashboardEndpointsHandlers,
   ...communicationsEndpointsHandlers,
   ...enhancedReservationHandlers,

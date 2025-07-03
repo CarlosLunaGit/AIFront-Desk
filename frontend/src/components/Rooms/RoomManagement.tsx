@@ -136,7 +136,7 @@ const RoomManagement: React.FC = () => {
     );
   }, [rooms, filterStatus, filterType, filterFloor, search]);
 
-  const selectedRoom = filteredRooms.find(r => r.id === selectedRoomId) || null;
+  const selectedRoom = filteredRooms.find(r => r._id === selectedRoomId) || null;
 
   const handleBulkCreate = async () => {
     setBulkError(null);
@@ -220,10 +220,10 @@ const RoomManagement: React.FC = () => {
     if (!selectedRoom) return;
     if (selectedRoom.status === 'maintenance') {
       // Unset maintenance
-      await updateRoomStatus(selectedRoom.id, 'available');
+      await updateRoomStatus(selectedRoom._id, 'available');
     } else if (['available', 'cleaning'].includes(selectedRoom.status)) {
       // Set to maintenance
-      await requestMaintenance(selectedRoom.id);
+      await requestMaintenance(selectedRoom._id);
     }
     setSelectedRoomId(null);
     queryClient.invalidateQueries({ queryKey: ['rooms'] });
@@ -233,10 +233,10 @@ const RoomManagement: React.FC = () => {
     if (!selectedRoom) return;
     if (selectedRoom.status === 'cleaning') {
       // Unset cleaning
-      await updateRoomStatus(selectedRoom.id, 'available');
+        await updateRoomStatus(selectedRoom._id, 'available');
     } else {
       // Request cleaning
-      await requestCleaning(selectedRoom.id);
+      await requestCleaning(selectedRoom._id);
     }
     setSelectedRoomId(null);
     queryClient.invalidateQueries({ queryKey: ['rooms'] });
@@ -250,14 +250,14 @@ const RoomManagement: React.FC = () => {
         checkInGuest(guestId)
       ));
       // Set room to occupied
-      await updateRoomStatus(selectedRoom.id, 'occupied');
+      await updateRoomStatus(selectedRoom._id, 'occupied');
     } else if (selectedRoom.status === 'occupied') {
       // Check Out: set all assigned guests to checked-out
       await Promise.all(selectedRoom.assignedGuests.map(guestId =>
         checkOutGuest(guestId)
       ));
       // Set room to cleaning
-      await updateRoomStatus(selectedRoom.id, 'cleaning');
+      await updateRoomStatus(selectedRoom._id, 'cleaning');
     }
     setSelectedRoomId(null);
     queryClient.invalidateQueries({ queryKey: ['rooms'] });
@@ -291,7 +291,7 @@ const RoomManagement: React.FC = () => {
     const res = await fetch('/api/guests');
     if (!res.ok) return;
     const allGuests = await res.json();
-    const roomGuests = allGuests.filter((g: any) => g.roomId === selectedRoom.id);
+    const roomGuests = allGuests.filter((g: any) => g.roomId === selectedRoom._id);
     const allKeepOpen = roomGuests.length > 0 && roomGuests.every((g: any) => g.keepOpen);
     await Promise.all(roomGuests.map((g: any) =>
       fetch(`/api/guests/${g._id}`, {
@@ -679,7 +679,7 @@ const RoomManagement: React.FC = () => {
                 <Typography variant="h6">Floor {floor.number} - {floor.name}</Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start' }}>
                   {filteredRooms.filter(r => r.floorId === floor.id).map(room => (
-                    <Box key={room.id} sx={{ flex: '0 0 220px', width: 220, minWidth: 220 }}>
+                    <Box key={room._id} sx={{ flex: '0 0 220px', width: 220, minWidth: 220 }}>
                       <RoomGrid rooms={[room]} roomTypes={frontendRoomTypes} floors={floors} features={features} mapView />
                     </Box>
                   ))}

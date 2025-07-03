@@ -9,7 +9,7 @@ async function testEnhancedReservationEndpoints() {
   // Test 1: Room Availability
   console.log('1️⃣ Testing Room Availability...');
   try {
-    const response = await fetch('/api/rooms/availability?checkInDate=2025-06-29&checkOutDate=2025-07-02&totalGuests=2&hotelId=65b000000000000000000001');
+    const response = await fetch('/api/rooms/availability?checkInDate=2025-06-29&checkOutDate=2025-07-02&totalGuests=2&hotelId=65a000000000000000000001');
     const data = await response.json();
     
     if (response.ok) {
@@ -27,7 +27,7 @@ async function testEnhancedReservationEndpoints() {
   // Test 2: Reservation Pricing
   console.log('2️⃣ Testing Reservation Pricing...');
   try {
-    const response = await fetch('/api/reservations/pricing?roomIds=room-101,room-102&checkInDate=2025-06-29&checkOutDate=2025-07-02&guestCount=2&hotelId=65b000000000000000000001');
+    const response = await fetch('/api/reservations/pricing?roomIds=65b000000000000000000001,65b000000000000000000002&checkInDate=2025-06-29&checkOutDate=2025-07-02&guestCount=2&hotelId=65a000000000000000000001');
     const data = await response.json();
     
     if (response.ok) {
@@ -48,10 +48,10 @@ async function testEnhancedReservationEndpoints() {
     const reservationData = {
       checkInDate: '2025-06-29',
       checkOutDate: '2025-07-02',
-      hotelId: '65b000000000000000000001',
+      hotelId: '65a000000000000000000001',
       roomAssignments: [
         {
-          roomId: 'room-101',
+          roomId: '65b000000000000000000001',
           guests: [{ name: 'Test Guest', email: 'test@example.com', phone: '+1234567890' }]
         }
       ],

@@ -26,9 +26,9 @@ export const useRoomStats = () => {
 export const useUpdateRoom = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...room }: Partial<Room> & { id: string }) => updateRoom(id, room),
+    mutationFn: ({ _id, ...room }: Partial<Room> & { _id: string }) => updateRoom(_id, room),
     onSuccess: (updatedRoom) => {
-      queryClient.setQueryData(['rooms', updatedRoom.id], updatedRoom);
+      queryClient.setQueryData(['rooms', updatedRoom._id], updatedRoom);
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
       queryClient.invalidateQueries({ queryKey: ['rooms', 'stats'] });
     },
@@ -49,7 +49,7 @@ export const useCreateRoomAction = () => {
 export const useUpdateRoomAction = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...action }: Partial<RoomAction> & { id: string }) => updateRoomAction(id, action),
+    mutationFn: ({ _id, ...action }: Partial<RoomAction> & { _id: string }) => updateRoomAction(_id, action),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
       queryClient.invalidateQueries({ queryKey: ['rooms', 'actions'] });

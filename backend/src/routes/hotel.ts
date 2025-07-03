@@ -86,7 +86,7 @@ router.post('/',
       }
 
       // Set createdBy (in production, get from authenticated user)
-      const userId = (req.user && (req.user._id || req.user.id)) || '65b000000000000000000011';
+      const userId = (req.user && (req.user._id || req.user.id)) || '65f000000000000000000001';
       
       const hotel = new Hotel({ 
         ...req.body, 
@@ -249,7 +249,7 @@ router.post('/config',
       }
 
       // Set createdBy (in production, get from authenticated user)
-      const userId = (req.user && (req.user._id || req.user.id)) || '65b000000000000000000011';
+      const userId = (req.user && (req.user._id || req.user.id)) || '65f000000000000000000001';
       
       // Generate IDs for nested items if not provided
       const configData = {

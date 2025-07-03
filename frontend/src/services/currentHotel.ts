@@ -1,6 +1,6 @@
 // services/currentHotel.ts
 export class CurrentHotelService {
-    private static hotelId: string = '65b000000000000000000001';
+    private static hotelId: string = '65a000000000000000000001';
     
     static getCurrentHotelId(): string {
       return this.hotelId;

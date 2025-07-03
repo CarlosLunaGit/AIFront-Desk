@@ -65,7 +65,7 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
     if (!selectedRoom) return;
 
     createRoomAction.mutate({
-      roomId: selectedRoom.id,
+      roomId: selectedRoom._id,
       type,
       requestedBy: 'staff',
       notes: `Requested by staff for room ${selectedRoom.number}`,
@@ -154,12 +154,12 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
   };
 
   const handleSetMaintenance = async (room: Room) => {
-    await fetch(`/api/rooms/${room.id}/maintenance`, { method: 'PATCH' });
+    await fetch(`/api/rooms/${room._id}/maintenance`, { method: 'PATCH' });
     window.location.reload();
   };
 
   const handleTerminateReservation = async (room: Room) => {
-    await fetch(`/api/rooms/${room.id}/terminate`, { method: 'POST' });
+    await fetch(`/api/rooms/${room._id}/terminate`, { method: 'POST' });
     window.location.reload();
   };
 
@@ -170,11 +170,11 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
           {rooms.map((room) => {
             const roomType = roomTypes.find(rt => rt.id === room.typeId);
             const floor = floorMap[room.floorId];
-            const isSelected = selectedRoomId === room.id;
+            const isSelected = selectedRoomId === room._id;
             return (
               <Card
-                key={room.id}
-                onClick={() => onSelectRoom && onSelectRoom(room.id)}
+                key={room._id}
+                onClick={() => onSelectRoom && onSelectRoom(room._id)}
                 sx={{
                   width: 220,
                   minWidth: 220,
@@ -302,13 +302,13 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
   return (
     <Grid container spacing={2}>
       {rooms.map((room) => {
-        const isSelected = selectedRoomId === room.id;
+        const isSelected = selectedRoomId === room._id;
         const roomType = roomTypes.find(rt => rt.id === room.typeId);
         const floor = floors.find(f => f.id === room.floorId);
         return (
-          <Grid item xs={12} sm={6} md={4} lg={3} key={room.id}>
+          <Grid item xs={12} sm={6} md={4} lg={3} key={room._id}>
             <Card
-              onClick={() => onSelectRoom && onSelectRoom(room.id)}
+              onClick={() => onSelectRoom && onSelectRoom(room._id)}
               sx={{
                 border: isSelected ? '2px solid #1976d2' : undefined,
                 boxShadow: isSelected ? 6 : undefined,

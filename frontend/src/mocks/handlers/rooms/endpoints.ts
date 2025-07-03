@@ -1,5 +1,5 @@
 import { mockGuests } from "../../data/guests";
-import { mockRooms } from "../../data/rooms";
+import { mockRooms, mockRoomTypes } from "../../data/rooms";
 import { http, HttpResponse } from "msw";
 import { CurrentHotelService } from '../../../services/currentHotel';
 import { RoomAction, RoomStatus } from "../../../types/room";
@@ -47,10 +47,10 @@ export const roomsEndpointsHandlers = [
         // For each room, recalculate status and keepOpen, then log keepOpen
         const rooms = filteredRooms.map(room => {
           recalculateRoomStatus(room); // Ensure status and keepOpen are up-to-date
-          const guests = mockGuests.filter(g => g.roomId === room.id && g.hotelId === room.hotelId);
+          const guests = mockGuests.filter(g => g.roomId === room._id && g.hotelId === room.hotelId);
           const keepOpen = guests.length > 0 && guests.every(g => g.keepOpen === true);
           const roomWithKeepOpen = { ...room, keepOpen };
-          console.log('DEBUG /api/rooms:', room.id, 'keepOpen:', keepOpen, 'status:', room.status);
+          console.log('DEBUG /api/rooms:', room._id, 'keepOpen:', keepOpen, 'status:', room.status);
           return roomWithKeepOpen;
         });
         return HttpResponse.json(rooms);
@@ -86,7 +86,7 @@ export const roomsEndpointsHandlers = [
         const { id } = params;
         const data = await request.json();
         const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
-        const idx = mockRooms.findIndex(r => r.id === id);
+        const idx = mockRooms.findIndex(r => r._id === id);
         if (idx === -1) return new HttpResponse(null, { status: 404 });
         // If status is being set to 'maintenance' or 'cleaning', set it directly and skip recalculation
         if (safeData.status === 'maintenance' || safeData.status === 'cleaning') {
@@ -109,7 +109,7 @@ export const roomsEndpointsHandlers = [
       }),
 
     http.patch('/api/rooms/actions/:id', async ({ params, request }: any) => {
-
+        console.log('Debug Rooms 4 Delete?');
         const action = mockRoomActions.find(a => a.id === params.id);
         if (!action) {
             return new HttpResponse(null, { status: 404 });
@@ -122,4 +122,20 @@ export const roomsEndpointsHandlers = [
 
         return HttpResponse.json(updatedAction);
     }),
+
+    // NEW: Hotel room types endpoints (matches backend /api/hotel/:hotelId/room-types)
+  http.get('/api/hotel/:hotelId/room-types', ({ params }) => {
+    console.log('Debug Rooms 5');
+
+    const hotelId = params.hotelId as string;
+
+    // console.log('🔍 Room Types Request - Hotel ID:', hotelId);
+    // console.log('🏠 All Room Types:', mockRoomTypes);
+
+    const hotelRoomTypes = mockRoomTypes.filter(rt => rt.hotelId === hotelId);
+
+    console.log('✅ Filtered Room Types for Hotel:', hotelRoomTypes);
+
+    return HttpResponse.json(hotelRoomTypes);
+  }),
 ];
