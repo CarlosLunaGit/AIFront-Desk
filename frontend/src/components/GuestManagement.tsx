@@ -32,9 +32,6 @@ const GuestManagement: React.FC = () => {
   const { currentConfig } = useContext(HotelConfigContext);
   const hotelId = (currentConfig as any)?.id || (currentConfig as any)?._id;
   
-  console.log('🔍 GuestManagement: currentConfig:', currentConfig);
-  console.log('🔍 GuestManagement: extracted hotelId:', hotelId);
-  
   const { data: guests, isLoading, error, isFetching } = useGuests(hotelId);
 
   // Modal state for viewing guest details
@@ -50,7 +47,7 @@ const GuestManagement: React.FC = () => {
 
   // const rooms = Has all available rooms within the hotel under selection
   const { data: rooms = [] as Room[] } = useRooms({ hotelId: hotelId });
-  
+
   // const availableRooms = Has only rooms that are available or partially-reserved (not occupied/maintenance/cleaning/reserved/checked-in)
   const availableRooms = rooms.filter(
     (room: any) =>

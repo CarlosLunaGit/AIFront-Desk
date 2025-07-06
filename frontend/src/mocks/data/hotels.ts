@@ -261,7 +261,7 @@ const mockHotelsData = [
     updatedAt: new Date().toISOString()
   },
   {
-    _id: '65b000000000000000000002',
+    _id: '65a000000000000000000002',
     name: 'Seaside Resort',
     slug: 'seaside-resort',
     description: 'A beautiful beachfront resort with stunning ocean views and world-class amenities.',

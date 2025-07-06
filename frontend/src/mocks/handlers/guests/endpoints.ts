@@ -3,6 +3,7 @@ import { mockGuests } from '../../data/guests';
 import { CurrentHotelService } from '../../../services/currentHotel';
 import { mockRooms } from '../../data/rooms';
 import { recalculateRoomStatus } from '../../../utils/roomStatus';
+import { recalculateReservationsForGuest, recalculateReservationsForRoom } from '../../data/reservations';
 
 export const guestsEndpointsHandlers = [
     // Guest endpoints (matching frontend API calls)
@@ -56,6 +57,8 @@ export const guestsEndpointsHandlers = [
           const room = mockRooms.find(r => r._id === newGuest.roomId && r.hotelId === newGuest.hotelId);
           if (room) {
             recalculateRoomStatus(room, 'system', 'Triggered by guest assignment');
+            // Recalculate reservations for this room
+            recalculateReservationsForRoom(newGuest.roomId, 'New guest assigned to room');
           }
         }
         
@@ -73,6 +76,8 @@ export const guestsEndpointsHandlers = [
           return new HttpResponse(null, { status: 404 });
         }
     
+        const oldGuest = { ...mockGuests[guestIndex] };
+        
         // Update guest
         mockGuests[guestIndex] = {
           ...mockGuests[guestIndex],
@@ -81,12 +86,25 @@ export const guestsEndpointsHandlers = [
         };
     
         const guest = mockGuests[guestIndex];
-        console.log('🔄 Guest updated:', guest.name, 'keepOpen:', guest.keepOpen);
+        console.log('🔄 Guest updated:', guest.name, 'status:', guest.status, 'keepOpen:', guest.keepOpen);
     
         // Update room status based on guest status change
         const room = mockRooms.find(r => r._id === guest.roomId && r.hotelId === guest.hotelId);
         if (room) {
           recalculateRoomStatus(room, 'system', 'Triggered by guest status change');
+        }
+        
+        // Recalculate reservations for this guest (handles status changes)
+        recalculateReservationsForGuest(guestId, `Guest ${guest.name} status changed from ${oldGuest.status} to ${guest.status}`);
+        
+        // If room changed, recalculate reservations for both old and new rooms
+        if (oldGuest.roomId !== guest.roomId) {
+          if (oldGuest.roomId) {
+            recalculateReservationsForRoom(oldGuest.roomId, 'Guest moved from room');
+          }
+          if (guest.roomId) {
+            recalculateReservationsForRoom(guest.roomId, 'Guest moved to room');
+          }
         }
     
         return HttpResponse.json(guest);
@@ -116,8 +134,13 @@ export const guestsEndpointsHandlers = [
           const room = mockRooms.find(r => r._id === guest.roomId && r.hotelId === guest.hotelId);
           if (room) {
             recalculateRoomStatus(room, 'system', 'Triggered by guest removal');
+            // Recalculate reservations for this room
+            recalculateReservationsForRoom(guest.roomId, `Guest ${guest.name} removed from room`);
           }
         }
+        
+        // Recalculate reservations for this guest before deletion
+        recalculateReservationsForGuest(guestId, `Guest ${guest.name} deleted`);
         
         mockGuests.splice(guestIndex, 1);
         return new HttpResponse(null, { status: 204 });

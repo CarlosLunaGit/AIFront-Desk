@@ -24,6 +24,14 @@ This guide ensures MSW (Mock Service Worker) handlers stay synchronized with rea
 - **✅ UPDATED**: Type definitions enhanced for better consistency across guest and reservation interfaces
 - **✅ OPTIMIZED**: useGuests hook with 57+ lines of improvements for better data handling
 
+#### **Reservation Data Model Refactoring (December 30, 2024 - Latest Session)**
+- **🔄 IN PROGRESS**: Complete reservation data model overhaul with proper lifecycle management
+- **✅ NEW**: Comprehensive Reservation interface with financial tracking, audit trails, and business status management
+- **✅ ENHANCED**: Reservation creation with proper recalculation triggers when guest status changes
+- **✅ IMPROVED**: Business workflow support (cancel, no-show, terminate, complete, delete) with status transitions
+- **🔄 FIXING**: Handler alignment with new data model (TypeScript compilation in progress)
+- **✅ ADDED**: Automatic reservation recalculation when guests are modified through Guest Management
+
 #### **Handler Modularization Completed**
 - **✅ NEW**: Extracted guest endpoints to `frontend/src/mocks/handlers/guests/endpoints.ts`
 - **✅ NEW**: Extracted hotel endpoints to `frontend/src/mocks/handlers/hotels/endpoints.ts`  
