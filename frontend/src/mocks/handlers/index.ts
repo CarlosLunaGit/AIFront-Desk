@@ -2,7 +2,7 @@
 import { authEndpointsHandlers } from './auth/endpoints';
 import { hotelsEndpointsHandlers } from './hotels/endpoints';
 
-import { enhancedReservationHandlers } from './reservations/endpoints';
+import { enhancedReservationHandlers, reservationEndpointsHandlers } from './reservations/endpoints';
 import { dashboardEndpointsHandlers } from './dashboard/endpoints';
 import { roomsEndpointsHandlers } from './rooms/endpoints';
 import { guestsEndpointsHandlers } from './guests/endpoints';
@@ -19,6 +19,7 @@ export const handlers = [
   ...dashboardEndpointsHandlers,
   ...communicationsEndpointsHandlers,
   ...enhancedReservationHandlers,
+  ...reservationEndpointsHandlers,
   ...roomsEndpointsHandlers,
   ...guestsEndpointsHandlers,
   // Keep existing handlers for now but exclude ones we've modularized

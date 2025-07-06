@@ -26,6 +26,7 @@ import {
 } from '../utils/reservationUtils';
 // Import the Enhanced Reservation Wizard
 import { EnhancedReservationWizard } from '../components/Reservations/EnhancedReservationWizard';
+import { Room } from '@/types/room';
 
 const ReservationsPage: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -35,7 +36,7 @@ const ReservationsPage: React.FC = () => {
   const hotelId = currentHotel?._id;
   
   // Fetch reservations
-  const { data: reservations = [], isLoading: loadingReservations } = useReservations();
+  const { data: reservations = [], isLoading: loadingReservations } = useReservations(hotelId);
   // Fetch guests for the current hotel
   const { data: guests = [], isLoading: loadingGuests } = useGuests(hotelId);
   // Fetch rooms for the current hotel  
@@ -95,7 +96,7 @@ const ReservationsPage: React.FC = () => {
   // Filter based on business status instead of just guest/room status
   const activeReservations = categorizedReservations.filter((res: any) => {
     // Debug logging to understand the filtering issue
-    console.log('🔍 Filtering reservation:', res.id, 'reservationStatus:', res.reservationStatus, 'status:', res.status);
+    console.log('🔍 Filtering reservation:', res._id, 'reservationStatus:', res.reservationStatus, 'status:', res.status);
     
     // A reservation is active if:
     // 1. It has no reservationStatus (default active)
@@ -119,7 +120,7 @@ const ReservationsPage: React.FC = () => {
       isActive = res.status === 'booked' || res.status === 'active';
     }
     
-    console.log('📊 Reservation', res.id, 'is active:', isActive);
+    console.log('📊 Reservation', res._id, 'is active:', isActive);
     return isActive;
   });
   
@@ -135,7 +136,7 @@ const ReservationsPage: React.FC = () => {
       isInactive = res.reservationStatus.isActive === false;
     }
     
-    console.log('📊 Reservation', res.id, 'is inactive:', isInactive);
+    console.log('📊 Reservation', res._id, 'is inactive:', isInactive);
     return isInactive;
   });
 
@@ -145,7 +146,7 @@ const ReservationsPage: React.FC = () => {
   const filteredReservations = currentReservations.filter((res: any) => {
       if (!search) return true;
       return (
-        res.id.toLowerCase().includes(search.toLowerCase()) ||
+        res._id.toLowerCase().includes(search.toLowerCase()) ||
         (res.guestIds && res.guestIds.some((gid: string) => {
         const g = guests.find((gg: any) => gg._id === gid);
           return g && g.name.toLowerCase().includes(search.toLowerCase());
@@ -208,7 +209,7 @@ const ReservationsPage: React.FC = () => {
   const handleEdit = (res: any) => {
     const [start, end] = res.dates.split(' to ').map((d: string) => dayjs(d));
     setForm({ guestIds: res.guestIds, rooms: res.rooms, notes: res.notes || '', price: String(res.price || ''), start, end });
-    setEditId(res.id);
+    setEditId(res._id);
     setOpen(true);
   };
 
@@ -482,42 +483,42 @@ const ReservationsPage: React.FC = () => {
                 : [];
               const firstGuest = guestNames[0] || '';
               const moreCount = guestNames.length - 1;
-              const expanded = expandedRows[res.id];
+              const expanded = expandedRows[res._id];
               // Use business status for display
               const statusDisplay = getReservationStatusDisplay(res.reservationStatus, res.status);
               return (
-                <React.Fragment key={res.id}>
+                <React.Fragment key={res._id}>
                   <TableRow
                     hover
-                    selected={selectedReservationId === res.id}
-                    onClick={() => setSelectedReservationId(res.id)}
+                    selected={selectedReservationId === res._id}
+                    onClick={() => setSelectedReservationId(res._id)}
                     tabIndex={0}
                     style={{ cursor: 'pointer' }}
                     onKeyDown={e => {
-                      if (e.key === 'Enter' || e.key === ' ') setSelectedReservationId(res.id);
+                      if (e.key === 'Enter' || e.key === ' ') setSelectedReservationId(res._id);
                     }}
                   >
-                    <TableCell>{res.id}</TableCell>
+                    <TableCell>{res._id}</TableCell>
                     <TableCell>
                       {firstGuest}
                       {moreCount > 0 && (
                         <>
                           {' '}
-                          <IconButton size="small" onClick={e => { e.stopPropagation(); setExpandedRows(r => ({ ...r, [res.id]: !expanded })); }}>
+                          <IconButton size="small" onClick={e => { e.stopPropagation(); setExpandedRows(r => ({ ...r, [res._id]: !expanded })); }}>
                             {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
                           </IconButton>
-                          <span style={{ color: '#1976d2', cursor: 'pointer' }} onClick={e => { e.stopPropagation(); setExpandedRows(r => ({ ...r, [res.id]: !expanded })); }}>
+                          <span style={{ color: '#1976d2', cursor: 'pointer' }} onClick={e => { e.stopPropagation(); setExpandedRows(r => ({ ...r, [res._id]: !expanded })); }}>
                             +{moreCount} more
                           </span>
                         </>
                       )}
                     </TableCell>
                     <TableCell>{(() => {
-                      const room = rooms.find((r: any) => r.id === res.rooms || r.number === res.rooms);
-                      return room ? room.number : res.rooms;
+                      const room = rooms.find((r: Room) => r._id === res.roomId);
+                      return room ? room.number : res.roomId;
                     })()}</TableCell>
-                    <TableCell>{res.dates}</TableCell>
-                    <TableCell>${res.price}</TableCell>
+                    <TableCell>{res.checkInDate} to {res.checkOutDate}</TableCell>
+                    <TableCell>${res.totalAmount}</TableCell>
                     <TableCell>
                       <Tooltip title={statusDisplay.description} arrow>
                         <Chip 

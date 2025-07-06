@@ -438,39 +438,6 @@ export const handlers: HttpHandler[] = [
   // }),
 
   // Reservation endpoints - UPDATED to use real data model
-  http.get('/api/reservations', () => {
-    console.log('Debug Reservations /api/reservations - Using real reservation data model');
-    console.log('📋 Reservations endpoint called, returning reservations:', reservationsData.length);
-    
-    // Return actual reservation data
-    const formattedReservations = reservationsData.map(reservation => ({
-      id: reservation._id,
-      hotelId: reservation.hotelId,
-      rooms: reservation.roomId, // Map roomId to rooms for compatibility
-      guestIds: reservation.guestIds,
-      dates: `${reservation.checkInDate.split('T')[0]} to ${reservation.checkOutDate.split('T')[0]}`,
-      price: reservation.totalAmount,
-      status: reservation.status === 'active' ? 'booked' : reservation.status, // Legacy compatibility
-      reservationStatus: reservation.status, // New business status
-      confirmationNumber: reservation.confirmationNumber,
-      notes: reservation.notes || '',
-      createdAt: reservation.createdAt,
-      updatedAt: reservation.updatedAt,
-      
-      // Additional business fields
-      checkInDate: reservation.checkInDate,
-      checkOutDate: reservation.checkOutDate,
-      nights: reservation.nights,
-      roomRate: reservation.roomRate,
-      currency: reservation.currency,
-      source: reservation.source,
-      bookingStatus: reservation.bookingStatus,
-      specialRequests: reservation.specialRequests,
-      statusHistory: reservation.statusHistory
-    }));
-    
-    return HttpResponse.json(formattedReservations);
-  }),
 
   // PATCH /api/reservations/:id - Handle business actions (cancel, no-show, terminate, etc.)
   http.patch('/api/reservations/:id', async ({ params, request }) => {
@@ -1409,13 +1376,7 @@ export const handlers: HttpHandler[] = [
   // }),
 
   // Reservation endpoints
-  http.get('/api/reservations', () => {
-    console.log('Debug Reservations /api/reservations Line 2301');
-    // Only return reservations for the current hotel config
-    const roomIdsForConfig = mockRooms.filter(r => r.hotelId === currentConfigId).map(r => r._id);
-    const filtered = reservationsData.filter((r: any) => roomIdsForConfig.includes(r.rooms));
-    return HttpResponse.json(filtered);
-  }),
+  
   http.post('/api/reservations', async ({ request }) => {
     console.log('Debug Reservations /api/reservations Line 2308');
     const data = await request.json();
@@ -1444,9 +1405,99 @@ export const handlers: HttpHandler[] = [
         guestIds.push(newGuestId);
       });
     }
-    // Note: Reservation creation is handled by the proper Reservation interface above
-    // This legacy code has been removed to prevent type conflicts
-    return HttpResponse.json({ message: 'Reservation creation handled by proper Reservation interface' }, { status: 201 });
+    const price = typeof safeData.price === 'number' ? safeData.price : Number(safeData.price);
+    
+    // Calculate room rate from room data or use default
+    const room = mockRooms.find(r => r._id === safeData.rooms);
+    const roomRate = room?.rate || 150; // Default to $150 if no room found
+    
+    const newReservation: Reservation = {
+      _id: `res-${currentConfigId.slice(-4)}-${String(reservationsData.length + 1).padStart(4, '0')}`,
+      hotelId: currentConfigId,
+      roomId: safeData.rooms || '',
+      guestIds,
+      confirmationNumber: `CONF-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+      reservationStart: safeData.dates?.split(' to ')[0] || new Date().toISOString(),
+      reservationEnd: safeData.dates?.split(' to ')[1] || new Date().toISOString(),
+      checkInDate: safeData.dates?.split(' to ')[0] || new Date().toISOString(),
+      checkOutDate: safeData.dates?.split(' to ')[1] || new Date().toISOString(),
+      nights: 1,
+      roomRate: roomRate,
+      totalAmount: roomRate,
+      paidAmount: 0,
+      currency: 'USD',
+      status: 'active',
+      reservationStatus: 'active',
+      bookingStatus: 'confirmed',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lastStatusChange: new Date().toISOString(),
+      specialRequests: safeData.specialRequests || '',
+      notes: safeData.notes || '',
+      source: 'direct',
+      financials: {
+        totalAmount: roomRate,
+        paidAmount: 0,
+        refundAmount: 0,
+        cancellationFee: 0,
+        currency: 'USD',
+        paymentMethod: 'credit_card',
+        paymentStatus: 'pending',
+        transactions: []
+      },
+      audit: {
+        statusHistory: [
+          {
+            status: 'active',
+            timestamp: new Date().toISOString(),
+            performedBy: 'system',
+            reason: 'Reservation created via API'
+          }
+        ],
+        actions: [
+          {
+            action: 'create',
+            timestamp: new Date().toISOString(),
+            performedBy: 'system',
+            details: { guestCount: guestIds.length, roomId: safeData.rooms }
+          }
+        ]
+      },
+      statusHistory: [
+        {
+          status: 'active',
+          timestamp: new Date().toISOString(),
+          performedBy: 'system',
+          reason: 'Reservation created via API'
+        }
+      ]
+    };
+    
+    reservationsData.push(newReservation);
+    
+    // Update guests' reservation info
+    guestIds.forEach((gid: string) => {
+      const guest = mockGuests.find(g => g._id === gid);
+      if (guest) {
+        guest.roomId = newReservation.roomId;
+        guest.reservationStart = newReservation.reservationStart;
+        guest.reservationEnd = newReservation.reservationEnd;
+      }
+    });
+    
+    // Add to reservation history: reservation_created
+    reservationHistory.push({
+      id: `HIST-${Date.now()}`,
+      roomId: newReservation.roomId,
+      timestamp: new Date().toISOString(),
+      action: 'reservation_created',
+      previousState: {},
+      newState: { guestIds: newReservation.guestIds },
+      performedBy: 'system',
+      notes: 'Reservation created via API',
+    });
+    
+    return HttpResponse.json(newReservation, { status: 201 });
   }),
   http.patch('/api/hotel/reservations/:id', async ({ params, request }) => {
     console.log('Debug Reservations /api/hotel/reservations/:id Line 2371');

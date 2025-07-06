@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as reservationApi from '../api/reservation';
 
-export const useReservations = () => {
+export const useReservations = (hotelId?: string) => {
   return useQuery({
-    queryKey: ['reservations'],
-    queryFn: reservationApi.getReservations,
+    queryKey: ['reservations', hotelId],
+    queryFn: () => reservationApi.getReservations(hotelId),
+    enabled: !!hotelId,
   });
 };
 

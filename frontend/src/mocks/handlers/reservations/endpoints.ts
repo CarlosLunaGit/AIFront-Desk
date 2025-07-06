@@ -1,6 +1,12 @@
 // Enhanced Reservation System Handlers - extracted for modularity
 import { http, HttpResponse } from 'msw';
 import { mockRooms, mockRoomTypes } from '../../data/rooms';
+import { mockReservations, Reservation } from '../../data/reservations';
+import { mockGuests } from '../../data/guests';
+import { CurrentHotelService } from '../../../services/currentHotel';
+
+// Reservation history for audit trail
+const reservationHistory: any[] = [];
 
 export const enhancedReservationHandlers = [
   // Room Availability Endpoint
@@ -230,5 +236,313 @@ export const enhancedReservationHandlers = [
     console.log('✅ Enhanced Reservation Created:', newReservationId);
 
     return HttpResponse.json(newReservation, { status: 201 });
+  })
+];
+
+export const reservationEndpointsHandlers = [
+  // Get all reservations (filtered by hotel)
+  http.get('/api/reservations', ({ request }) => {
+    console.log('Debug Reservations 1');
+    const url = new URL(request.url);
+    const hotelId = url.searchParams.get('hotelId');
+    const status = url.searchParams.get('status');
+    
+    let filteredReservations: Reservation[] = mockReservations;
+    
+    // Filter by hotel if specified
+    if (hotelId) {
+      filteredReservations = filteredReservations.filter(r => r.hotelId === hotelId);
+    }
+    
+    // Filter by status if specified
+    if (status) {
+      if (status === 'active') {
+        filteredReservations = filteredReservations.filter(r => 
+          r.status === 'active' || r.reservationStatus === 'active'
+        );
+      } else if (status === 'inactive') {
+        filteredReservations = filteredReservations.filter(r => 
+          r.status === 'cancelled' || r.status === 'no-show' || 
+          r.status === 'terminated' || r.status === 'completed' ||
+          r.reservationStatus === 'cancelled' || r.reservationStatus === 'no-show' || 
+          r.reservationStatus === 'terminated' || r.reservationStatus === 'completed'
+        );
+      }
+    }
+    
+    console.log(`📋 Returning ${filteredReservations.length} reservations for hotel ${hotelId}`);
+    return HttpResponse.json(filteredReservations);
+  }),
+
+
+
+  // Create new reservation
+  http.post('/api/reservations', async ({ request }) => {
+    console.log('Debug Reservations /api/reservations POST');
+    const data = await request.json();
+    const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+    
+    // Extract guest IDs from the request
+    const guestIds: string[] = safeData.guestIds || [];
+    if (guestIds.length === 0) {
+      return new HttpResponse(null, { status: 400, statusText: 'No guest IDs provided' });
+    }
+    
+    // Get current hotel ID (you might need to adjust this based on your current hotel logic)
+    const currentHotelId = safeData.hotelId || '65a000000000000000000001';
+    
+    const price = typeof safeData.price === 'number' ? safeData.price : Number(safeData.price);
+    
+    // Create a proper Reservation object
+    const newReservation: Reservation = {
+      _id: `res-${currentHotelId.slice(-4)}-${String(mockReservations.length + 1).padStart(4, '0')}`,
+      hotelId: currentHotelId,
+      roomId: safeData.rooms || '',
+      guestIds,
+      confirmationNumber: `CONF-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+      reservationStart: safeData.dates?.split(' to ')[0] || new Date().toISOString(),
+      reservationEnd: safeData.dates?.split(' to ')[1] || new Date().toISOString(),
+      checkInDate: safeData.dates?.split(' to ')[0] || new Date().toISOString(),
+      checkOutDate: safeData.dates?.split(' to ')[1] || new Date().toISOString(),
+      nights: 1,
+      roomRate: !isNaN(price) ? price : 0,
+      totalAmount: !isNaN(price) ? price : 0,
+      paidAmount: 0,
+      currency: 'USD',
+      status: 'active',
+      reservationStatus: 'active',
+      bookingStatus: 'confirmed',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lastStatusChange: new Date().toISOString(),
+      specialRequests: safeData.specialRequests || '',
+      notes: safeData.notes || '',
+      source: 'direct',
+      financials: {
+        totalAmount: !isNaN(price) ? price : 0,
+        paidAmount: 0,
+        refundAmount: 0,
+        cancellationFee: 0,
+        currency: 'USD',
+        paymentMethod: 'credit_card',
+        paymentStatus: 'pending',
+        transactions: []
+      },
+      audit: {
+        statusHistory: [
+          {
+            status: 'active',
+            timestamp: new Date().toISOString(),
+            performedBy: 'system',
+            reason: 'Reservation created via API'
+          }
+        ],
+        actions: [
+          {
+            action: 'create',
+            timestamp: new Date().toISOString(),
+            performedBy: 'system',
+            details: { guestCount: guestIds.length, roomId: safeData.rooms }
+          }
+        ]
+      },
+      statusHistory: [
+        {
+          status: 'active',
+          timestamp: new Date().toISOString(),
+          performedBy: 'system',
+          reason: 'Reservation created via API'
+        }
+      ]
+    };
+    
+    mockReservations.push(newReservation);
+    
+    // Update guests' reservation info
+    guestIds.forEach((gid: string) => {
+      const guest = mockGuests.find(g => g._id === gid);
+      if (guest) {
+        guest.roomId = newReservation.roomId;
+        guest.reservationStart = newReservation.reservationStart;
+        guest.reservationEnd = newReservation.reservationEnd;
+      }
+    });
+    
+    // Add to reservation history: reservation_created
+    reservationHistory.push({
+      id: `HIST-${Date.now()}`,
+      roomId: newReservation.roomId,
+      timestamp: new Date().toISOString(),
+      action: 'reservation_created',
+      previousState: {},
+      newState: { guestIds: newReservation.guestIds },
+      performedBy: 'system',
+      notes: 'Reservation created via API',
+    });
+    
+    return HttpResponse.json(newReservation, { status: 201 });
+  }),
+
+  // Update reservation (business actions)
+  http.patch('/api/reservations/:id', async ({ params, request }) => {
+    console.log('Debug Reservations /api/reservations/:id PATCH');
+    const reservationId = params.id as string;
+    const reservation = mockReservations.find(r => r._id === reservationId);
+    
+    if (!reservation) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    
+    const data = await request.json();
+    const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+    const now = new Date().toISOString();
+    
+    // Handle business actions
+    if (safeData.reservationStatus && safeData.reservationStatus !== reservation.reservationStatus) {
+      // Update audit trail
+      if (!reservation.audit) {
+        reservation.audit = { statusHistory: [], actions: [] };
+      }
+      
+      reservation.audit.statusHistory.push({
+        status: safeData.reservationStatus,
+        timestamp: now,
+        performedBy: safeData.performedBy || 'system',
+        reason: safeData.reason || 'Status updated'
+      });
+      
+      reservation.audit.actions.push({
+        action: safeData.reservationStatus,
+        timestamp: now,
+        performedBy: safeData.performedBy || 'system',
+        details: {
+          previousStatus: reservation.reservationStatus,
+          newStatus: safeData.reservationStatus,
+          reason: safeData.reason
+        }
+      });
+      
+      // Handle specific business status updates
+      if (safeData.reservationStatus === 'cancelled') {
+        reservation.cancelledAt = now;
+        reservation.cancelledBy = safeData.cancelledBy || 'hotel';
+        reservation.cancellationReason = safeData.cancellationReason || safeData.reason;
+        
+        // Update financials with cancellation fee
+        if (safeData.cancellationFee !== undefined) {
+          reservation.financials.cancellationFee = safeData.cancellationFee;
+          reservation.financials.refundAmount = reservation.financials.totalAmount - safeData.cancellationFee;
+        }
+      } else if (safeData.reservationStatus === 'no-show') {
+        reservation.noShowMarkedAt = now;
+      } else if (safeData.reservationStatus === 'terminated') {
+        reservation.terminatedAt = now;
+      }
+    }
+    
+    // Apply all updates
+    Object.assign(reservation, safeData, { updatedAt: now });
+    
+    // Update associated guests if dates or rooms changed
+    if (safeData.dates || safeData.rooms) {
+      (reservation.guestIds || []).forEach((gid: string) => {
+        const guest = mockGuests.find(g => g._id === gid);
+        if (guest) {
+          if (safeData.rooms && reservation.roomId !== safeData.rooms) reservation.roomId = safeData.rooms;
+          if (safeData.dates) {
+            reservation.reservationStart = safeData.dates.split(' to ')[0];
+            reservation.reservationEnd = safeData.dates.split(' to ')[1];
+          }
+        }
+      });
+    }
+    
+    console.log('✅ Updated reservation:', reservation._id, 'new status:', reservation.reservationStatus);
+    return HttpResponse.json(reservation);
+  }),
+
+  // Delete reservation
+  http.delete('/api/reservations/:id', ({ params, request }) => {
+    console.log('Debug Reservations /api/reservations/:id DELETE');
+    const reservationId = params.id as string;
+    const reservationIndex = mockReservations.findIndex(r => r._id === reservationId);
+    
+    if (reservationIndex === -1) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    
+    const reservation = mockReservations[reservationIndex];
+    
+    // Get deletion reason from query params
+    const url = new URL(request.url);
+    const reason = url.searchParams.get('reason') || 'Deleted by user';
+    
+    // Clear room assignments for associated guests
+    if (Array.isArray(reservation.guestIds)) {
+      reservation.guestIds.forEach((gid: string) => {
+        const guest = mockGuests.find(g => g._id === gid);
+        if (guest) {
+          guest.roomId = '';
+          guest.keepOpen = false;
+        }
+      });
+    }
+    
+    // Add to reservation history before deletion
+    reservationHistory.push({
+      id: `HIST-${Date.now()}`,
+      roomId: reservation.roomId,
+      timestamp: new Date().toISOString(),
+      action: 'reservation_deleted',
+      previousState: { 
+        guestIds: reservation.guestIds,
+        status: reservation.status,
+        reservationStatus: reservation.reservationStatus
+      },
+      newState: {},
+      performedBy: 'system',
+      notes: reason,
+    });
+    
+    // Remove from reservations array
+    mockReservations.splice(reservationIndex, 1);
+    
+    return HttpResponse.json({ message: 'Reservation deleted successfully' }, { status: 200 });
+  }),
+
+  // Get reservation history
+  http.get('/api/reservation-history', ({ request }) => {
+    console.log('Debug Reservation History /api/reservation-history');
+    const url = new URL(request.url);
+    const hotelId = url.searchParams.get('hotelId');
+    
+    let filteredHistory = reservationHistory;
+    
+    // Filter by hotel if specified
+    if (hotelId) {
+      filteredHistory = filteredHistory.filter(entry => {
+        // Find the reservation this history entry refers to
+        const reservation = mockReservations.find(r => 
+          r._id === entry.id || r.roomId === entry.roomId
+        );
+        return reservation && reservation.hotelId === hotelId;
+      });
+    }
+    
+    // Enhance history entries with guest names
+    const enhancedHistory = filteredHistory.map(entry => {
+      const guestNames = [
+        ...(entry.newState.guestIds || []),
+        ...(entry.previousState.guestIds || [])
+      ].map(gid => mockGuests.find(g => g._id === gid)?.name || gid).join(', ');
+      
+      return {
+        ...entry,
+        guestNames
+      };
+    });
+    
+    console.log(`📋 Returning ${enhancedHistory.length} history entries for hotel ${hotelId}`);
+    return HttpResponse.json(enhancedHistory);
   })
 ]; 
