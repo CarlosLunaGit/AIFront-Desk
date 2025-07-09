@@ -20,7 +20,8 @@ import {
   Info as InfoIcon,
 } from '@mui/icons-material';
 import type { Room } from '../../types/room';
-import type { RoomType, Floor, HotelFeature } from '../../types/hotel';
+import type { Floor, HotelFeature } from '../../types/hotel';
+import type { RoomType } from '../../types/room';
 import { useCreateRoomAction } from '../../services/hooks/useRooms';
 import Tooltip from '@mui/material/Tooltip';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -168,7 +169,7 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <React.Fragment>
           {rooms.map((room) => {
-            const roomType = roomTypes.find(rt => rt.id === room.typeId);
+            const roomType = roomTypes.find(rt => rt._id === room.typeId);
             const floor = floorMap[room.floorId];
             const isSelected = selectedRoomId === room._id;
             return (
@@ -303,7 +304,7 @@ const RoomGrid: React.FC<RoomGridProps> = ({ rooms, roomTypes, floors, features,
     <Grid container spacing={2}>
       {rooms.map((room) => {
         const isSelected = selectedRoomId === room._id;
-        const roomType = roomTypes.find(rt => rt.id === room.typeId);
+        const roomType = roomTypes.find(rt => rt._id === room.typeId);
         const floor = floors.find(f => f.id === room.floorId);
         return (
           <Grid item xs={12} sm={6} md={4} lg={3} key={room._id}>

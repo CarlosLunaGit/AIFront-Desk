@@ -1,8 +1,11 @@
 // Enhanced Reservation System Handlers - extracted for modularity
 import { http, HttpResponse } from 'msw';
 import { mockRooms, mockRoomTypes } from '../../data/rooms';
-import { mockReservations, Reservation } from '../../data/reservations';
+import { mockReservations } from '../../data/reservations';
+import { Reservation } from '../../../types/reservation';
 import { mockGuests } from '../../data/guests';
+import { Room, RoomType } from '../../../types/room';
+import { Guest } from '../../../types/guest';
 import { CurrentHotelService } from '../../../services/currentHotel';
 
 // Reservation history for audit trail
@@ -78,24 +81,44 @@ export const enhancedReservationHandlers = [
         reasonsUnavailable.push(`Room is currently ${room.status}`);
       }
 
+      const roomData: Room = {
+        _id: room._id,
+        number: room.number,
+        typeId: room.typeId,
+        floorId: room.floorId,
+        status: room.status,
+        rate: room.rate,
+        capacity: room.capacity,
+        features: room.features || [],
+        description: room.description,
+        hotelId: room.hotelId,
+        assignedGuests: room.assignedGuests || [],
+        notes: room.notes,
+        keepOpen: room.keepOpen,
+        lastCleaned: room.lastCleaned,
+        lastMaintenance: room.lastMaintenance,
+        createdAt: room.createdAt,
+        updatedAt: room.updatedAt
+      }
+
+      const roomTypeData: RoomType = {
+        _id: roomType._id,
+        name: roomType.name,
+        description: roomType.description,
+        baseRate: roomType.baseRate,
+        defaultCapacity: roomType.capacity?.total || 2,
+        capacity: roomType.capacity,
+        features: roomType.features || [],
+        amenities: roomType.amenities || [],
+        hotelId: roomType.hotelId,
+        isActive: roomType.isActive,
+        createdAt: roomType.createdAt,
+        updatedAt: roomType.updatedAt
+      }
+
       return {
-        room: {
-          id: room._id,
-          number: room.number,
-          typeId: room.typeId,
-          status: room.status,
-          rate: room.rate,
-          capacity: roomCapacity,
-          amenities: room.features || [],
-          hotelId: room.hotelId
-        },
-        roomType: {
-          id: roomType._id,
-          name: roomType.name,
-          defaultCapacity: roomCapacity,
-          baseRate: roomType.baseRate,
-          amenities: roomType.amenities || []
-        },
+        room: roomData,
+        roomType: roomTypeData,
         isAvailable,
         unavailableDates: isAvailable ? [] : [checkInDate],
         pricing: {
@@ -382,6 +405,135 @@ export const reservationEndpointsHandlers = [
     
     return HttpResponse.json(newReservation, { status: 201 });
   }),
+
+  http.post('/api/reservations/multi-room', async ({ request }) => {
+    const {
+      primaryGuest,
+      roomAssignments,
+      checkInDate,
+      checkOutDate,
+      pricing,
+      status,
+      notes,
+      specialRequests,
+      hotelId,
+      createdBy
+    } = await request.json() as any;
+  
+    // 1. Handle guests
+    const allGuests = [primaryGuest, ...roomAssignments.flatMap((r: any) => r.guests)];
+    const guestIds: string[] = [];
+  
+    for (const guest of allGuests) {
+      let guestObj = guest;
+      if (!guest._id) {
+        // Replace with your actual add guest utility
+        guestObj = addMockGuest({
+          ...guest,
+          hotelId,
+          status: 'booked',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      guestIds.push(guestObj._id);
+    }
+  
+    // 2. Assign guests to rooms
+    for (const assignment of roomAssignments) {
+      // Replace with your actual room update utility
+      updateMockRoom(assignment.roomId, {
+        assignedGuests: assignment.guests.map(g => g._id),
+        status: 'reserved',
+      });
+    }
+  
+    // 3. Create reservation object
+    const reservation = addMockReservation({
+      hotelId,
+      roomId: roomAssignments.map(r => r.roomId),
+      guestIds,
+      confirmationNumber: `CONF-${Date.now()}`,
+      reservationStart: checkInDate,
+      reservationEnd: checkOutDate,
+      checkInDate,
+      checkOutDate,
+      nights: /* calculate nights */,
+      roomRate: pricing.subtotal,
+      totalAmount: pricing.total,
+      paidAmount: 0,
+      currency: pricing.currency,
+      status: 'active',
+      reservationStatus: 'active',
+      bookingStatus: 'confirmed',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lastStatusChange: new Date().toISOString(),
+      source: 'direct',
+      financials: {/* ... */},
+      audit: {/* ... */},
+      statusHistory: [],
+      notes,
+      specialRequests,
+      // ...other fields as needed
+    });
+  
+    // 4. Return the created reservation
+    return HttpResponse.json(reservation, { status: 201 });
+  }),
+  // http.post('/api/reservations/multi-room', async ({ request }) => {
+  //   const newReservation = (await request.json()) as Reservation;
+
+    
+  //   // 1. Add new guests if needed
+  //   newReservation.guestIds.forEach((guestId: string) => {
+  //     if (!mockGuests.find(g => g._id === guestId)) {
+  //       // Assign a new _id or use a better unique logic
+  //       const newGuest: Guest = {
+  //         _id: `guest-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  //         name: 'New Guest',
+  //         email: 'newguest@example.com',
+  //         phone: '1234567890',
+  //         address: '123 Main St, Anytown, USA',
+  //         status: 'booked',
+  //         roomId: newReservation.roomId,
+  //         reservationStart: newReservation.reservationStart,
+  //         reservationEnd: newReservation.reservationEnd,
+  //         checkIn: newReservation.checkInDate,
+  //         checkOut: newReservation.checkOutDate,
+  //         hotelId: newReservation.hotelId,
+  //         keepOpen: false,
+  //         createdAt: new Date().toISOString(),
+  //         updatedAt: new Date().toISOString()
+  //       };
+  //       mockGuests.push(newGuest);
+  //     }
+  //   });
+
+  //   // 2. Add reservation
+  //   const reservationId = `res-${String(mockReservations.length + 1).padStart(4, '0')}`;
+  //   const reservation = {
+  //     ...newReservation,
+  //     _id: reservationId,
+  //     createdAt: new Date().toISOString(),
+  //     updatedAt: new Date().toISOString(),
+  //   };
+  //   mockReservations.push(reservation);
+
+  //   // 3. Update rooms
+  //   if (Array.isArray(newReservation.roomId)) {
+  //     newReservation.roomId.forEach((roomId: string) => {
+  //       const room = mockRooms.find(r => r._id === roomId);
+  //       if (room) {
+  //         room.assignedGuests = newReservation.guestIds.map((g: any) => g._id);
+  //         room.status = 'reserved'; // or whatever logic you want
+  //       }
+  //     });
+  //   }
+
+  //   // 4. Return the created reservation
+  //   return HttpResponse.json(reservation, { status: 201 });
+  // }),
 
   // Update reservation (business actions)
   http.patch('/api/reservations/:id', async ({ params, request }) => {

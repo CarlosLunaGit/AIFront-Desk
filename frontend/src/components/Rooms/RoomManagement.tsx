@@ -38,7 +38,7 @@ import { useCurrentHotel } from '../../services/hooks/useHotel';
 import { useGuests } from '../../services/hooks/useGuests';
 import { bulkCreateRooms, updateRoomStatus, requestMaintenance, requestCleaning } from '../../services/api/room';
 import { checkInGuest, checkOutGuest, deleteGuest } from '../../services/api/guest';
-import type { Room } from '../../types/room';
+import type { Room, RoomType } from '../../types/room';
 
 
 const RoomManagement: React.FC = () => {
@@ -117,14 +117,19 @@ const RoomManagement: React.FC = () => {
   }, [guests]);
 
   // Convert backend RoomType to frontend compatible format for RoomGrid component
-  const frontendRoomTypes = roomTypes.map(rt => ({
-    id: rt._id,
+  const frontendRoomTypes = roomTypes.map((rt: RoomType) => ({
+    _id: rt._id,
     name: rt.name,
     description: rt.description || '',
     baseRate: rt.baseRate,
-    defaultCapacity: rt.capacity.total,
+    defaultCapacity: rt.defaultCapacity,
+    capacity: rt.capacity,
     amenities: rt.amenities || [],
-    features: rt.features || []
+    features: rt.features || [],
+    hotelId: rt.hotelId,
+    isActive: rt.isActive,
+    createdAt: rt.createdAt,
+    updatedAt: rt.updatedAt
   }));
 
   const filteredRooms = useMemo(() => {

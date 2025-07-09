@@ -9,6 +9,25 @@ export type RoomStatus =
   | 'cleaning'
   | 'maintenance';
 
+  export interface RoomType {
+    _id: string;
+    name: string;
+    description?: string;
+    baseRate: number;
+    defaultCapacity: number;
+    capacity: {
+      adults: number;
+      children?: number;
+      total: number;
+    };
+    features: string[];
+    amenities: string[];
+    hotelId: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+  } 
+
 export type RoomFeature = 'wifi' | 'minibar' | 'balcony' | 'ocean-view' | 'jacuzzi' | 'king-bed';
 
 export interface Room {
@@ -65,18 +84,3 @@ export interface RoomStats {
   occupancyRate: number;
   averageStayDuration: number;
 }
-
-export interface Guest {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  status: 'booked' | 'checked-in' | 'checked-out';
-  roomId: string;
-  reservationStart: string;
-  reservationEnd: string;
-  checkIn: string;
-  checkOut: string;
-  hotelId: string;
-  keepOpen: boolean;
-} 

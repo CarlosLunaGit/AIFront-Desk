@@ -1,5 +1,6 @@
 import { api } from '../axios';
-import type { Hotel, HotelConfiguration, HotelConfigFormData, HotelFeature, RoomType, Floor, RoomTemplate } from '../../types/hotel';
+import type { Hotel, HotelConfiguration, HotelConfigFormData, HotelFeature, Floor, RoomTemplate } from '../../types/hotel';
+import { RoomType } from '../../types/room';
 
 const BASE_URL = '/api/hotel';
 
@@ -160,13 +161,18 @@ export const addRoomType = async (roomType: Omit<RoomType, 'id'>): Promise<RoomT
   const hotel = await getCurrentHotel();
   const response = await api.post(`${BASE_URL}/${hotel._id}/room-types`, roomType);
   return {
-    id: response.data._id,
+    _id: response.data._id,
     name: response.data.name,
     description: response.data.description,
     defaultCapacity: response.data.defaultCapacity,
     baseRate: response.data.baseRate,
+    capacity: response.data.capacity,
     features: response.data.features || [],
-    amenities: response.data.amenities || []
+    amenities: response.data.amenities || [],
+    hotelId: response.data.hotelId,
+    isActive: response.data.isActive,
+    createdAt: response.data.createdAt,
+    updatedAt: response.data.updatedAt
   };
 };
 
@@ -175,13 +181,18 @@ export const updateRoomType = async (id: string, roomType: Partial<RoomType>): P
   const hotel = await getCurrentHotel();
   const response = await api.patch(`${BASE_URL}/${hotel._id}/room-types/${id}`, roomType);
   return {
-    id: response.data._id,
+    _id: response.data._id,
     name: response.data.name,
     description: response.data.description,
     defaultCapacity: response.data.defaultCapacity,
+    capacity: response.data.capacity,
     baseRate: response.data.baseRate,
     features: response.data.features || [],
-    amenities: response.data.amenities || []
+    amenities: response.data.amenities || [],
+    hotelId: response.data.hotelId,
+    isActive: response.data.isActive,
+    createdAt: response.data.createdAt,
+    updatedAt: response.data.updatedAt
   };
 };
 

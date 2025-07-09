@@ -25,11 +25,12 @@ import {
   Alert,
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
-import type { RoomTemplate, RoomType, Floor, HotelFeature } from '../../../types/hotel';
+import type { RoomTemplate, Floor, HotelFeature } from '../../../types/hotel';
+import { RoomType } from '../../../types/room';
 
 interface RoomTemplatesStepProps {
   initialData: Omit<RoomTemplate, 'id'>[];
-  roomTypes: Omit<RoomType, 'id'>[];
+  roomTypes: Omit<RoomType, '_id'>[];
   floors: Omit<Floor, 'id'>[];
   features: Omit<HotelFeature, 'id'>[];
   onComplete: (roomTemplates: Omit<RoomTemplate, 'id'>[]) => void;

@@ -31,10 +31,10 @@ import SettingsStep from './steps/SettingsStep';
 import type { 
   HotelConfigFormData, 
   HotelFeature, 
-  RoomType, 
   Floor, 
   RoomTemplate 
 } from '../../types/hotel';
+import { RoomType } from '../../types/room';
 
 const steps = [
   'Basic Information',
@@ -267,7 +267,7 @@ const HotelConfigWizard: React.FC = () => {
           <RoomTypesStep
             initialData={formData.roomTypes || []}
             features={formData.features || []}
-            onComplete={(roomTypes: Omit<RoomType, 'id'>[]) => 
+            onComplete={(roomTypes: Omit<RoomType, '_id'>[]) => 
               handleStepComplete({ roomTypes })}
           />
         );

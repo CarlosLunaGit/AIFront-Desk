@@ -5,7 +5,6 @@ import { format, parseISO, isWithinInterval, eachDayOfInterval, isSameDay, addDa
 import type { 
   AvailabilityQuery, 
   AvailableRoom, 
-  RoomType, 
   MultiRoomReservation,
   EnhancedRoomStatus,
   RoomPricing,
@@ -14,7 +13,7 @@ import type {
   RoomAssignmentSuggestion,
   SuggestedRoomAssignment
 } from '../types/reservation';
-import { Room } from '../types/room';
+import { Room, RoomType } from '../types/room';
 import { Guest } from '../types/guest';
 
 // Main availability calculation function
@@ -30,7 +29,7 @@ export function calculateRoomAvailability(
   return rooms
     .filter(room => room.hotelId === query.hotelId)
     .map(room => {
-      const roomType = roomTypes.find(rt => rt.id === room.typeId);
+      const roomType = roomTypes.find(rt => rt._id === room.typeId);
       if (!roomType) {
         return null;
       }
@@ -222,7 +221,7 @@ export function calculateRecommendationScore(
   }
 
   // Room type preferences
-  if (preferences?.roomTypeIds?.includes(roomType.id)) {
+  if (preferences?.roomTypeIds?.includes(roomType._id)) {
     score += 15;
   }
 

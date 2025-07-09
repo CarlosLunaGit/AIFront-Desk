@@ -62,23 +62,23 @@ import {
 
 // Local interface for wizard state - allows mixed guest types
 interface WizardRoomAssignment {
-  roomId?: string;
-  room?: Room;
-  guests?: Guest[]; 
+  roomId: string;
+  guestIndexes: number[]; // Changed from guests: Guest[]
   roomSpecificNotes?: string;
-  checkInStatus?: RoomCheckInStatus;
+  checkInStatus?: 'pending' | 'checked-in' | 'checked-out';
 }
 
 // Local wizard state interface that uses WizardRoomAssignment
-interface LocalWizardState {
+interface WizardState {
   currentStep: number;
   data: Partial<MultiRoomReservation>;
   availableRooms?: AvailableRoom[];
   selectedRooms?: string[];
-  roomAssignments?: WizardRoomAssignment[]; // Use local type instead of Partial<RoomAssignment>[]
+  roomAssignments?: WizardRoomAssignment[]; // Use the updated interface
   pricing?: ReservationPricing;
   errors?: Record<string, string>;
   isValid?: boolean;
+  guests: Guest[];
 }
 
 interface EnhancedReservationWizardProps {
@@ -110,7 +110,7 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
   const createReservationMutation = useCreateMultiRoomReservation();
 
   // Wizard state
-  const [wizardState, setWizardState] = useState<LocalWizardState>({
+  const [wizardState, setWizardState] = useState<WizardState>({
     currentStep: 0,
     data: {
       checkInDate: format(new Date(), 'yyyy-MM-dd'),
@@ -125,14 +125,15 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
     selectedRooms: [],
     roomAssignments: [],
     errors: {},
-    isValid: false
+    isValid: false,
+    guests: []
   });
 
   // Guest count state
   const [guestCount, setGuestCount] = useState(2);
   const [guests, setGuests] = useState<Partial<Guest>[]>([
-    { name: '', email: '', phone: '' },
-    { name: '', email: '', phone: '' }
+    { name: '', email: '', phone: '', address: '' },
+    { name: '', email: '', phone: '', address: '' }
   ]);
 
   // API hooks
@@ -207,7 +208,7 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
       case 3: // Assignment
         // Validate room assignments
         const totalAssignedGuests = wizardState.roomAssignments?.reduce(
-          (sum, assignment) => sum + (assignment.guests?.length || 0), 0
+          (sum, assignment) => sum + (assignment.guestIndexes?.length || 0), 0
         ) || 0;
         if (totalAssignedGuests !== guestCount) {
           errors.assignment = 'All guests must be assigned to rooms';
@@ -285,7 +286,7 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
     if (newCount > guests.length) {
       // Add new guests
       for (let i = guests.length; i < newCount; i++) {
-        newGuests.push({ name: '', email: '', phone: '' });
+        newGuests.push({ name: '', email: '', phone: '', address: ''  });
       }
     } else {
       // Remove excess guests
@@ -318,59 +319,38 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
     });
   };
 
-  // Remove guest from room assignment
-  const removeGuestFromRoom = (guestIndex: number, roomId: string) => {
-    setWizardState(prev => {
-      const assignments = [...(prev.roomAssignments || [])];
-      const roomAssignment = assignments.find(a => a.roomId === roomId);
-      
-      if (roomAssignment && roomAssignment.guests) {
-        // Filter out the guest index (number) from the guests array
-        roomAssignment.guests = roomAssignment.guests.filter((guestIdx: any) => {
-          // Handle both number indices and guest objects
-          const idx = typeof guestIdx === 'number' ? guestIdx : guestIndex;
-          return idx !== guestIndex;
-        });
-      }
-      
-      return {
-        ...prev,
-        roomAssignments: assignments
-      };
-    });
-  };
-
-  // Assign guest to room
+  // Assign guest to room (now takes guest index)
   const assignGuestToRoom = (guestIndex: number, roomId: string) => {
+    console.log('[assignGuestToRoom] Called with guestIndex:', guestIndex, 'roomId:', roomId);
     setWizardState(prev => {
       const assignments = [...(prev.roomAssignments || [])];
       let roomAssignment = assignments.find(a => a.roomId === roomId);
-      
       if (!roomAssignment) {
         roomAssignment = {
           roomId,
-          guests: [] as any[] // Use any[] for wizard state to allow numbers
+          guestIndexes: [] // Store indexes instead of Guest objects
         };
         assignments.push(roomAssignment);
       }
-      
-      // Ensure guests array exists
-      if (!roomAssignment.guests) {
-        roomAssignment.guests = [];
+      if (!roomAssignment.guestIndexes.includes(guestIndex)) {
+        roomAssignment.guestIndexes.push(guestIndex);
       }
-      
-      // Add the guest index (number) to the room assignment
-      if (!roomAssignment.guests.some((guestIdx: any) => {
-        const idx = typeof guestIdx === 'number' ? guestIdx : guestIndex;
-        return idx === guestIndex;
-      })) {
-        roomAssignment.guests.push(guests[guestIndex] as Guest); // Now works because guests is any[]
+      console.log('[assignGuestToRoom] Updated assignments:', assignments);
+      return { ...prev, roomAssignments: assignments };
+    });
+  };
+
+  // Remove guest from room (now takes guest index)
+  const removeGuestFromRoom = (guestIndex: number, roomId: string) => {
+    console.log('[removeGuestFromRoom] Called with guestIndex:', guestIndex, 'roomId:', roomId);
+    setWizardState(prev => {
+      const assignments = [...(prev.roomAssignments || [])];
+      const roomAssignment = assignments.find(a => a.roomId === roomId);
+      if (roomAssignment) {
+        roomAssignment.guestIndexes = roomAssignment.guestIndexes.filter((idx: number) => idx !== guestIndex);
       }
-      
-      return {
-        ...prev,
-        roomAssignments: assignments
-      };
+      console.log('[removeGuestFromRoom] Updated assignments:', assignments);
+      return { ...prev, roomAssignments: assignments };
     });
   };
 
@@ -390,6 +370,7 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
         name: primaryGuest.name,
         email: primaryGuest.email,
         phone: primaryGuest.phone,
+        address: primaryGuest.address || '',
         status: 'booked',
         hotelId: currentHotel?._id || '',
         roomId: '',
@@ -405,8 +386,8 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
         .filter(assignment => assignment.roomId) // Ensure roomId exists
         .map(assignment => ({
           roomId: assignment.roomId as string, // Ensure string type
-          room: assignment.room as any, // Type assertion to resolve compatibility
-          guests: (assignment.guests || [])
+ // Type assertion to resolve compatibility
+          guests: (assignment.guestIndexes || [])
             .map((guestIndex: any) => {
               // Handle both number indices and Guest objects
               if (typeof guestIndex === 'number') {
@@ -415,8 +396,8 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
               return guestIndex;
             })
             .filter(Boolean) as Guest[],
-          roomSpecificNotes: assignment.roomSpecificNotes,
-          checkInStatus: assignment.checkInStatus || 'pending'
+          roomSpecificNotes: '',
+          checkInStatus: 'pending'
         })),
       checkInDate: wizardState.data.checkInDate || '',
       checkOutDate: wizardState.data.checkOutDate || '',
@@ -604,7 +585,7 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
 
             {availabilityQuery.data?.availableRooms && (
               <Grid container spacing={2} sx={{ mt: 2 }}>
-                {availabilityQuery.data.availableRooms.map((availableRoom: AvailableRoom) => {
+                {availabilityQuery.data.availableRooms.map((availableRoom: AvailableRoom, index: number) => {
                   const isSelected = wizardState.selectedRooms?.includes(availableRoom.room._id) || false;
                   const capacity = availableRoom.roomType.defaultCapacity || 2;
                   
@@ -681,84 +662,64 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
               Assign each guest to a room
             </Typography>
 
-            {wizardState.selectedRooms?.map(roomId => {
-                const room = wizardState.availableRooms?.find(ar => ar.room._id === roomId)?.room;
+            {wizardState.selectedRooms?.map((roomId: string) => {
+              const room = wizardState.availableRooms?.find(ar => ar.room._id === roomId)?.room;
               const roomType = wizardState.availableRooms?.find(ar => ar.room._id === roomId)?.roomType;
-              const assignment = wizardState.roomAssignments?.find(a => a.roomId === roomId);
-              const assignedGuestIndexes = assignment?.guests || [];
+              const roomAssignment = wizardState.roomAssignments?.find(a => a.roomId === roomId);
+              const assignedGuestIndexes = roomAssignment?.guestIndexes || [];
               
+              // Calculate available guest indexes (indexes not assigned to any room)
+              const allAssignedIndexes = wizardState.roomAssignments?.flatMap(a => a.guestIndexes) || [];
+              const availableGuestIndexes = guests
+                .map((_, index) => index)
+                .filter(index => !allAssignedIndexes.includes(index));
+
+              console.log(`[AssignmentStep] Room ${roomId}:`, {
+                assignedGuestIndexes,
+                availableGuestIndexes,
+                allAssignedIndexes
+              });
+
               if (!room || !roomType) return null;
 
               return (
-                <Card key={roomId} sx={{ mb: 2 }}>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      Room {room.number} - {roomType.name}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                      Capacity: {roomType.defaultCapacity || 2} guests
-                    </Typography>
+                <Card key={roomId} sx={{ mb: 2, p: 2 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Room {room.number} - {roomType.name}
+                  </Typography>
+                  
+                  {/* Assigned Guests */}
+                  <Typography variant="subtitle2" gutterBottom>
+                    Assigned Guests ({assignedGuestIndexes.length}):
+                  </Typography>
+                  <Box sx={{ mb: 2 }}>
+                    {assignedGuestIndexes.map((guestIndex: number) => (
+                      <Chip
+                        key={guestIndex}
+                        label={`Guest ${guestIndex + 1}`}
+                        onDelete={() => removeGuestFromRoom(guestIndex, roomId)}
+                        sx={{ mr: 1, mb: 1 }}
+                      />
+                    ))}
+                  </Box>
 
-                    <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
-                      Assigned Guests ({assignedGuestIndexes.length}):
-                    </Typography>
-                    
-                    {assignedGuestIndexes.length === 0 ? (
-                      <Typography variant="body2" color="text.secondary">
-                        No guests assigned yet
-                      </Typography>
-                    ) : (
-                      <Stack spacing={1}>
-                        {assignedGuestIndexes.map((guestIndex: any) => {
-                          // Ensure guestIndex is a number
-                          const idx = typeof guestIndex === 'number' ? guestIndex : 0;
-                          return (
-                            <Chip
-                              key={`guest-${idx}`}
-                              label={`Guest ${idx + 1}${idx === 0 ? ' (Primary)' : ''}`}
-                              onDelete={() => {
-                                // Remove guest from this room
-                                removeGuestFromRoom(idx, roomId);
-                              }}
-                            />
-                          );
-                        })}
-                      </Stack>
-                    )}
-
-                    <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
-                      Available Guests:
-                    </Typography>
-                    
-                    <Stack direction="row" spacing={1} flexWrap="wrap">
-                      {Array.from({ length: guestCount }, (_, index) => {
-                        const isAssignedHere = assignedGuestIndexes.some((guestIdx: any) => {
-                          const idx = typeof guestIdx === 'number' ? guestIdx : 0;
-                          return idx === index;
-                        });
-                        const isAssignedElsewhere = wizardState.roomAssignments?.some(a => 
-                          a.roomId !== roomId && a.guests?.some((guestIdx: any) => {
-                            const idx = typeof guestIdx === 'number' ? guestIdx : 0;
-                            return idx === index;
-                          })
-                        );
-                        
-                        if (isAssignedHere || isAssignedElsewhere) return null;
-
-                        return (
-                          <Button
-                            key={index}
-                            size="small"
-                            variant="outlined"
-                            onClick={() => assignGuestToRoom(index, roomId)}
-                            disabled={assignedGuestIndexes.length >= (roomType.defaultCapacity || 2)}
-                          >
-                            Guest {index + 1}{index === 0 ? ' (Primary)' : ''}
-                          </Button>
-                        );
-                      })}
-                    </Stack>
-                  </CardContent>
+                  {/* Available Guests */}
+                  <Typography variant="subtitle2" gutterBottom>
+                    Available Guests:
+                  </Typography>
+                  <Box>
+                    {availableGuestIndexes.map((guestIndex: number) => (
+                      <Button
+                        key={guestIndex}
+                        onClick={() => assignGuestToRoom(guestIndex, roomId)}
+                        size="small"
+                        variant="outlined"
+                        sx={{ mr: 1, mb: 1 }}
+                      >
+                        Guest {guestIndex + 1}
+                      </Button>
+                    ))}
+                  </Box>
                 </Card>
               );
             })}
@@ -979,7 +940,7 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
                         Room {room?.number} - {roomType?.name}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {assignment?.guests?.length || 0} guest{(assignment?.guests?.length || 0) > 1 ? 's' : ''} assigned
+                        {assignment?.guestIndexes?.length || 0} guest{(assignment?.guestIndexes?.length || 0) > 1 ? 's' : ''} assigned
                       </Typography>
                     </Box>
                   );

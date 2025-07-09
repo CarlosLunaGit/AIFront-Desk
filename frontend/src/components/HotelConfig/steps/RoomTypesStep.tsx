@@ -25,12 +25,13 @@ import {
   FormHelperText,
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
-import type { RoomType, HotelFeature } from '../../../types/hotel';
+import type { HotelFeature } from '../../../types/hotel';
+import { RoomType } from '../../../types/room';
 
 interface RoomTypesStepProps {
-  initialData: Omit<RoomType, 'id'>[];
+  initialData: Omit<RoomType, '_id'>[];
   features: Omit<HotelFeature, 'id'>[];
-  onComplete: (roomTypes: Omit<RoomType, 'id'>[]) => void;
+  onComplete: (roomTypes: Omit<RoomType, '_id'>[]) => void;
 }
 
 interface RoomTypeFormData {
@@ -38,12 +39,17 @@ interface RoomTypeFormData {
   description: string;
   baseRate: number;
   defaultCapacity: number;
+  capacity: {
+    adults: number;
+    children?: number;
+    total: number;
+  };
   features: string[];
   amenities: string[];
 }
 
 const RoomTypesStep: React.FC<RoomTypesStepProps> = ({ initialData, features, onComplete }) => {
-  const [roomTypes, setRoomTypes] = useState<Omit<RoomType, 'id'>[]>(initialData);
+  const [roomTypes, setRoomTypes] = useState<Omit<RoomType, '_id'>[]>(initialData);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<RoomTypeFormData>({
@@ -51,6 +57,11 @@ const RoomTypesStep: React.FC<RoomTypesStepProps> = ({ initialData, features, on
     description: '',
     baseRate: 0,
     defaultCapacity: 2,
+    capacity: {
+      adults: 2,
+      children: 0,
+      total: 2
+    },
     features: [],
     amenities: [],
   });
@@ -73,6 +84,7 @@ const RoomTypesStep: React.FC<RoomTypesStepProps> = ({ initialData, features, on
         description: roomType.description || '',
         baseRate: roomType.baseRate,
         defaultCapacity: roomType.defaultCapacity,
+        capacity: roomType.capacity,
         features: roomType.features,
         amenities: roomType.amenities,
       });
@@ -83,6 +95,11 @@ const RoomTypesStep: React.FC<RoomTypesStepProps> = ({ initialData, features, on
         description: '',
         baseRate: 0,
         defaultCapacity: 2,
+        capacity: {
+          adults: 2,
+          children: 0,
+          total: 2
+        },
         features: [],
         amenities: [],
       });
@@ -98,6 +115,11 @@ const RoomTypesStep: React.FC<RoomTypesStepProps> = ({ initialData, features, on
       description: '',
       baseRate: 0,
       defaultCapacity: 2,
+      capacity: {
+        adults: 2,
+        children: 0,
+        total: 2
+      },
       features: [],
       amenities: [],
     });
@@ -106,16 +128,25 @@ const RoomTypesStep: React.FC<RoomTypesStepProps> = ({ initialData, features, on
   const handleSaveRoomType = () => {
     if (!formData.name) return;
 
-    const newRoomType: Omit<RoomType, 'id'> = {
+    const newRoomType: Omit<RoomType, '_id'> = {
       name: formData.name,
       description: formData.description || undefined,
       baseRate: formData.baseRate,
       defaultCapacity: formData.defaultCapacity,
+      capacity: {
+        adults: formData.capacity.adults,
+        children: formData.capacity.children,
+        total: formData.capacity.adults + (formData.capacity.children || 0)
+      },
       features: formData.features,
       amenities: formData.amenities,
+      hotelId: '65a000000000000000000002',
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
-    let newRoomTypes: Omit<RoomType, 'id'>[];
+    let newRoomTypes: Omit<RoomType, '_id'>[];
     if (typeof editingIndex === 'number') {
       newRoomTypes = [...roomTypes];
       newRoomTypes[editingIndex] = newRoomType;

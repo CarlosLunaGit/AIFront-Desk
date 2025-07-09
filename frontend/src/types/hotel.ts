@@ -1,4 +1,4 @@
-import { RoomStatus } from './room';
+import { RoomStatus, RoomType } from './room';
 
 // MongoDB Hotel document structure (actual backend data)
 export interface Hotel {
@@ -78,15 +78,7 @@ export interface HotelFeature {
   category?: 'room' | 'common' | 'service';  // Add category to further classify items
 }
 
-export interface RoomType {
-  id: string;
-  name: string;
-  description?: string;
-  baseRate: number;
-  defaultCapacity: number;
-  features: string[]; // IDs of structural features
-  amenities: string[]; // IDs of provided amenities
-}
+
 
 export interface Floor {
   id: string;
@@ -153,7 +145,7 @@ export interface HotelConfigFormData {
     website?: string;
   };
   features: Omit<HotelFeature, 'id'>[];
-  roomTypes: Omit<RoomType, 'id'>[];
+  roomTypes: Omit<RoomType, '_id'>[];
   floors: Omit<Floor, 'id'>[];
   roomTemplates: Omit<RoomTemplate, 'id'>[];
   settings: HotelConfiguration['settings'];

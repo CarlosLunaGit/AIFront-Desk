@@ -1,23 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../axios';
-
-interface RoomType {
-  _id: string;
-  name: string;
-  description?: string;
-  baseRate: number;
-  capacity: {
-    adults: number;
-    children?: number;
-    total: number;
-  };
-  features: string[];
-  amenities: string[];
-  hotelId: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+import { RoomType } from '../../types/room';
 
 interface CreateRoomTypeRequest {
   name: string;

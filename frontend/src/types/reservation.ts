@@ -1,11 +1,86 @@
-// Enhanced Reservation System Types
-// Multi-room, multi-guest reservation support with detailed pricing
-
-// Import and re-export existing types for compatibility
-import type { RoomType } from './hotel';
+import type { RoomType } from './room';
 import type { Room } from './room';
-export type { RoomType } from './hotel';
 import { Guest } from './guest';
+
+export interface Reservation {
+  _id: string;
+  hotelId: string;
+  roomId: string;
+  guestIds: string[];
+  confirmationNumber: string;
+  reservationStart: string;
+  reservationEnd: string;
+  checkInDate: string;
+  checkOutDate: string;
+  nights: number;
+  
+  // Financial data
+  roomRate: number;
+  totalAmount: number;
+  paidAmount: number;
+  currency: string;
+  
+  // Status management
+  status: 'active' | 'cancelled' | 'no-show' | 'terminated' | 'completed';
+  reservationStatus: 'active' | 'cancelled' | 'no-show' | 'terminated' | 'completed';
+  bookingStatus: 'confirmed' | 'pending' | 'waitlist';
+  
+  // Business logic fields
+  createdAt: string;
+  updatedAt: string;
+  lastStatusChange: string;
+  
+  // Business-specific fields for handlers
+  cancelledAt?: string | null;
+  cancelledBy?: string | null;
+  cancellationReason?: string | null;
+  noShowMarkedAt?: string | null;
+  noShowReason?: string | null;
+  terminatedAt?: string | null;
+  terminationReason?: string | null;
+  completedAt?: string | null;
+  
+  // Additional data
+  specialRequests?: string;
+  notes?: string;
+  source: 'direct' | 'online' | 'phone' | 'walk-in';
+  
+  // Financial tracking structure
+  financials: {
+    totalAmount: number;
+    paidAmount: number;
+    refundAmount: number;
+    cancellationFee: number;
+    currency: string;
+    paymentMethod: string;
+    paymentStatus: string;
+    transactions: any[];
+  };
+  
+  // Audit trail structure
+  audit: {
+    statusHistory: {
+      status: string;
+      timestamp: string;
+      performedBy: string;
+      reason: string;
+    }[];
+    actions: {
+      action: string;
+      timestamp: string;
+      performedBy: string;
+      details: any;
+    }[];
+  };
+  
+  // Simple audit trail
+  statusHistory: {
+    status: string;
+    timestamp: string;
+    performedBy: string;
+    reason?: string;
+  }[];
+}
 
 export interface MultiRoomReservation {
   id: string;
@@ -40,7 +115,7 @@ export interface GuestPreferences {
   specialRequests?: string[];
 }
 
-export type GuestStatus = 'booked' | 'checked-in' | 'checked-out' | 'no-show' | 'cancelled';
+
 
 export type RoomCheckInStatus = 'pending' | 'partial' | 'complete' | 'checkout-pending';
 

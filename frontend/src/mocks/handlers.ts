@@ -5,7 +5,8 @@ import type { Room, RoomAction, RoomStats, RoomStatus } from '../types/room';
 import { mockHotels } from './data/hotels';
 import { mockRooms, mockRoomTypes } from './data/rooms';
 import { mockGuests } from './data/guests';
-import { mockReservations as reservationsData, Reservation } from './data/reservations';
+import { mockReservations as reservationsData } from './data/reservations';
+import { Reservation } from '../types/reservation';
 
 // Mock Communications (matching backend structure)
 const mockCommunications: any[] = [
@@ -607,6 +608,7 @@ export const handlers: HttpHandler[] = [
           name: g.name,
           email: g.email || '',
           phone: g.phone || '',
+          address: g.address || '',
           status: 'booked',
           roomId: safeData.rooms || '',
           reservationStart: safeData.dates.split(' to ')[0],
@@ -1391,6 +1393,7 @@ export const handlers: HttpHandler[] = [
           name: g.name,
           email: g.email || '',
           phone: g.phone || '',
+          address: g.address || '',
           status: 'booked',
           roomId: safeData.rooms || '',
           reservationStart: safeData.dates.split(' to ')[0],
@@ -2276,109 +2279,6 @@ export const handlers: HttpHandler[] = [
 
     return HttpResponse.json(multiRoomReservation);
   }),
-
-  // http.post('/api/reservations/multi-room', async ({ request }) => {
-  //   console.log('Debug Reservations /api/reservations/multi-room Line 3178');
-  //   const newReservation = await request.json() as any;
-  //   console.log('🎯 Creating Enhanced Reservation:', JSON.stringify(newReservation, null, 2));
-    
-  //   // Create guest records for all guests in room assignments
-  //   const createdGuestIds: string[] = [];
-  //   const createdGuests: any[] = [];
-    
-  //   // Create primary guest
-  //   const primaryGuestId = `guest-${Date.now()}-primary`;
-  //   const primaryGuest = {
-  //     _id: primaryGuestId,
-  //     name: newReservation.primaryGuest.name || '',
-  //     email: newReservation.primaryGuest.email || '',
-  //     phone: newReservation.primaryGuest.phone || '',
-  //     status: 'booked' as GuestStatus,
-  //     roomId: newReservation.roomAssignments[0]?.roomId || '',
-  //     reservationStart: newReservation.checkInDate,
-  //     reservationEnd: newReservation.checkOutDate,
-  //     checkIn: null,
-  //     checkOut: null,
-  //     hotelId: newReservation.hotelId || '',
-  //     keepOpen: true,
-  //     createdAt: new Date().toISOString(),
-  //     updatedAt: new Date().toISOString()
-  //   };
-    
-  //   mockGuests.push(primaryGuest);
-  //   createdGuestIds.push(primaryGuestId);
-  //   createdGuests.push(primaryGuest);
-  //   console.log('✅ Created primary guest:', primaryGuest.name, 'ID:', primaryGuestId);
-    
-  //   // Create additional guests from room assignments
-  //   newReservation.roomAssignments?.forEach((assignment: any, roomIndex: number) => {
-  //     assignment.guests?.forEach((guest: any, guestIndex: number) => {
-  //       if (guest && guest.name && guestIndex > 0) { // Skip primary guest (index 0)
-  //         const guestId = `guest-${Date.now()}-${roomIndex}-${guestIndex}`;
-  //         const newGuest = {
-  //           _id: guestId,
-  //           name: guest.name || '',
-  //           email: guest.email || '',
-  //           phone: guest.phone || '',
-  //           status: 'booked' as GuestStatus,
-  //           roomId: assignment.roomId || '',
-  //           reservationStart: newReservation.checkInDate,
-  //           reservationEnd: newReservation.checkOutDate,
-  //           checkIn: null,
-  //           checkOut: null,
-  //           hotelId: newReservation.hotelId || '',
-  //           keepOpen: true,
-  //           createdAt: new Date().toISOString(),
-  //           updatedAt: new Date().toISOString()
-  //         };
-          
-  //         mockGuests.push(newGuest);
-  //         createdGuestIds.push(guestId);
-  //         createdGuests.push(newGuest);
-  //         console.log('✅ Created additional guest:', newGuest.name, 'ID:', guestId);
-  //       }
-  //     });
-  //   });
-    
-  //   // Convert multi-room reservation to legacy format for compatibility
-  //   const legacyReservation = {
-  //     id: `MR-${(reservationsData.length + 1).toString().padStart(3, '0')}`,
-  //     guestIds: createdGuestIds,
-  //     guests: createdGuests.map(g => g.name),
-  //     rooms: newReservation.roomAssignments[0]?.roomId || '',
-  //     dates: `${newReservation.checkInDate} to ${newReservation.checkOutDate}`,
-  //     status: 'Confirmed',
-  //     reservationStatus: 'active', // Set as active since guests are booked
-  //     notes: newReservation.notes || '',
-  //     price: newReservation.pricing?.total || 0,
-  //     hotelId: newReservation.hotelId,
-  //     createdDate: new Date().toISOString().split('T')[0],
-  //     createdAt: new Date().toISOString(),
-  //     updatedAt: new Date().toISOString()
-  //   };
-
-  //   reservationsData.push(legacyReservation);
-    
-  //   // Recalculate room status after adding guests
-  //   newReservation.roomAssignments?.forEach((assignment: any) => {
-  //     const room = mockRooms.find(r => r._id === assignment.roomId);
-  //     if (room) {
-  //       recalculateRoomStatus(room, 'reservation-system', 'Enhanced reservation created');
-  //     }
-  //   });
-
-  //   // Return in multi-room format
-  //   const multiRoomResponse = {
-  //     ...newReservation,
-  //     id: legacyReservation.id,
-  //     primaryGuest: primaryGuest,
-  //     createdAt: legacyReservation.createdAt,
-  //     updatedAt: legacyReservation.updatedAt
-  //   };
-
-  //   console.log('✅ Created multi-room reservation:', multiRoomResponse.id, 'with', createdGuestIds.length, 'guests');
-  //   return HttpResponse.json(multiRoomResponse, { status: 201 });
-  // }),
 
   http.patch('/api/reservations/multi-room/:id', async ({ params, request }) => {
     console.log('Debug Reservations /api/reservations/multi-room/:id Line 3281');

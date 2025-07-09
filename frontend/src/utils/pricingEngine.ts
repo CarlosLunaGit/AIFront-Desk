@@ -6,12 +6,12 @@ import type {
   ReservationPricing,
   PricingBreakdown,
   PriceAdjustment,
-  RoomType,
   DateRange,
   PricingCalculationRequest,
   PricingCalculationResponse
 } from '../types/reservation';
 import { Room } from '../types/room';
+import { RoomType } from '../types/room';
 
 // Main pricing calculation function
 export function calculateReservationPricing(
@@ -25,7 +25,7 @@ export function calculateReservationPricing(
   const breakdown: PricingBreakdown[] = [];
   
   for (const room of rooms) {
-    const roomType = roomTypes.find(rt => rt.id === room.typeId);
+    const roomType = roomTypes.find(rt => rt._id === room.typeId);
     if (!roomType) continue;
 
     const roomBreakdown = calculateRoomBreakdown(room, roomType, dateRange);
@@ -400,12 +400,12 @@ export function calculateUpgradeRecommendations(
   }> = [];
 
   for (const currentRoom of selectedRooms) {
-    const currentRoomType = roomTypes.find(rt => rt.id === currentRoom.typeId);
+    const currentRoomType = roomTypes.find(rt => rt._id === currentRoom.typeId);
     if (!currentRoomType) continue;
 
     // Find potential upgrades (higher price, better amenities)
     const upgradeOptions = availableRooms.filter(room => {
-      const roomType = roomTypes.find(rt => rt.id === room.typeId);
+      const roomType = roomTypes.find(rt => rt._id === room.typeId);
       return roomType && 
              room.rate > currentRoom.rate && 
              room._id !== currentRoom._id &&
@@ -413,7 +413,7 @@ export function calculateUpgradeRecommendations(
     });
 
     for (const upgradeRoom of upgradeOptions.slice(0, 2)) { // Limit to top 2 upgrades
-      const upgradeRoomType = roomTypes.find(rt => rt.id === upgradeRoom.typeId);
+      const upgradeRoomType = roomTypes.find(rt => rt._id === upgradeRoom.typeId);
       if (!upgradeRoomType) continue;
 
       const currentPricing = calculateRoomBreakdown(currentRoom, currentRoomType, dateRange);

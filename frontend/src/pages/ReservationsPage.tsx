@@ -26,7 +26,8 @@ import {
 } from '../utils/reservationUtils';
 // Import the Enhanced Reservation Wizard
 import { EnhancedReservationWizard } from '../components/Reservations/EnhancedReservationWizard';
-import { Room } from '@/types/room';
+import { Guest } from '../types/guest';
+import { Room } from '../types/room';
 
 const ReservationsPage: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -575,7 +576,9 @@ const ReservationsPage: React.FC = () => {
           {newGuests.length > 0 && (
             <Box mt={1}>
               <Typography variant="subtitle2">Guests to be created:</Typography>
-              {newGuests.map((g, i) => <Typography key={i}>{g.name} ({g.email})</Typography>)}
+              {newGuests.map((g: Guest, i: number) => {
+                return <Typography key={i}>{g.name} ({g.email})</Typography>
+              })}
             </Box>
           )}
           <TextField
@@ -587,7 +590,7 @@ const ReservationsPage: React.FC = () => {
             fullWidth
             margin="normal"
           >
-            {availableRooms.map((r: any) => <MenuItem key={r.id} value={r.id}>{r.number}</MenuItem>)}
+            {availableRooms.map((r: Room) => <MenuItem key={r._id} value={r._id}>{r.number}</MenuItem>)}
           </TextField>
           <Box display="flex" gap={2}>
             <DatePicker
