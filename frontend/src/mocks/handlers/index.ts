@@ -6,6 +6,7 @@ import { enhancedReservationHandlers, reservationEndpointsHandlers } from './res
 import { dashboardEndpointsHandlers } from './dashboard/endpoints';
 import { roomsEndpointsHandlers } from './rooms/endpoints';
 import { guestsEndpointsHandlers } from './guests/endpoints';
+import { pricingEndpointsHandlers } from './utils/pricing/endpoints';
 
 // Import existing handlers from the main file temporarily
 // We'll gradually move these to their own modules
@@ -22,6 +23,7 @@ export const handlers = [
   ...reservationEndpointsHandlers,
   ...roomsEndpointsHandlers,
   ...guestsEndpointsHandlers,
+  ...pricingEndpointsHandlers,
   // Keep existing handlers for now but exclude ones we've modularized
   ...existingHandlers.filter(handler => {
     // Get the handler's URL pattern - MSW handlers have different structures
@@ -29,11 +31,6 @@ export const handlers = [
     
     // Skip auth handlers (we have modular versions)
     if (handlerString.includes('/api/auth/')) return false;
-    
-    // Skip enhanced reservation handlers (we have modular versions)
-    if (handlerString.includes('/api/rooms/availability')) return false;
-    if (handlerString.includes('/api/reservations/pricing')) return false;
-    if (handlerString.includes('/api/reservations/enhanced')) return false;
     
     return true;
   })

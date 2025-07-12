@@ -120,3 +120,9 @@ The built files will be in the `dist` directory.
 ## License
 
 MIT License - see LICENSE file for details
+
+## Troubleshooting
+
+### Reservation Notes Not Appearing
+
+If you create a reservation and the notes do not appear in the Reservations table, this may be due to a bug in the reservation creation handler (mock or backend). The notes field should be saved and displayed for each reservation. Check the handler logic to ensure the notes are copied from the request to the reservation object.

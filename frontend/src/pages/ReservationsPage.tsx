@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Box, Paper, Typography, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TextField, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, MenuItem,
-  Tabs, Tab, Collapse, IconButton, Tooltip, Chip, CircularProgress, Menu
+  Tabs, Tab, Collapse, IconButton, Tooltip, Chip, CircularProgress, Menu, Divider
 } from '@mui/material';
 import {
   Search as SearchIcon, Edit as EditIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon,
@@ -472,6 +472,7 @@ const ReservationsPage: React.FC = () => {
               <TableCell onClick={() => handleSort('price')} style={{ cursor: 'pointer' }}>Price</TableCell>
               <TableCell onClick={() => handleSort('status')} style={{ cursor: 'pointer' }}>Status</TableCell>
               <TableCell onClick={() => handleSort('notes')} style={{ cursor: 'pointer' }}>Notes</TableCell>
+              <TableCell onClick={() => handleSort('specialRequests')} style={{ cursor: 'pointer' }}>Special Requests</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -485,6 +486,19 @@ const ReservationsPage: React.FC = () => {
               const firstGuest = guestNames[0] || '';
               const moreCount = guestNames.length - 1;
               const expanded = expandedRows[res._id];
+              // Normalize specialRequests to always be an array
+              const specialRequests = Array.isArray(res.specialRequests) 
+                ? res.specialRequests 
+                : (res.specialRequests ? [res.specialRequests] : []);
+              console.log('🔍 Special Requests Debug:', {
+                reservationId: res._id,
+                specialRequests,
+                isArray: Array.isArray(specialRequests),
+                type: typeof specialRequests
+              });
+              const hasMultipleSpecialRequests = specialRequests.length > 1;
+              const hasMultipleGuests = moreCount > 0;
+              const shouldShowExpandedRow = hasMultipleGuests || hasMultipleSpecialRequests;
               // Use business status for display
               const statusDisplay = getReservationStatusDisplay(res.reservationStatus, res.status);
               return (
@@ -534,15 +548,53 @@ const ReservationsPage: React.FC = () => {
                       </Tooltip>
                     </TableCell>
                     <TableCell>{res.notes}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        if (specialRequests.length === 0) {
+                          return '—';
+                        }
+                        if (specialRequests.length === 1) {
+                          return specialRequests[0];
+                        }
+                        const firstRequest = specialRequests[0];
+                        const moreCount = specialRequests.length - 1;
+                        return (
+                          <>
+                            {firstRequest}
+                            {' '}
+                            <IconButton size="small" onClick={e => { e.stopPropagation(); setExpandedRows(r => ({ ...r, [res._id]: !expanded })); }}>
+                              {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                            </IconButton>
+                            <span style={{ color: '#1976d2', cursor: 'pointer' }} onClick={e => { e.stopPropagation(); setExpandedRows(r => ({ ...r, [res._id]: !expanded })); }}>
+                              +{moreCount} more
+                            </span>
+                          </>
+                        );
+                      })()}
+                    </TableCell>
                   </TableRow>
-                  {moreCount > 0 && (
+                  {shouldShowExpandedRow && (
                     <TableRow>
-                      <TableCell colSpan={7} style={{ padding: 0, background: '#f9f9f9' }}>
+                      <TableCell colSpan={8} style={{ padding: 0, background: '#f9f9f9' }}>
                         <Collapse in={expanded} timeout="auto" unmountOnExit>
                           <Box pl={6} py={1}>
+                            {hasMultipleGuests && (
+                              <>
+                                <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>Additional Guests:</Typography>
                             {guestNames.slice(1).map((name: string, idx: number) => (
                               <Typography key={idx} variant="body2">{name}</Typography>
                             ))}
+                              </>
+                            )}
+                            {hasMultipleSpecialRequests && (
+                              <>
+                                {hasMultipleGuests && <Divider sx={{ my: 1 }} />}
+                                <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>Special Requests:</Typography>
+                                {specialRequests.slice(1).map((request: string, idx: number) => (
+                                  <Typography key={idx} variant="body2">• {request}</Typography>
+                                ))}
+                              </>
+                            )}
                           </Box>
                         </Collapse>
                       </TableCell>

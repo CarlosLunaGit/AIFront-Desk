@@ -41,7 +41,7 @@ export interface Reservation {
   completedAt?: string | null;
   
   // Additional data
-  specialRequests?: string;
+  specialRequests?: string | string[];
   notes?: string;
   source: 'direct' | 'online' | 'phone' | 'walk-in';
   
@@ -294,3 +294,16 @@ export interface PricingCalculationResponse {
     }[];
   };
 } 
+
+export const SPECIAL_REQUEST_OPTIONS = [
+  'No special request',
+  'Late check-in',
+  'Early check-in',
+  'Late check-out',
+  'Extra pillows',
+  'Allergy-friendly room',
+  'High floor',
+  'Low floor',
+  'Quiet room',
+  'Other'
+]; 

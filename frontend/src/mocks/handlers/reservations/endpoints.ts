@@ -3,12 +3,47 @@ import { http, HttpResponse } from 'msw';
 import { mockReservations } from '../../data/reservations';
 import { mockGuests } from '../../data/guests';
 import { mockRooms, mockRoomTypes } from '../../data/rooms';
-import { mockHotels } from '../../data/hotels';
-import { Reservation, ReservationStatus } from '../../../types/reservation';
+import { Reservation } from '../../../types/reservation';
 import { Guest, GuestStatus } from '../../../types/guest';
-import { Room, RoomStatus, RoomType } from '../../../types/room';
+import { Room, RoomType } from '../../../types/room';
 import { recalculateRoomStatus } from '../../../utils/roomStatus';
-import { recalculateReservationsForGuest, recalculateReservationsForRoom, recalculateReservationStatus } from '../../data/reservations';
+import { recalculateReservationsForRoom, recalculateReservationStatus } from '../../data/reservations';
+
+// Sophisticated availability engine
+const checkRoomAvailabilityForDates = (room: Room, checkInDate: string, checkOutDate: string): { isAvailable: boolean, conflictingReservations: string[] } => {
+  if (!checkInDate || !checkOutDate) {
+    return { isAvailable: true, conflictingReservations: [] };
+  }
+
+  const requestStart = new Date(checkInDate);
+  const requestEnd = new Date(checkOutDate);
+  
+  // Find all active reservations for this room
+  const roomReservations = mockReservations.filter(res => 
+    res.roomId === room._id && 
+    (res.status === 'active' || res.reservationStatus === 'active')
+  );
+
+  const conflictingReservations: string[] = [];
+
+  for (const reservation of roomReservations) {
+    const resStart = new Date(reservation.checkInDate);
+    const resEnd = new Date(reservation.checkOutDate);
+    
+    // Check for overlap: (requestStart < resEnd) && (resStart < requestEnd)
+    const hasOverlap = (requestStart < resEnd) && (resStart < requestEnd);
+    
+    if (hasOverlap) {
+      conflictingReservations.push(reservation._id);
+      // console.log(`🚫 Room ${room.number}: Conflict with reservation ${reservation._id} (${reservation.checkInDate} to ${reservation.checkOutDate})`);
+    }
+  }
+
+  return {
+    isAvailable: conflictingReservations.length === 0,
+    conflictingReservations
+  };
+};
 
 // Helper function to add a new guest (reused from guest endpoints)
 const addMockGuest = (guestData: Partial<Guest>): Guest => {
@@ -29,10 +64,9 @@ const addMockGuest = (guestData: Partial<Guest>): Guest => {
     createdAt: guestData.createdAt || new Date().toISOString(),
     updatedAt: guestData.updatedAt || new Date().toISOString()
   };
-  
+  // CRITICAL: Add guest to mockGuests BEFORE recalculating room status
   mockGuests.push(newGuest);
-  
-  // Update room status based on new guest assignment
+  // Now update room status based on new guest assignment
   if (newGuest.roomId) {
     const room = mockRooms.find(r => r._id === newGuest.roomId && r.hotelId === newGuest.hotelId);
     if (room) {
@@ -41,29 +75,7 @@ const addMockGuest = (guestData: Partial<Guest>): Guest => {
       recalculateReservationsForRoom(newGuest.roomId, 'New guest assigned to room');
     }
   }
-  
   return newGuest;
-};
-
-// Helper function to update a room
-const updateMockRoom = (roomId: string, updates: Partial<Room>): Room | null => {
-  const roomIndex = mockRooms.findIndex(r => r._id === roomId);
-  if (roomIndex === -1) {
-    return null;
-  }
-  
-  mockRooms[roomIndex] = {
-    ...mockRooms[roomIndex],
-    ...updates,
-    updatedAt: new Date().toISOString()
-  };
-  
-  const room = mockRooms[roomIndex];
-  
-  // Recalculate room status
-  recalculateRoomStatus(room, 'system', 'Triggered by room update');
-  
-  return room;
 };
 
 // Helper function to add a new reservation
@@ -135,23 +147,39 @@ const reservationHistory: any[] = [];
 export const enhancedReservationHandlers = [
   // Room Availability Endpoint
   http.get('/api/rooms/availability', ({ request }) => {
-    console.log('🚨🚨🚨 ENHANCED ROOM AVAILABILITY ENDPOINT HIT! 🚨🚨🚨', request.url);
+    console.log('🔍 SOPHISTICATED ROOM AVAILABILITY CHECK');
+    
+    // 🎯 CRITICAL FIX: Recalculate room status for all rooms before checking availability
+    // console.log('🔄 Recalculating room status for all rooms before availability check...');
+    mockRooms.forEach(room => {
+      recalculateRoomStatus(room, 'system', 'Availability check trigger');
+    });
+    
     const url = new URL(request.url);
     const checkInDate = url.searchParams.get('checkInDate');
     const checkOutDate = url.searchParams.get('checkOutDate');
     const totalGuests = parseInt(url.searchParams.get('totalGuests') || '2');
     const hotelId = url.searchParams.get('hotelId');
 
-    console.log('🏨 Enhanced Availability Check:', { checkInDate, checkOutDate, totalGuests, hotelId });
+    console.log('🏨 Enhanced Availability Check:', { 
+      checkInDate, 
+      checkOutDate, 
+      totalGuests, 
+      hotelId,
+      dateRange: checkInDate && checkOutDate ? `${checkInDate} to ${checkOutDate}` : 'No dates specified'
+    });
 
     // Filter rooms for the specific hotel
     const hotelRooms = mockRooms.filter(room => room.hotelId === hotelId);
     const hotelRoomTypes = mockRoomTypes.filter(rt => rt.hotelId === hotelId);
 
-    console.log('🔍 Total hotel rooms:', hotelRooms.length);
-    console.log('🔍 Hotel room types:', hotelRoomTypes.length);
+    console.log('🔍 Hotel Analysis:', {
+      totalRooms: hotelRooms.length,
+      roomTypes: hotelRoomTypes.length,
+      dateRangeProvided: !!(checkInDate && checkOutDate)
+    });
 
-    // Calculate availability for each room
+    // Calculate availability for each room with sophisticated date checking
     const availableRooms = hotelRooms.map(room => {
       const roomType = hotelRoomTypes.find(rt => rt._id === room.typeId);
       if (!roomType) {
@@ -163,26 +191,44 @@ export const enhancedReservationHandlers = [
       const roomCapacity = roomType.capacity?.total || room.capacity || 2;
       const canAccommodateGuests = roomCapacity >= totalGuests;
       
-      // 2. Check room status - exclude unavailable rooms
+      // 2. SOPHISTICATED DATE-BASED AVAILABILITY CHECK
+      const dateAvailability = checkRoomAvailabilityForDates(room, checkInDate || '', checkOutDate || '');
+      const isDateAvailable = dateAvailability.isAvailable;
+
+      // 3. Check room status - exclude unavailable rooms
       const unavailableStatuses = [
-        'occupied',           // Fully occupied
-        'partially-occupied', // Has guests, not available for new reservation
-        'cleaning',          // Being cleaned
         'maintenance',       // Under maintenance
         'out-of-order',      // Not functional
-        'reserved',          // Already reserved
-        'partially-reserved', // Has some reservations
-        'deoccupied',        // Recently vacated, needs cleaning
-        'partially-deoccupied' // Mixed status, not available
       ];
       
       const isRoomStatusAvailable = !unavailableStatuses.includes(room.status);
       
-      // Room is available if both capacity and status checks pass
-      const isAvailable = canAccommodateGuests && isRoomStatusAvailable;
+      // Room is available if all checks pass
+      const isAvailable = canAccommodateGuests && isRoomStatusAvailable && isDateAvailable;
       
-      console.log(`🏠 Room ${room.number}: capacity=${roomCapacity}, guests=${totalGuests}, status=${room.status}, capacityOK=${canAccommodateGuests}, statusOK=${isRoomStatusAvailable}, available=${isAvailable}`);
-      
+      // Build unavailability reasons
+      const reasonsUnavailable = [];
+      if (!canAccommodateGuests) {
+        reasonsUnavailable.push(`Room capacity (${roomCapacity}) cannot accommodate ${totalGuests} guests`);
+      }
+      if (!isRoomStatusAvailable) {
+        reasonsUnavailable.push(`Room is currently ${room.status}`);
+      }
+      if (!isDateAvailable) {
+        reasonsUnavailable.push(`Room is already booked for the requested dates (conflicts: ${dateAvailability.conflictingReservations.length})`);
+      }
+
+      // Enhanced logging for debugging
+      if (checkInDate && checkOutDate) {
+        console.log(`🏠 Room ${room.number} (${checkInDate} to ${checkOutDate}):`, {
+          capacity: `${roomCapacity} (need ${totalGuests})`,
+          status: room.status,
+          dateAvailable: isDateAvailable,
+          conflicts: dateAvailability.conflictingReservations.length,
+          finalAvailable: isAvailable
+        });
+      }
+
       // Calculate base pricing
       const nights = checkInDate && checkOutDate ? 
         Math.ceil((new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60 * 24)) : 1;
@@ -192,15 +238,6 @@ export const enhancedReservationHandlers = [
       const taxes = subtotal * 0.12; // 12% tax
       const fees = 25; // Flat fee
       const total = subtotal + taxes + fees;
-
-      // Build unavailability reasons
-      const reasonsUnavailable = [];
-      if (!canAccommodateGuests) {
-        reasonsUnavailable.push(`Room capacity (${roomCapacity}) cannot accommodate ${totalGuests} guests`);
-      }
-      if (!isRoomStatusAvailable) {
-        reasonsUnavailable.push(`Room is currently ${room.status}`);
-      }
 
       const roomData: Room = {
         _id: room._id,
@@ -258,7 +295,8 @@ export const enhancedReservationHandlers = [
           ]
         },
         recommendationScore: isAvailable ? 85 : 0,
-        reasonsUnavailable
+        reasonsUnavailable,
+        conflictingReservations: dateAvailability.conflictingReservations
       };
     }).filter(Boolean) as any[];
 
@@ -267,13 +305,21 @@ export const enhancedReservationHandlers = [
     const unavailableRooms = availableRooms.filter((r: any) => !r.isAvailable);
 
     const totalAvailable = availableRoomsOnly.length;
-    console.log('✅ Available Rooms Found:', availableRooms.length, 'Total Available:', totalAvailable);
-    console.log('🚫 Unavailable Rooms:', unavailableRooms.length);
     
-    // Log unavailable room details for debugging
-    unavailableRooms.forEach((room: any) => {
-      console.log(`🚫 Room ${room.room.number} unavailable:`, room.reasonsUnavailable);
+    console.log('✅ SOPHISTICATED AVAILABILITY RESULTS:', {
+      dateRange: checkInDate && checkOutDate ? `${checkInDate} to ${checkOutDate}` : 'No dates',
+      totalRooms: availableRooms.length,
+      availableRooms: totalAvailable,
+      unavailableRooms: unavailableRooms.length
     });
+    
+    // Enhanced unavailable room logging
+    if (unavailableRooms.length > 0) {
+      console.log('🚫 Unavailable Rooms Details:');
+      unavailableRooms.forEach((room: any) => {
+        console.log(`   Room ${room.room.number}: ${room.reasonsUnavailable.join(', ')}`);
+      });
+    }
 
     return HttpResponse.json({
       availableRooms: availableRoomsOnly, // 🎯 ONLY return available rooms
@@ -284,21 +330,26 @@ export const enhancedReservationHandlers = [
         checkOutDate,
         totalGuests,
         hotelId
+      },
+      debug: {
+        totalRoomsChecked: availableRooms.length,
+        unavailableCount: unavailableRooms.length,
+        dateBasedFiltering: !!(checkInDate && checkOutDate)
       }
     });
   }),
 
-  // Reservation Pricing Endpoint
+  // Reservation Pricing Endpoint TODO: Is this to be transfer to the pricing endpoint?
   http.get('/api/reservations/pricing', ({ request }) => {
-    console.log('🎯 MSW: Enhanced Pricing endpoint called!', request.url);
+    // console.log('🎯 MSW: Enhanced Pricing endpoint called!', request.url);
     const url = new URL(request.url);
     const roomIds = url.searchParams.get('roomIds')?.split(',') || [];
     const checkInDate = url.searchParams.get('checkInDate');
     const checkOutDate = url.searchParams.get('checkOutDate');
     const guestCount = parseInt(url.searchParams.get('guestCount') || '2');
-    const hotelId = url.searchParams.get('hotelId');
+    // const hotelId = url.searchParams.get('hotelId'); // Commented out unused variable
 
-    console.log('💰 Enhanced Pricing Request:', { roomIds, checkInDate, checkOutDate, guestCount, hotelId });
+    // console.log('💰 Enhanced Pricing Request:', { roomIds, checkInDate, checkOutDate, guestCount, hotelId });
 
     // Calculate nights
     const nights = checkInDate && checkOutDate ? 
@@ -351,7 +402,7 @@ export const enhancedReservationHandlers = [
       finalAmount: total
     };
 
-    console.log('✅ Enhanced Pricing Calculated:', { total, breakdown: breakdown.length });
+    // console.log('✅ Enhanced Pricing Calculated:', { total, breakdown: breakdown.length });
 
     return HttpResponse.json({
       pricing,
@@ -369,17 +420,113 @@ export const enhancedReservationHandlers = [
 
     const newReservationId = `enhanced-res-${Date.now()}`;
     
+    // Normalize specialRequests to always be an array
+    const normalizedSpecialRequests = Array.isArray(reservationData.specialRequests) 
+      ? reservationData.specialRequests 
+      : (reservationData.specialRequests ? [reservationData.specialRequests] : []);
+    
     const newReservation = {
       id: newReservationId,
       ...reservationData,
+      specialRequests: normalizedSpecialRequests, // Always store as array
       status: 'confirmed',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
-    console.log('✅ Enhanced Reservation Created:', newReservationId);
+    // 🎯 CRITICAL FIX: Create actual reservation records for date-based availability
+    const createdReservations: string[] = [];
+    
+    // 🎯 CRITICAL FIX: Assign guests to rooms and update room status
+    if (reservationData.roomAssignments && Array.isArray(reservationData.roomAssignments)) {
+      for (const assignment of reservationData.roomAssignments) {
+        const roomId = assignment.roomId;
+        const room = mockRooms.find(r => r._id === roomId);
+        
+        if (room && assignment.guests && Array.isArray(assignment.guests)) {
+          console.log(`🔄 BEFORE: Room ${room.number} status:`, room.status, 'assignedGuests:', room.assignedGuests);
+          
+          // Create guests and assign them to the room
+          const guestIds: string[] = [];
+          for (let i = 0; i < assignment.guests.length; i++) {
+            let guest = assignment.guests[i];
+            if (!guest._id) {
+              guest = addMockGuest({
+                name: guest.name,
+                email: guest.email,
+                phone: guest.phone,
+                address: guest.address,
+                hotelId: reservationData.hotelId,
+                roomId: roomId, // Assign guest to the room!
+                status: 'booked',
+                keepOpen: false, // 🎯 CRITICAL: All reservation guests should close the room
+                reservationStart: reservationData.checkInDate,
+                reservationEnd: reservationData.checkOutDate,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              });
+              assignment.guests[i] = guest;
+            }
+            guestIds.push(guest._id);
+          }
+          
+          // 🎯 NEW: Create actual reservation record for this room
+          const roomReservation = addMockReservation({
+            hotelId: reservationData.hotelId,
+            roomId: roomId,
+            guestIds: guestIds,
+            confirmationNumber: `CONF-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+            reservationStart: reservationData.checkInDate,
+            reservationEnd: reservationData.checkOutDate,
+            checkInDate: reservationData.checkInDate,
+            checkOutDate: reservationData.checkOutDate,
+            nights: calculateNights(reservationData.checkInDate, reservationData.checkOutDate),
+            roomRate: room.rate || 100,
+            totalAmount: (room.rate || 100) * calculateNights(reservationData.checkInDate, reservationData.checkOutDate),
+            paidAmount: 0,
+            currency: 'USD',
+            status: 'active',
+            reservationStatus: 'active',
+            bookingStatus: 'confirmed',
+            source: 'direct', // Fix: Use valid source value instead of 'enhanced_wizard'
+            notes: reservationData.notes || '',
+            specialRequests: Array.isArray(reservationData.specialRequests) ? reservationData.specialRequests : (reservationData.specialRequests ? [reservationData.specialRequests] : [])
+          });
+          
+          createdReservations.push(roomReservation._id);
+          console.log(`✅ Created reservation ${roomReservation._id} for room ${room.number} (${reservationData.checkInDate} to ${reservationData.checkOutDate})`);
+          
+          // Update room's assignedGuests
+          room.assignedGuests = [...(room.assignedGuests || []), ...guestIds];
+          
+          // Recalculate room status
+          recalculateRoomStatus(room, 'system', 'Triggered by enhanced reservation creation');
+          
+          // Ensure the updated room is written back to mockRooms
+          const idx = mockRooms.findIndex(r => r._id === room._id);
+          if (idx !== -1) {
+            mockRooms[idx] = { ...room };
+          }
+          
+          console.log(`🔄 AFTER: Room ${room.number} status:`, room.status, 'assignedGuests:', room.assignedGuests);
+          // const updatedRoomInArray = mockRooms.find(r => r._id === room._id);
+          // console.log(`📋 Room ${room.number} in mockRooms array:`, updatedRoomInArray?.status, 'assignedGuests:', updatedRoomInArray?.assignedGuests);
+        } else {
+          console.log(`❌ Room not found for roomId: ${roomId} or no guests in assignment`);
+        }
+      }
+    }
 
-    return HttpResponse.json(newReservation, { status: 201 });
+    console.log('✅ Enhanced Reservation Created:', {
+      mainReservationId: newReservationId,
+      roomReservations: createdReservations,
+      totalRooms: createdReservations.length
+    });
+
+    return HttpResponse.json({
+      ...newReservation,
+      roomReservations: createdReservations
+    }, { status: 201 });
   })
 ];
 
@@ -535,8 +682,6 @@ export const reservationEndpointsHandlers = [
       roomAssignments,
       checkInDate,
       checkOutDate,
-      pricing,
-      status,
       notes,
       specialRequests,
       hotelId,
@@ -566,6 +711,7 @@ export const reservationEndpointsHandlers = [
             hotelId,
             roomId: assignment.roomId, // assign guest to the room!
             status: 'booked',
+            keepOpen: false, // 🎯 CRITICAL: All reservation guests should close the room
             reservationStart: checkInDate,
             reservationEnd: checkOutDate,
             createdAt: new Date().toISOString(),
@@ -641,13 +787,42 @@ export const reservationEndpointsHandlers = [
           performedBy: createdBy || 'system',
           reason: 'Multi-room reservation created'
         }],
-        notes,
-        specialRequests
+        notes: notes || '',
+        specialRequests: Array.isArray(specialRequests) ? specialRequests : (specialRequests ? [specialRequests] : [])
       });
       // Recalculate reservation status after creation
       recalculateReservationStatus(reservation._id, 'Reservation created via multi-room endpoint');
+      
+      // 🎯 CRITICAL FIX: Recalculate room status after reservation creation
+      if (room) {
+        console.log(`🔄 BEFORE: Room ${room.number} status:`, room.status, 'assignedGuests:', room.assignedGuests);
+        recalculateRoomStatus(room, 'system', 'Triggered by reservation creation');
+        // Ensure the updated room is written back to mockRooms
+        const idx = mockRooms.findIndex(r => r._id === room._id);
+        if (idx !== -1) {
+          mockRooms[idx] = { ...room };
+        }
+        console.log(`🔄 AFTER: Room ${room.number} status:`, room.status, 'assignedGuests:', room.assignedGuests);
+        const updatedRoomInArray = mockRooms.find(r => r._id === room._id);
+        console.log(`📋 Room ${room.number} in mockRooms array:`, updatedRoomInArray?.status, 'assignedGuests:', updatedRoomInArray?.assignedGuests);
+      } else {
+        console.log(`❌ Room not found for roomId: ${roomId}`);
+      }
+      
       createdReservations.push(reservation);
     }
+    // After all guests and reservations are created, sync assignedGuests for each room
+    for (const room of mockRooms) {
+      // Find all guests assigned to this room
+      const guestsForRoom = mockGuests.filter(g => g.roomId === room._id && g.hotelId === room.hotelId);
+      room.assignedGuests = guestsForRoom.map(g => g._id);
+      // Recalculate room status again to ensure it's correct
+      recalculateRoomStatus(room, 'system', 'Post-reservation guest assignment sync');
+      console.log(`🔁 Post-sync: Room ${room.number} assignedGuests:`, room.assignedGuests, 'status:', room.status);
+    }
+    // DEBUG: Print state of mockRooms and mockGuests after reservation creation
+    console.log('🟣 DEBUG: mockRooms after reservation:', mockRooms.map(r => ({ number: r.number, assignedGuests: r.assignedGuests, status: r.status })));
+    console.log('🟣 DEBUG: mockGuests after reservation:', mockGuests.map(g => ({ id: g._id, name: g.name, roomId: g.roomId, hotelId: g.hotelId })));
     // Return the created reservations
     return HttpResponse.json({
       message: 'Reservations created successfully',

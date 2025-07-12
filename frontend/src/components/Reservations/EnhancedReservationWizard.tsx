@@ -23,7 +23,8 @@ import {
   Chip,
   Divider,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  MenuItem
 } from '@mui/material';
 import {
   Close,
@@ -41,16 +42,16 @@ import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format, addDays, differenceInDays } from 'date-fns';
 import { useSnackbar } from 'notistack';
+import { useQueryClient } from '@tanstack/react-query';
 
 // Types
 import {
   MultiRoomReservation,
   AvailableRoom,
   ReservationPricing,
-  RoomCheckInStatus
+  SPECIAL_REQUEST_OPTIONS
 } from '../../types/reservation';
 import { Guest } from '../../types/guest';
-import { Room } from '../../types/room';
 
 // Hooks
 import { useCurrentHotel } from '../../services/hooks/useHotel';
@@ -79,6 +80,9 @@ interface WizardState {
   errors?: Record<string, string>;
   isValid?: boolean;
   guests: Guest[];
+  notes?: string;
+  specialRequests?: string[];
+  otherSpecialRequest?: string;
 }
 
 interface EnhancedReservationWizardProps {
@@ -105,9 +109,48 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { enqueueSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
   
   const { data: currentHotel } = useCurrentHotel();
   const createReservationMutation = useCreateMultiRoomReservation();
+
+  // Reset function to clear wizard state
+  const resetWizard = useCallback(() => {
+    setWizardState({
+      currentStep: 0,
+      data: {
+        checkInDate: format(new Date(), 'yyyy-MM-dd'),
+        checkOutDate: format(addDays(new Date(), 3), 'yyyy-MM-dd'),
+        roomAssignments: [],
+        pricing: undefined,
+        status: 'confirmed',
+        hotelId: currentHotel?._id || '',
+        createdBy: 'staff'
+      },
+      availableRooms: [],
+      selectedRooms: [],
+      roomAssignments: [],
+      errors: {},
+      isValid: false,
+      guests: [],
+      notes: '',
+      specialRequests: ['No special request'],
+      otherSpecialRequest: ''
+    });
+    setGuestCount(2);
+    setGuests([
+      { name: '', email: '', phone: '', address: '' },
+      { name: '', email: '', phone: '', address: '' }
+    ]);
+  }, [currentHotel?._id]);
+
+  // Reset wizard when dialog opens/closes
+  useEffect(() => {
+    if (open) {
+      console.log('🚀 EnhancedReservationWizard: Dialog opened, resetting wizard state');
+      resetWizard();
+    }
+  }, [open, resetWizard]);
 
   // Wizard state
   const [wizardState, setWizardState] = useState<WizardState>({
@@ -126,7 +169,10 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
     roomAssignments: [],
     errors: {},
     isValid: false,
-    guests: []
+    guests: [],
+    notes: '',
+    specialRequests: ['No special request'],
+    otherSpecialRequest: ''
   });
 
   // Guest count state
@@ -155,12 +201,29 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
   // Update wizard state when data changes
   useEffect(() => {
     if (availabilityQuery.data) {
+      console.log('🏠 EnhancedReservationWizard: Received room availability data:', {
+        availableRoomsCount: availabilityQuery.data.availableRooms?.length || 0,
+        availableRooms: availabilityQuery.data.availableRooms?.map(ar => ({
+          roomId: ar.room._id,
+          roomNumber: ar.room.number,
+          roomType: ar.roomType.name,
+          status: ar.room.status,
+          capacity: ar.roomType.defaultCapacity
+        })) || [],
+        queryParams: {
+          checkInDate: wizardState.data.checkInDate,
+          checkOutDate: wizardState.data.checkOutDate,
+          totalGuests: guestCount,
+          hotelId: currentHotel?._id
+        }
+      });
+      
       setWizardState(prev => ({
         ...prev,
         availableRooms: availabilityQuery.data.availableRooms || []
       }));
     }
-  }, [availabilityQuery.data]);
+  }, [availabilityQuery.data, wizardState.data.checkInDate, wizardState.data.checkOutDate, guestCount, currentHotel?._id]);
 
   useEffect(() => {
     if (pricingQuery.data) {
@@ -263,6 +326,14 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
         ...prev,
         currentStep: stepIndex
       }));
+      if (stepIndex === 2) {
+        // Also force refetch if user clicks directly to Rooms step
+        console.log('🔄 Forcing refetch of room availability and related data on Rooms step click');
+        queryClient.invalidateQueries({ queryKey: ['availability'] });
+        queryClient.invalidateQueries({ queryKey: ['rooms'] });
+        queryClient.invalidateQueries({ queryKey: ['reservations'] });
+        queryClient.invalidateQueries({ queryKey: ['guests'] });
+      }
     }
   };
 
@@ -270,6 +341,7 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
   useEffect(() => {
     validateCurrentStep();
   }, [
+    validateCurrentStep,
     wizardState.data.checkInDate, 
     wizardState.data.checkOutDate, 
     guestCount, 
@@ -277,6 +349,17 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
     wizardState.roomAssignments,
     guests
   ]);
+
+  // Force refetch of room availability and related data on step change to 'Rooms'
+  useEffect(() => {
+    if (wizardState.currentStep === 2) { // Step 2: Rooms
+      console.log('🔄 Forcing refetch of room availability and related data on entering Rooms step');
+      queryClient.invalidateQueries({ queryKey: ['availability'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+    }
+  }, [wizardState.currentStep, queryClient]);
 
   // Guest management
   const updateGuestCount = (newCount: number) => {
@@ -364,6 +447,14 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
       return;
     }
 
+    const notesToSend = wizardState.notes?.trim() || 'Created via Enhanced Wizard';
+    let specialRequestsToSend = wizardState.specialRequests && wizardState.specialRequests.length > 0
+      ? wizardState.specialRequests.filter(r => r !== 'Other')
+      : ['No special request'];
+    if ((wizardState.specialRequests || []).includes('Other') && wizardState.otherSpecialRequest?.trim()) {
+      specialRequestsToSend = [...specialRequestsToSend, wizardState.otherSpecialRequest.trim()];
+    }
+
     const reservationData: Omit<MultiRoomReservation, 'id' | 'createdAt' | 'updatedAt'> = {
       primaryGuest: {
         _id: '',
@@ -410,8 +501,8 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
         currency: 'USD'
       },
       status: 'confirmed',
-      notes: '',
-      specialRequests: [],
+      notes: notesToSend,
+      specialRequests: specialRequestsToSend,
       hotelId: currentHotel?._id || '',
       createdBy: 'staff'
     };
@@ -420,6 +511,13 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
       const newReservation = await createReservationMutation.mutateAsync(reservationData);
       enqueueSnackbar('Reservation created successfully!', { variant: 'success' });
       onSuccess?.(newReservation);
+      // 🎯 CRITICAL FIX: Invalidate and refetch all related queries
+      console.log('🔄 Forcing refetch of all related queries after reservation creation');
+      queryClient.invalidateQueries({ queryKey: ['availability'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      resetWizard();
       onClose();
     } catch (error) {
       enqueueSnackbar('Failed to create reservation', { variant: 'error' });
@@ -967,6 +1065,45 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
                 This reservation will be created with "Confirmed" status. You can modify details or process payment after creation.
               </Typography>
             </Alert>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="h6" gutterBottom>Reservation Notes</Typography>
+            <TextField
+              label="Notes"
+              multiline
+              minRows={2}
+              fullWidth
+              value={wizardState.notes || ''}
+              onChange={e => setWizardState(prev => ({ ...prev, notes: e.target.value }))}
+              placeholder="Add any notes for this reservation (optional)"
+              sx={{ mb: 2 }}
+            />
+            <Typography variant="h6" gutterBottom>Special Requests</Typography>
+            <TextField
+              select
+              SelectProps={{ multiple: true }}
+              label="Special Requests"
+              fullWidth
+              value={wizardState.specialRequests || ['No special request']}
+              onChange={e => {
+                const value = Array.isArray(e.target.value) ? e.target.value : [e.target.value];
+                setWizardState(prev => ({ ...prev, specialRequests: value }));
+              }}
+              sx={{ mb: 2 }}
+            >
+              {SPECIAL_REQUEST_OPTIONS.map(option => (
+                <MenuItem key={option} value={option}>{option}</MenuItem>
+              ))}
+            </TextField>
+            {/* If 'Other' is selected, show a text input for custom request */}
+            {(wizardState.specialRequests || []).includes('Other') && (
+              <TextField
+                label="Other Special Request"
+                fullWidth
+                value={wizardState.otherSpecialRequest || ''}
+                onChange={e => setWizardState(prev => ({ ...prev, otherSpecialRequest: e.target.value }))}
+                sx={{ mb: 2 }}
+              />
+            )}
           </Box>
         );
 
@@ -978,7 +1115,10 @@ export const EnhancedReservationWizard: React.FC<EnhancedReservationWizardProps>
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={() => {
+        resetWizard();
+        onClose();
+      }}
       fullScreen={isMobile}
       maxWidth="lg"
       fullWidth
