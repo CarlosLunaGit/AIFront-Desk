@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   Box, Paper, Typography, Tooltip, IconButton, Button, Card, CardContent,
   Chip, useTheme, alpha, ToggleButtonGroup, ToggleButton,
@@ -66,6 +66,8 @@ const isLightColor = (hexColor: string): boolean => {
   return brightness > 128;
 };
 
+
+
 // Function to get appropriate text color based on background
 const getTextColor = (backgroundColor: string): string => {
   return isLightColor(backgroundColor) ? '#000000' : '#FFFFFF';
@@ -87,6 +89,7 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
   // Search functionality
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
+  const isNavigatingRef = useRef(false);
 
   // Filter reservations based on search term
   const filteredReservations = useMemo(() => {
@@ -139,10 +142,9 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
     });
     
     setSearchResults(matchingReservations);
-    onSearchResult && onSearchResult(matchingReservations.length > 0, matchingReservations.length);
     
     return matchingReservations;
-  }, [searchTerm, reservations, guests, rooms, onSearchResult]);
+  }, [searchTerm, reservations, guests, rooms]);
 
   // Reset search index when search term changes
   useEffect(() => {
@@ -151,16 +153,10 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
 
   // Navigate to search results
   useEffect(() => {
-    if (searchTerm && searchResults.length > 0) {
+    if (searchTerm && searchResults.length > 0 && !isNavigatingRef.current) {
       // Use the current search index instead of always using the first result
       const currentResult = searchResults[currentSearchIndex] || searchResults[0];
       const checkInDate = dayjs(currentResult.checkInDate || currentResult.reservationStart);
-      
-      // More detailed logging for debugging
-      const currentWeekStart = currentDate.startOf('week').add(1, 'day'); // Monday
-      const currentWeekEnd = currentDate.endOf('week').add(1, 'day'); // Sunday
-      const currentMonthStart = currentDate.startOf('month');
-      const currentMonthEnd = currentDate.endOf('month');
       
       // Fix: Use proper date comparison that handles year differences
       const isInCurrentWeek = checkInDate.isSame(currentDate, 'week');
@@ -170,10 +166,15 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
       const needsNavigation = viewMode === 'week' ? !isInCurrentWeek : !isInCurrentMonth;
       
       if (needsNavigation) {
+        isNavigatingRef.current = true;
         setCurrentDate(checkInDate);
+        // Reset the flag after a brief delay
+        setTimeout(() => {
+          isNavigatingRef.current = false;
+        }, 100);
       }
     }
-  }, [searchTerm, searchResults, currentSearchIndex, currentDate, viewMode]);
+  }, [searchTerm, searchResults, currentSearchIndex, viewMode]); // Remove currentDate to prevent infinite loops
 
   // Notify parent about search results
   useEffect(() => {
@@ -183,7 +184,7 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
   }, [searchResults, onSearchResult]);
 
   // Navigate between search results
-  const navigateSearchResults = (direction: 'prev' | 'next') => {
+  const navigateSearchResults = useCallback((direction: 'prev' | 'next') => {
     if (searchResults.length === 0) return;
     
     let newIndex;
@@ -197,7 +198,7 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
     const targetReservation = searchResults[newIndex];
     const targetDate = dayjs(targetReservation.checkInDate || targetReservation.reservationStart);
     setCurrentDate(targetDate);
-  };
+  }, [searchResults, currentSearchIndex]);
 
   // Check if a reservation is highlighted by search
   const isSearchHighlighted = (reservation: any) => {
@@ -257,7 +258,7 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
   }, [calendarDays]);
 
   // Get reservations for a specific date with enhanced info
-  const getReservationsForDate = (date: Dayjs) => {
+  const getReservationsForDate = useCallback((date: Dayjs) => {
     const dateStr = date.format('YYYY-MM-DD');
     
     // Determine which reservations to use based on search state
@@ -288,7 +289,7 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
         isMiddleStay: dateStr !== startDate && dateStr !== endDate
       };
     });
-  };
+  }, [searchTerm, searchResults, currentSearchIndex, filteredReservations, reservations]);
 
   // Get all reservations visible in current view for dynamic legend
   const visibleReservations = useMemo(() => {
@@ -302,7 +303,7 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
       index === self.findIndex(r => r._id === res._id)
     );
     return uniqueReservations;
-  }, [calendarDays, searchTerm]); // Only include what actually affects the calculation
+  }, [calendarDays, getReservationsForDate]); // Simplified dependencies
 
   // Get rooms that have reservations in current view for dynamic legend
   const roomsWithReservations = useMemo(() => {
@@ -723,7 +724,7 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
                                 }
                               }}
                               onClick={() => {
-                                console.log('Show all reservations for', date.format('YYYY-MM-DD'));
+                                // Show all reservations for this date
                               }}
                             />
                           )}

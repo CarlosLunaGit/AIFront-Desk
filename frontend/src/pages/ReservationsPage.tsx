@@ -1,33 +1,36 @@
 import React, { useState } from 'react';
 import {
-  Box, Paper, Typography, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TextField, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, MenuItem,
-  Tabs, Tab, Collapse, IconButton, Tooltip, Chip, CircularProgress, Menu, Divider, ToggleButtonGroup, ToggleButton
+  Box, Paper, Typography, Button, TextField, Chip, Tabs, Tab,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  IconButton, Menu, MenuItem, Tooltip, Collapse, Divider,
+  ToggleButtonGroup, ToggleButton, Dialog, DialogTitle, DialogContent, 
+  DialogActions, Autocomplete, CircularProgress
 } from '@mui/material';
 import {
-  Search as SearchIcon, Edit as EditIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon,
-  InfoOutlined as InfoOutlinedIcon, MoreVert as MoreVertIcon, Cancel as CancelIcon, 
-  PersonOff as PersonOffIcon, Stop as StopIcon, Delete as DeleteIcon, TableChart as TableChartIcon,
-  CalendarMonth as CalendarMonthIcon
+  Search as SearchIcon, MoreVert as MoreVertIcon, ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon, TableChart as TableChartIcon,
+  CalendarMonth as CalendarMonthIcon, Cancel as CancelIcon, PersonOff as PersonOffIcon,
+  Stop as StopIcon, Edit as EditIcon, Delete as DeleteIcon, InfoOutlined as InfoOutlinedIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useSnackbar } from 'notistack';
 import dayjs, { Dayjs } from 'dayjs';
-import { useCurrentHotel } from '../services/hooks/useHotel';
-import { useReservations, useCreateReservation, useUpdateReservation, useDeleteReservation } from '../services/hooks/useReservations';
-import { useGuests } from '../services/hooks/useGuests';
+import { useReservations } from '../services/hooks/useReservations';
 import { useRooms } from '../services/hooks/useRooms';
-import type { ReservationAction } from '../types/index';
+import { useGuests } from '../services/hooks/useGuests';
+
+import ReservationCalendar from '../components/Reservations/ReservationCalendar';
+import { useCurrentHotel } from '../services/hooks/useHotel';
+import { useCreateReservation, useUpdateReservation, useDeleteReservation } from '../services/hooks/useReservations';
 import { 
-  calculateCancellationFee, 
   createReservationAction,
   generateConfirmationNumber,
   determineReservationStatus,
   getReservationStatusDisplay
 } from '../utils/reservationUtils';
+import type { ReservationAction } from '../types/index';
 // Import the Enhanced Reservation Wizard
 import { EnhancedReservationWizard } from '../components/Reservations/EnhancedReservationWizard';
-import ReservationCalendar from '../components/Reservations/ReservationCalendar';
 import { Guest } from '../types/guest';
 import { Room } from '../types/room';
 
@@ -389,7 +392,6 @@ const ReservationsPage: React.FC = () => {
 
   // Check business rules for actions
   const getAvailableActions = (reservation: any) => {
-    const resId = reservation._id || reservation.id;
     const actions = [];
     
     // For active reservations (most common case)
@@ -731,8 +733,8 @@ const ReservationsPage: React.FC = () => {
             options={guests}
             getOptionLabel={(option: any) => option.name}
             value={guests.filter((g: any) => form.guestIds?.includes(g._id))}
-            onChange={(_, value) => setForm(f => ({ ...f, guestIds: value.map((g: any) => g._id) }))}
-            renderInput={(params) => <TextField {...params} label="Guests" margin="normal" fullWidth />}
+            onChange={(_, value: Guest[]) => setForm(f => ({ ...f, guestIds: value.map((g: Guest) => g._id) }))}
+            renderInput={(params: any) => <TextField {...params} label="Guests" margin="normal" fullWidth />}
           />
           <Box display="flex" gap={2} alignItems="center" mt={1}>
             <TextField label="New Guest Name" value={newGuest.name} onChange={e => setNewGuest(g => ({ ...g, name: e.target.value }))} />
@@ -763,14 +765,14 @@ const ReservationsPage: React.FC = () => {
             <DatePicker
               label="Start Date"
               value={form.start}
-              onChange={(value) => handleDateChange('start', value as Dayjs | null)}
-              renderInput={(params) => <TextField {...params} fullWidth margin="normal" />}
+              onChange={(value: any) => handleDateChange('start', value as Dayjs | null)}
+              renderInput={(params: any) => <TextField {...params} fullWidth margin="normal" />}
             />
             <DatePicker
               label="End Date"
               value={form.end}
-              onChange={(value) => handleDateChange('end', value as Dayjs | null)}
-              renderInput={(params) => <TextField {...params} fullWidth margin="normal" />}
+              onChange={(value: any) => handleDateChange('end', value as Dayjs | null)}
+              renderInput={(params: any) => <TextField {...params} fullWidth margin="normal" />}
             />
           </Box>
           <TextField label="Price" name="price" value={form.price} onChange={handleChange} fullWidth margin="normal" type="number" />
