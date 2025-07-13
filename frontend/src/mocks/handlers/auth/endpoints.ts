@@ -8,7 +8,7 @@ interface LoginRequest {
 export const authEndpointsHandlers = [
     // Auth endpoints
     http.post('/api/auth/login', async ({ request }) => {
-        console.log('Debug Auth 1');
+        // console.log('Debug Auth 1');
         const { email, password } = await request.json() as LoginRequest;
         
         // Mock authentication logic
@@ -33,7 +33,7 @@ export const authEndpointsHandlers = [
     
       // Get current user
       http.get('/api/auth/me', () => {
-        console.log('Debug Auth 2');
+        // console.log('Debug Auth 2');
         const user = {
           id: 'user-1',
           email: 'admin@aifrontdesk.com',
@@ -47,7 +47,7 @@ export const authEndpointsHandlers = [
     
       // Register endpoint (placeholder)
       http.post('/api/auth/register', async ({ request }) => {
-        console.log('Debug Auth 3');
+        // console.log('Debug Auth 3');
         const userData = await request.json() as any;
         
         const newUser = {

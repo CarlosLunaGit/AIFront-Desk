@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import {
   Box, Paper, Typography, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TextField, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, MenuItem,
-  Tabs, Tab, Collapse, IconButton, Tooltip, Chip, CircularProgress, Menu, Divider
+  Tabs, Tab, Collapse, IconButton, Tooltip, Chip, CircularProgress, Menu, Divider, ToggleButtonGroup, ToggleButton
 } from '@mui/material';
 import {
   Search as SearchIcon, Edit as EditIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon,
   InfoOutlined as InfoOutlinedIcon, MoreVert as MoreVertIcon, Cancel as CancelIcon, 
-  PersonOff as PersonOffIcon, Stop as StopIcon, Delete as DeleteIcon
+  PersonOff as PersonOffIcon, Stop as StopIcon, Delete as DeleteIcon, TableChart as TableChartIcon,
+  CalendarMonth as CalendarMonthIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useSnackbar } from 'notistack';
@@ -26,6 +27,7 @@ import {
 } from '../utils/reservationUtils';
 // Import the Enhanced Reservation Wizard
 import { EnhancedReservationWizard } from '../components/Reservations/EnhancedReservationWizard';
+import ReservationCalendar from '../components/Reservations/ReservationCalendar';
 import { Guest } from '../types/guest';
 import { Room } from '../types/room';
 
@@ -50,6 +52,7 @@ const ReservationsPage: React.FC = () => {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = useState(0); // 0 = Active, 1 = Inactive
+  const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table'); // View toggle state
 
   // Business action states (replacing delete dialog)
   const [actionMenuAnchor, setActionMenuAnchor] = useState<null | HTMLElement>(null);
@@ -364,17 +367,37 @@ const ReservationsPage: React.FC = () => {
   return (
     <Box p={3}>
       <Paper sx={{ p: 3, mb: 2 }}>
-        <Typography variant="h5" gutterBottom>
-          {currentHotel ? (
-            <>Welcome to <b>{currentHotel.name}</b> Reservations
-              <Tooltip title={`View and manage all reservations for ${currentHotel.name}. All changes apply only to this hotel.`}>
-                <InfoOutlinedIcon sx={{ ml: 1, fontSize: 20, verticalAlign: 'middle', color: 'text.secondary', cursor: 'pointer' }} />
-              </Tooltip>
-            </>
-          ) : (
-            'Reservations'
-          )}
-        </Typography>
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Typography variant="h5" gutterBottom>
+            {currentHotel ? (
+              <>Welcome to <b>{currentHotel.name}</b> Reservations
+                <Tooltip title={`View and manage all reservations for ${currentHotel.name}. All changes apply only to this hotel.`}>
+                  <InfoOutlinedIcon sx={{ ml: 1, fontSize: 20, verticalAlign: 'middle', color: 'text.secondary', cursor: 'pointer' }} />
+                </Tooltip>
+              </>
+            ) : (
+              'Reservations'
+            )}
+          </Typography>
+          
+          {/* View Toggle Buttons */}
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={(_, newMode) => newMode && setViewMode(newMode)}
+            aria-label="view mode"
+            size="small"
+          >
+            <ToggleButton value="table" aria-label="table view">
+              <TableChartIcon sx={{ mr: 1 }} />
+              TABLE
+            </ToggleButton>
+            <ToggleButton value="calendar" aria-label="calendar view">
+              <CalendarMonthIcon sx={{ mr: 1 }} />
+              CALENDAR
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
       </Paper>
       <Paper sx={{ p: 2, mb: 2 }}>
         <Box display="flex" alignItems="center" gap={2}>
@@ -457,11 +480,14 @@ const ReservationsPage: React.FC = () => {
         })()}
       </Menu>
 
-      <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
-        <Tab label={`Active (${activeReservations.length})`} />
-        <Tab label={`Inactive (${inactiveReservations.length})`} />
-      </Tabs>
-      <TableContainer component={Paper}>
+      {/* Conditional View Rendering */}
+      {viewMode === 'table' ? (
+        <>
+          <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
+            <Tab label={`Active (${activeReservations.length})`} />
+            <Tab label={`Inactive (${inactiveReservations.length})`} />
+          </Tabs>
+          <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
@@ -606,6 +632,15 @@ const ReservationsPage: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
+        </>
+      ) : (
+        /* Calendar View */
+        <ReservationCalendar
+          reservations={hotelReservations}
+          rooms={rooms.filter((r: any) => r.hotelId === hotelId)}
+          guests={guests}
+        />
+      )}
 
       {/* Create/Edit Reservation Dialog */}
       <Dialog open={open} onClose={() => { setOpen(false); setEditId(null); }}>

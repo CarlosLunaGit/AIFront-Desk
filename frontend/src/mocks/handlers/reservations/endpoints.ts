@@ -35,7 +35,7 @@ const checkRoomAvailabilityForDates = (room: Room, checkInDate: string, checkOut
     
     if (hasOverlap) {
       conflictingReservations.push(reservation._id);
-      // console.log(`🚫 Room ${room.number}: Conflict with reservation ${reservation._id} (${reservation.checkInDate} to ${reservation.checkOutDate})`);
+      // // console.log(`🚫 Room ${room.number}: Conflict with reservation ${reservation._id} (${reservation.checkInDate} to ${reservation.checkOutDate})`);
     }
   }
 
@@ -147,10 +147,10 @@ const reservationHistory: any[] = [];
 export const enhancedReservationHandlers = [
   // Room Availability Endpoint
   http.get('/api/rooms/availability', ({ request }) => {
-    console.log('🔍 SOPHISTICATED ROOM AVAILABILITY CHECK');
+    // console.log('🔍 SOPHISTICATED ROOM AVAILABILITY CHECK');
     
     // 🎯 CRITICAL FIX: Recalculate room status for all rooms before checking availability
-    // console.log('🔄 Recalculating room status for all rooms before availability check...');
+    // // console.log('🔄 Recalculating room status for all rooms before availability check...');
     mockRooms.forEach(room => {
       recalculateRoomStatus(room, 'system', 'Availability check trigger');
     });
@@ -161,29 +161,29 @@ export const enhancedReservationHandlers = [
     const totalGuests = parseInt(url.searchParams.get('totalGuests') || '2');
     const hotelId = url.searchParams.get('hotelId');
 
-    console.log('🏨 Enhanced Availability Check:', { 
-      checkInDate, 
-      checkOutDate, 
-      totalGuests, 
-      hotelId,
-      dateRange: checkInDate && checkOutDate ? `${checkInDate} to ${checkOutDate}` : 'No dates specified'
-    });
+    // console.log('🏨 Enhanced Availability Check:', { 
+    //   checkInDate, 
+    //   checkOutDate, 
+    //   totalGuests, 
+    //   hotelId,
+    //   dateRange: checkInDate && checkOutDate ? `${checkInDate} to ${checkOutDate}` : 'No dates specified'
+    // });
 
     // Filter rooms for the specific hotel
     const hotelRooms = mockRooms.filter(room => room.hotelId === hotelId);
     const hotelRoomTypes = mockRoomTypes.filter(rt => rt.hotelId === hotelId);
 
-    console.log('🔍 Hotel Analysis:', {
-      totalRooms: hotelRooms.length,
-      roomTypes: hotelRoomTypes.length,
-      dateRangeProvided: !!(checkInDate && checkOutDate)
-    });
+    // console.log('🔍 Hotel Analysis:', {
+    //   totalRooms: hotelRooms.length,
+    //   roomTypes: hotelRoomTypes.length,
+    //   dateRangeProvided: !!(checkInDate && checkOutDate)
+    // });
 
     // Calculate availability for each room with sophisticated date checking
     const availableRooms = hotelRooms.map(room => {
       const roomType = hotelRoomTypes.find(rt => rt._id === room.typeId);
       if (!roomType) {
-        console.log(`❌ No room type found for room ${room.number} (typeId: ${room.typeId})`);
+        // console.log(`❌ No room type found for room ${room.number} (typeId: ${room.typeId})`);
         return null;
       }
 
@@ -220,13 +220,13 @@ export const enhancedReservationHandlers = [
 
       // Enhanced logging for debugging
       if (checkInDate && checkOutDate) {
-        console.log(`🏠 Room ${room.number} (${checkInDate} to ${checkOutDate}):`, {
-          capacity: `${roomCapacity} (need ${totalGuests})`,
-          status: room.status,
-          dateAvailable: isDateAvailable,
-          conflicts: dateAvailability.conflictingReservations.length,
-          finalAvailable: isAvailable
-        });
+        // console.log(`🏠 Room ${room.number} (${checkInDate} to ${checkOutDate}):`, {
+        //   capacity: `${roomCapacity} (need ${totalGuests})`,
+        //   status: room.status,
+        //   dateAvailable: isDateAvailable,
+        //   conflicts: dateAvailability.conflictingReservations.length,
+        //   finalAvailable: isAvailable
+        // });
       }
 
       // Calculate base pricing
@@ -306,18 +306,18 @@ export const enhancedReservationHandlers = [
 
     const totalAvailable = availableRoomsOnly.length;
     
-    console.log('✅ SOPHISTICATED AVAILABILITY RESULTS:', {
-      dateRange: checkInDate && checkOutDate ? `${checkInDate} to ${checkOutDate}` : 'No dates',
-      totalRooms: availableRooms.length,
-      availableRooms: totalAvailable,
-      unavailableRooms: unavailableRooms.length
-    });
+    // console.log('✅ SOPHISTICATED AVAILABILITY RESULTS:', {
+    //   dateRange: checkInDate && checkOutDate ? `${checkInDate} to ${checkOutDate}` : 'No dates',
+    //   totalRooms: availableRooms.length,
+    //   availableRooms: totalAvailable,
+    //   unavailableRooms: unavailableRooms.length
+    // });
     
     // Enhanced unavailable room logging
     if (unavailableRooms.length > 0) {
-      console.log('🚫 Unavailable Rooms Details:');
+      // console.log('🚫 Unavailable Rooms Details:');
       unavailableRooms.forEach((room: any) => {
-        console.log(`   Room ${room.room.number}: ${room.reasonsUnavailable.join(', ')}`);
+        // console.log(`   Room ${room.room.number}: ${room.reasonsUnavailable.join(', ')}`);
       });
     }
 
@@ -341,7 +341,7 @@ export const enhancedReservationHandlers = [
 
   // Reservation Pricing Endpoint TODO: Is this to be transfer to the pricing endpoint?
   http.get('/api/reservations/pricing', ({ request }) => {
-    // console.log('🎯 MSW: Enhanced Pricing endpoint called!', request.url);
+    // // console.log('🎯 MSW: Enhanced Pricing endpoint called!', request.url);
     const url = new URL(request.url);
     const roomIds = url.searchParams.get('roomIds')?.split(',') || [];
     const checkInDate = url.searchParams.get('checkInDate');
@@ -349,7 +349,7 @@ export const enhancedReservationHandlers = [
     const guestCount = parseInt(url.searchParams.get('guestCount') || '2');
     // const hotelId = url.searchParams.get('hotelId'); // Commented out unused variable
 
-    // console.log('💰 Enhanced Pricing Request:', { roomIds, checkInDate, checkOutDate, guestCount, hotelId });
+    // // console.log('💰 Enhanced Pricing Request:', { roomIds, checkInDate, checkOutDate, guestCount, hotelId });
 
     // Calculate nights
     const nights = checkInDate && checkOutDate ? 
@@ -402,7 +402,7 @@ export const enhancedReservationHandlers = [
       finalAmount: total
     };
 
-    // console.log('✅ Enhanced Pricing Calculated:', { total, breakdown: breakdown.length });
+    // // console.log('✅ Enhanced Pricing Calculated:', { total, breakdown: breakdown.length });
 
     return HttpResponse.json({
       pricing,
@@ -414,9 +414,9 @@ export const enhancedReservationHandlers = [
 
   // Enhanced Reservation Creation Endpoint
   http.post('/api/reservations/enhanced', async ({ request }) => {
-    console.log('🎯 MSW: Enhanced Reservation endpoint called!', request.url);
+    // console.log('🎯 MSW: Enhanced Reservation endpoint called!', request.url);
     const reservationData = await request.json() as any;
-    console.log('🎯 Creating Enhanced Reservation:', reservationData);
+    // console.log('🎯 Creating Enhanced Reservation:', reservationData);
 
     const newReservationId = `enhanced-res-${Date.now()}`;
     
@@ -444,7 +444,7 @@ export const enhancedReservationHandlers = [
         const room = mockRooms.find(r => r._id === roomId);
         
         if (room && assignment.guests && Array.isArray(assignment.guests)) {
-          console.log(`🔄 BEFORE: Room ${room.number} status:`, room.status, 'assignedGuests:', room.assignedGuests);
+          // console.log(`🔄 BEFORE: Room ${room.number} status:`, room.status, 'assignedGuests:', room.assignedGuests);
           
           // Create guests and assign them to the room
           const guestIds: string[] = [];
@@ -494,7 +494,7 @@ export const enhancedReservationHandlers = [
           });
           
           createdReservations.push(roomReservation._id);
-          console.log(`✅ Created reservation ${roomReservation._id} for room ${room.number} (${reservationData.checkInDate} to ${reservationData.checkOutDate})`);
+          // console.log(`✅ Created reservation ${roomReservation._id} for room ${room.number} (${reservationData.checkInDate} to ${reservationData.checkOutDate})`);
           
           // Update room's assignedGuests
           room.assignedGuests = [...(room.assignedGuests || []), ...guestIds];
@@ -508,20 +508,21 @@ export const enhancedReservationHandlers = [
             mockRooms[idx] = { ...room };
           }
           
-          console.log(`🔄 AFTER: Room ${room.number} status:`, room.status, 'assignedGuests:', room.assignedGuests);
+          // console.log(`🔄 AFTER: Room ${room.number} status:`, room.status, 'assignedGuests:', room.assignedGuests);
           // const updatedRoomInArray = mockRooms.find(r => r._id === room._id);
-          // console.log(`📋 Room ${room.number} in mockRooms array:`, updatedRoomInArray?.status, 'assignedGuests:', updatedRoomInArray?.assignedGuests);
-        } else {
-          console.log(`❌ Room not found for roomId: ${roomId} or no guests in assignment`);
-        }
+          // // console.log(`📋 Room ${room.number} in mockRooms array:`, updatedRoomInArray?.status, 'assignedGuests:', updatedRoomInArray?.assignedGuests);
+        } 
+        // else {
+          // console.log(`❌ Room not found for roomId: ${roomId} or no guests in assignment`);
+        // }
       }
     }
 
-    console.log('✅ Enhanced Reservation Created:', {
-      mainReservationId: newReservationId,
-      roomReservations: createdReservations,
-      totalRooms: createdReservations.length
-    });
+    // console.log('✅ Enhanced Reservation Created:', {
+    //   mainReservationId: newReservationId,
+    //   roomReservations: createdReservations,
+    //   totalRooms: createdReservations.length
+    // });
 
     return HttpResponse.json({
       ...newReservation,
@@ -533,7 +534,7 @@ export const enhancedReservationHandlers = [
 export const reservationEndpointsHandlers = [
   // Get all reservations (filtered by hotel)
   http.get('/api/reservations', ({ request }) => {
-    console.log('Debug Reservations 1');
+    // console.log('Debug Reservations 1');
     const url = new URL(request.url);
     const hotelId = url.searchParams.get('hotelId');
     const status = url.searchParams.get('status');
@@ -561,7 +562,7 @@ export const reservationEndpointsHandlers = [
       }
     }
     
-    console.log(`📋 Returning ${filteredReservations.length} reservations for hotel ${hotelId}`);
+    // console.log(`📋 Returning ${filteredReservations.length} reservations for hotel ${hotelId}`);
     return HttpResponse.json(filteredReservations);
   }),
 
@@ -569,7 +570,7 @@ export const reservationEndpointsHandlers = [
 
   // Create new reservation
   http.post('/api/reservations', async ({ request }) => {
-    console.log('Debug Reservations /api/reservations POST');
+    // console.log('Debug Reservations /api/reservations POST');
     const data = await request.json();
     const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
     
@@ -675,26 +676,25 @@ export const reservationEndpointsHandlers = [
   }),
 
   http.post('/api/reservations/multi-room', async ({ request }) => {
-    console.log('🚨🚨🚨 MULTI-ROOM RESERVATION ENDPOINT HIT! 🚨🚨🚨');
+    // console.log('🚨🚨🚨 MULTI-ROOM RESERVATION ENDPOINT HIT! 🚨🚨🚨');
     
-    const {
-      primaryGuest,
-      roomAssignments,
-      checkInDate,
-      checkOutDate,
-      notes,
-      specialRequests,
-      hotelId,
-      createdBy
-    } = await request.json() as any;
+      const {
+    roomAssignments,
+    checkInDate,
+    checkOutDate,
+    notes,
+    specialRequests,
+    hotelId,
+    createdBy
+  } = await request.json() as any;
   
-    console.log('📋 Multi-room reservation request:', {
-      primaryGuest: primaryGuest?.name,
-      roomAssignments: roomAssignments?.length,
-      checkInDate,
-      checkOutDate,
-      hotelId
-    });
+    // console.log('📋 Multi-room reservation request:', {
+    //   primaryGuest: primaryGuest?.name,
+    //   roomAssignments: roomAssignments?.length,
+    //   checkInDate,
+    //   checkOutDate,
+    //   hotelId
+    // });
   
     // STEP 1: Handle guests - Create guests with correct roomId per assignment
     const guestIds: string[] = [];
@@ -722,7 +722,7 @@ export const reservationEndpointsHandlers = [
         guestIds.push(assignment.guests[i]._id);
       }
     }
-    console.log('📝 Guest IDs collected:', guestIds);
+    // console.log('📝 Guest IDs collected:', guestIds);
   
     // 3. Create reservation objects for each room assignment
     const createdReservations = [];
@@ -795,19 +795,19 @@ export const reservationEndpointsHandlers = [
       
       // 🎯 CRITICAL FIX: Recalculate room status after reservation creation
       if (room) {
-        console.log(`🔄 BEFORE: Room ${room.number} status:`, room.status, 'assignedGuests:', room.assignedGuests);
+        // console.log(`🔄 BEFORE: Room ${room.number} status:`, room.status, 'assignedGuests:', room.assignedGuests);
         recalculateRoomStatus(room, 'system', 'Triggered by reservation creation');
         // Ensure the updated room is written back to mockRooms
         const idx = mockRooms.findIndex(r => r._id === room._id);
         if (idx !== -1) {
           mockRooms[idx] = { ...room };
         }
-        console.log(`🔄 AFTER: Room ${room.number} status:`, room.status, 'assignedGuests:', room.assignedGuests);
-        const updatedRoomInArray = mockRooms.find(r => r._id === room._id);
-        console.log(`📋 Room ${room.number} in mockRooms array:`, updatedRoomInArray?.status, 'assignedGuests:', updatedRoomInArray?.assignedGuests);
-      } else {
-        console.log(`❌ Room not found for roomId: ${roomId}`);
-      }
+        // console.log(`🔄 AFTER: Room ${room.number} status:`, room.status, 'assignedGuests:', room.assignedGuests);
+        // console.log(`📋 Room ${room.number} in mockRooms array:`, updatedRoomInArray?.status, 'assignedGuests:', updatedRoomInArray?.assignedGuests);
+      } 
+      // else {
+        // console.log(`❌ Room not found for roomId: ${roomId}`);
+      // }
       
       createdReservations.push(reservation);
     }
@@ -818,11 +818,11 @@ export const reservationEndpointsHandlers = [
       room.assignedGuests = guestsForRoom.map(g => g._id);
       // Recalculate room status again to ensure it's correct
       recalculateRoomStatus(room, 'system', 'Post-reservation guest assignment sync');
-      console.log(`🔁 Post-sync: Room ${room.number} assignedGuests:`, room.assignedGuests, 'status:', room.status);
+      // console.log(`🔁 Post-sync: Room ${room.number} assignedGuests:`, room.assignedGuests, 'status:', room.status);
     }
     // DEBUG: Print state of mockRooms and mockGuests after reservation creation
-    console.log('🟣 DEBUG: mockRooms after reservation:', mockRooms.map(r => ({ number: r.number, assignedGuests: r.assignedGuests, status: r.status })));
-    console.log('🟣 DEBUG: mockGuests after reservation:', mockGuests.map(g => ({ id: g._id, name: g.name, roomId: g.roomId, hotelId: g.hotelId })));
+    // console.log('🟣 DEBUG: mockRooms after reservation:', mockRooms.map(r => ({ number: r.number, assignedGuests: r.assignedGuests, status: r.status })));
+    // console.log('🟣 DEBUG: mockGuests after reservation:', mockGuests.map(g => ({ id: g._id, name: g.name, roomId: g.roomId, hotelId: g.hotelId })));
     // Return the created reservations
     return HttpResponse.json({
       message: 'Reservations created successfully',
@@ -832,7 +832,7 @@ export const reservationEndpointsHandlers = [
 
   // Update reservation (business actions)
   http.patch('/api/reservations/:id', async ({ params, request }) => {
-    console.log('Debug Reservations /api/reservations/:id PATCH');
+    // console.log('Debug Reservations /api/reservations/:id PATCH');
     const reservationId = params.id as string;
     const reservation = mockReservations.find(r => r._id === reservationId);
     
@@ -904,13 +904,13 @@ export const reservationEndpointsHandlers = [
       });
     }
     
-    console.log('✅ Updated reservation:', reservation._id, 'new status:', reservation.reservationStatus);
+    // console.log('✅ Updated reservation:', reservation._id, 'new status:', reservation.reservationStatus);
     return HttpResponse.json(reservation);
   }),
 
   // Delete reservation
   http.delete('/api/reservations/:id', ({ params, request }) => {
-    console.log('Debug Reservations /api/reservations/:id DELETE');
+    // console.log('Debug Reservations /api/reservations/:id DELETE');
     const reservationId = params.id as string;
     const reservationIndex = mockReservations.findIndex(r => r._id === reservationId);
     
@@ -959,7 +959,7 @@ export const reservationEndpointsHandlers = [
 
   // Get reservation history
   http.get('/api/reservation-history', ({ request }) => {
-    console.log('Debug Reservation History /api/reservation-history');
+    // console.log('Debug Reservation History /api/reservation-history');
     const url = new URL(request.url);
     const hotelId = url.searchParams.get('hotelId');
     
@@ -989,7 +989,7 @@ export const reservationEndpointsHandlers = [
       };
     });
     
-    console.log(`📋 Returning ${enhancedHistory.length} history entries for hotel ${hotelId}`);
+    // console.log(`📋 Returning ${enhancedHistory.length} history entries for hotel ${hotelId}`);
     return HttpResponse.json(enhancedHistory);
   })
 ]; 

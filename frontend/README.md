@@ -121,6 +121,29 @@ The built files will be in the `dist` directory.
 
 MIT License - see LICENSE file for details
 
+## Recent Features
+
+### Advanced Reservation Calendar
+
+The Reservations page now includes a professional calendar view with:
+
+- **Month/Week Toggle**: Switch between monthly overview and detailed weekly view
+- **Proper Calendar Layout**: Traditional Monday-Sunday week structure
+- **Dynamic Room Legend**: Shows only rooms with reservations in current view
+- **Accessibility-Compliant Colors**: WCAG compliant color system with smart text contrast
+- **Visual Indicators**: Dotted borders for check-in (green) and check-out (orange) days
+- **Enhanced Tooltips**: Detailed reservation information on hover
+- **Click-to-Details**: Comprehensive reservation dialog
+- **Mobile Responsive**: Works perfectly on all device sizes
+- **Scalable Design**: Adapts to any hotel size (5 rooms to 50+ rooms)
+
+### Technical Implementation
+
+- **Smart Color System**: Uses luminance calculation to determine optimal text color
+- **Memoized Performance**: Efficient calculations with proper dependency management
+- **Material-UI Integration**: Consistent design system throughout
+- **TypeScript Safety**: Full type checking and interfaces
+
 ## Troubleshooting
 
 ### Reservation Notes Not Appearing

@@ -1,6 +1,5 @@
 import { http, HttpResponse } from 'msw';
 import { mockRooms, mockRoomTypes } from '../../data/rooms';
-import { CurrentHotelService } from '../../../services/currentHotel'; // 👈 Import the service
 import { mockHotels } from '../../data/hotels';
 import { Room, RoomStatus } from '../../../types/room';
 
@@ -8,7 +7,7 @@ export const dashboardEndpointsHandlers = [
     // Dashboard stats (dynamic per current config)
     http.get('/api/hotel/:id/dashboard-data', ({ params }) => {
         const hotelId = params.id as string;
-        console.log('Debug Dashboard 1');
+        // console.log('Debug Dashboard 1');
         // Find hotel
         const hotel = mockHotels.find(h => h._id === hotelId);
         if (!hotel) {
@@ -17,7 +16,7 @@ export const dashboardEndpointsHandlers = [
     
         // Filter rooms for this specific hotel - FIXED: Use hotelId directly
         const hotelRooms: Room[] = mockRooms.filter((r: Room) => r.hotelId === hotelId);
-        console.log('hotelRooms', hotelRooms);
+        // console.log('hotelRooms', hotelRooms);
         // Generate stats using filtered rooms
         const totalRooms = hotelRooms.length;
         const availableRooms = hotelRooms.filter((r: Room) => r.status as RoomStatus === 'available').length;
@@ -33,18 +32,18 @@ export const dashboardEndpointsHandlers = [
           }
         });
     
-        console.log('📊 Dashboard Stats for Hotel:', hotel.name, {
-          totalRooms,
-          availableRooms,
-          occupiedRooms,
-          maintenanceRooms,
-          cleaningRooms,
-          reservedRooms,
-          occupancyRate: totalRooms > 0 ? occupiedRooms / totalRooms : 0,
-          byType,
-          hotelRoomsCount: hotelRooms.length,
-          hotelId
-        });
+        // console.log('📊 Dashboard Stats for Hotel:', hotel.name, {
+        //   totalRooms,
+        //   availableRooms,
+        //   occupiedRooms,
+        //   maintenanceRooms,
+        //   cleaningRooms,
+        //   reservedRooms,
+        //   occupancyRate: totalRooms > 0 ? occupiedRooms / totalRooms : 0,
+        //   byType,
+        //   hotelRoomsCount: hotelRooms.length,
+        //   hotelId
+        // });
     
         return HttpResponse.json({
           hotel,

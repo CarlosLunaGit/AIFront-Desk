@@ -2,9 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRooms, getRoom, getRoomStats, updateRoom, createRoomAction, updateRoomAction, aiAssignRoom } from '../api/room';
 import type { Room, RoomAction, RoomFilter } from '../../types/room';
 
-export const useRooms = (filter?: RoomFilter & { hotelId?: string }) => {
+export const useRooms = (filter?: RoomFilter & { hotelId?: string; date?: string }) => {
   return useQuery({
-    queryKey: ['rooms', filter?.hotelId || ''],
+    queryKey: ['rooms', filter?.hotelId || '', filter?.date || ''],
     queryFn: () => getRooms(filter),
   });
 };

@@ -29,6 +29,7 @@ import {
   Visibility as VisibilityIcon,
   DeleteForever as DeleteForeverIcon,
   InfoOutlined as InfoOutlinedIcon,
+  CalendarToday as CalendarTodayIcon,
 } from '@mui/icons-material';
 import RoomGrid from './RoomGrid';
 import { useQueryClient } from '@tanstack/react-query';
@@ -48,6 +49,12 @@ const RoomManagement: React.FC = () => {
   const [filterType, setFilterType] = useState<string>('');
   const [filterFloor, setFilterFloor] = useState<string>('');
   const [search, setSearch] = useState('');
+  
+  // NEW: Date selector state
+  const [selectedDate, setSelectedDate] = useState<string>(
+    new Date().toISOString().split('T')[0] // Default to today (YYYY-MM-DD format)
+  );
+
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [bulkFloor, setBulkFloor] = useState('');
   const [bulkType, setBulkType] = useState('');
@@ -76,13 +83,41 @@ const RoomManagement: React.FC = () => {
   const updateRoom = useUpdateRoom();
   const queryClient = useQueryClient();
 
-  // Get rooms data
+  // Get rooms data with date parameter
   const {
     data: rooms = [],
     isLoading: roomsLoading,
-  } = useRooms({ hotelId: currentHotel?._id });
+  } = useRooms({ 
+    hotelId: currentHotel?._id,
+    date: selectedDate // Pass selected date to get room statuses for that date
+  });
 
   const isLoading = hotelLoading || roomsLoading;
+
+  // Helper function to format date for display
+  const formatDateForDisplay = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+
+    if (dateStr === today.toISOString().split('T')[0]) {
+      return 'Today';
+    } else if (dateStr === tomorrow.toISOString().split('T')[0]) {
+      return 'Tomorrow';
+    } else if (dateStr === yesterday.toISOString().split('T')[0]) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        month: 'short', 
+        day: 'numeric',
+        year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
+      });
+    }
+  };
 
   // Memoize floors and features to avoid re-rendering issues
   const floors = useMemo(() => {
@@ -428,9 +463,42 @@ const RoomManagement: React.FC = () => {
           </Tooltip>
         </Typography>
       </Paper>
+
       <Paper sx={{ p: 2, mb: 2 }}>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} md={8} lg={9}>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 500 }}>
+              Room Status View
+            </Typography>
+            
+            {/* NEW: Date Selector */}
+            <Box display="flex" gap={2} flexWrap="wrap" alignItems="center" mb={2}>
+              <FormControl size="small" sx={{ minWidth: 200 }}>
+                <TextField
+                  label="View Date"
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  InputLabelProps={{
+                    shrink: true,
+                  }}
+                  InputProps={{
+                    startAdornment: <CalendarTodayIcon sx={{ mr: 1, color: 'action.active' }} />,
+                  }}
+                  helperText={`Showing room statuses for ${formatDateForDisplay(selectedDate)}`}
+                />
+              </FormControl>
+              
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+                disabled={selectedDate === new Date().toISOString().split('T')[0]}
+              >
+                Today
+              </Button>
+            </Box>
+
             <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 500 }}>
               Filters
             </Typography>

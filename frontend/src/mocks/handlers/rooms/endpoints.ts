@@ -1,9 +1,9 @@
 import { mockGuests } from "../../data/guests";
-import { mockRooms, mockRoomTypes } from "../../data/rooms";
+import { mockRooms } from "../../data/rooms";
 import { http, HttpResponse } from "msw";
 import { CurrentHotelService } from '../../../services/currentHotel';
-import { RoomAction, RoomStatus } from "../../../types/room";
-import { recalculateRoomStatus } from "../../../utils/roomStatus";
+import { RoomAction } from "../../../types/room";
+import { recalculateRoomStatus, calculateRoomStatusForDate } from "../../../utils/roomStatus";
 
 
 function ensureRoomDefaults(room: any) {
@@ -32,6 +32,7 @@ export const roomsEndpointsHandlers = [
         console.log('Debug Rooms 1');
         const url = new URL(request.url);
         const hotelId = url.searchParams.get('hotelId');
+        const date = url.searchParams.get('date'); // NEW: Support date parameter
         
         // Filter rooms by hotelId if provided, otherwise use current config mapping
         let filteredRooms;
@@ -44,15 +45,43 @@ export const roomsEndpointsHandlers = [
           filteredRooms = mockRooms.filter(r => r.hotelId === currentHotelId);
         }
         
-        // For each room, recalculate status and keepOpen, then log keepOpen
+        // For each room, calculate status based on date (if provided) or current status
         const rooms = filteredRooms.map(room => {
-          recalculateRoomStatus(room); // Ensure status and keepOpen are up-to-date
-          const guests = mockGuests.filter(g => g.roomId === room._id && g.hotelId === room.hotelId);
-          const keepOpen = guests.length > 0 && guests.every(g => g.keepOpen === true);
-          const roomWithKeepOpen = { ...room, keepOpen };
-          // console.log('DEBUG /api/rooms:', room._id, 'keepOpen:', keepOpen, 'status:', room.status);
-          return roomWithKeepOpen;
+          if (date) {
+            // Calculate status for specific date
+            const targetDate = new Date(date);
+            const dateBasedStatus = calculateRoomStatusForDate(room, targetDate);
+            
+            console.log(`📅 Room ${room.number} status for ${date}:`, {
+              originalStatus: room.status,
+              dateBasedStatus: dateBasedStatus.status,
+              guestsOnDate: dateBasedStatus.guestsOnDate.length,
+              reservationsOnDate: dateBasedStatus.reservationsOnDate.length
+            });
+            
+            return {
+              ...room,
+              status: dateBasedStatus.status,
+              keepOpen: dateBasedStatus.keepOpen,
+              assignedGuests: dateBasedStatus.guestsOnDate.map(g => g._id),
+              dateBasedCalculation: {
+                targetDate: date,
+                guestsOnDate: dateBasedStatus.guestsOnDate,
+                reservationsOnDate: dateBasedStatus.reservationsOnDate
+              }
+            };
+          } else {
+            // Use current room status calculation
+            recalculateRoomStatus(room); // Ensure status and keepOpen are up-to-date
+            const guests = mockGuests.filter(g => g.roomId === room._id && g.hotelId === room.hotelId);
+            const keepOpen = guests.length > 0 && guests.every(g => g.keepOpen === true);
+            const roomWithKeepOpen = { ...room, keepOpen };
+            // console.log('DEBUG /api/rooms:', room._id, 'keepOpen:', keepOpen, 'status:', room.status);
+            return roomWithKeepOpen;
+          }
         });
+        
+        console.log(`✅ Returning ${rooms.length} rooms${date ? ` for date ${date}` : ''}`);
         return HttpResponse.json(rooms);
       }),
 

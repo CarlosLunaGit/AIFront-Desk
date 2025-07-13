@@ -9,30 +9,30 @@ export const guestsEndpointsHandlers = [
     // Guest endpoints (matching frontend API calls)
     // GET /api/guests : Used when fetching all guests
     http.get('/api/guests', ({ request }) => {
-        console.log('Debug Guests 1');
+        // console.log('Debug Guests 1');
         const url = new URL(request.url);
         const hotelId = url.searchParams.get('hotelId');
         
-        console.log('🔍 GET /api/guests called with hotelId:', hotelId);
-        console.log('📊 Total mockGuests:', mockGuests.length);
+        // console.log('🔍 GET /api/guests called with hotelId:', hotelId);
+        // console.log('📊 Total mockGuests:', mockGuests.length);
         
         if (hotelId) {
           const filteredGuests = mockGuests.filter(g => g.hotelId === hotelId);
-          console.log('✅ Filtered guests for hotelId', hotelId + ':', filteredGuests.length, 'guests');
+          // console.log('✅ Filtered guests for hotelId', hotelId + ':', filteredGuests.length, 'guests');
           return HttpResponse.json(filteredGuests);
         } else {
           // Legacy fallback
           // TODO: Remove this fallback and use the hotelId from the url perhaps adding a fallback for when the parameter is not present
           const configHotelId = CurrentHotelService.getCurrentHotelId();
           const filteredGuests = mockGuests.filter(g => g.hotelId === configHotelId);
-          console.log('✅ Fallback guests for configId', configHotelId + ':', filteredGuests.length, 'guests');
+          // console.log('✅ Fallback guests for configId', configHotelId + ':', filteredGuests.length, 'guests');
           return HttpResponse.json(filteredGuests);
         }
       }),
 
       // GET /api/guests/:id : Used when fetching a single guest by id (TODO:Not used in the frontend yet)
       http.get('/api/guests/:id', ({ params }) => {
-        console.log('Debug Guests 2');
+        // console.log('Debug Guests 2');
         const guest = mockGuests.find(g => g._id === params.id);
         if (!guest) {
           return new HttpResponse(null, { status: 404 });
@@ -42,7 +42,7 @@ export const guestsEndpointsHandlers = [
 
       // POST /api/guests : Used when creating a new guest
       http.post('/api/guests', async ({ request }) => {
-        console.log('Debug Guests 3');
+        // console.log('Debug Guests 3');
         const guestData = await request.json() as any;
         const newGuest = {
           _id: `guest-${Date.now()}`,
@@ -67,7 +67,7 @@ export const guestsEndpointsHandlers = [
 
       // PATCH /api/guests/:id : Used when updating/editing an existing guest
       http.patch('/api/guests/:id', async ({ params, request }) => {
-        console.log('Debug Guests 4');
+        // console.log('Debug Guests 4');
         const guestId = params.id as string;
         const updates = await request.json() as any;
         
@@ -86,7 +86,7 @@ export const guestsEndpointsHandlers = [
         };
     
         const guest = mockGuests[guestIndex];
-        console.log('🔄 Guest updated:', guest.name, 'status:', guest.status, 'keepOpen:', guest.keepOpen);
+        // console.log('🔄 Guest updated:', guest.name, 'status:', guest.status, 'keepOpen:', guest.keepOpen);
     
         // Update room status based on guest status change
         const room = mockRooms.find(r => r._id === guest.roomId && r.hotelId === guest.hotelId);
@@ -112,7 +112,7 @@ export const guestsEndpointsHandlers = [
 
       // DELETE /api/guests/:id : Used when deleting an existing guest
       http.delete('/api/guests/:id', ({ params }) => {
-        console.log('Debug Guests 5');
+        // console.log('Debug Guests 5');
         const guestId = params.id as string;
         const guestIndex = mockGuests.findIndex(g => g._id === guestId);
         

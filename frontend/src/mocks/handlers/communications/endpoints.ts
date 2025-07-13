@@ -5,8 +5,8 @@ import { http, HttpResponse } from 'msw';
 export const communicationsEndpointsHandlers = [
 
     http.get('/api/communications/stats', () => {
-        console.log('Debug 2');
-        console.log('🔥 STATS ENDPOINT CALLED - returning stats object');
+        // console.log('Debug 2');
+        // console.log('🔥 STATS ENDPOINT CALLED - returning stats object');
         const statsData = {
             channels: [
             { channel: 'whatsapp', active: 2, waiting: 1, resolved: 1, total: 4 },
@@ -20,13 +20,13 @@ export const communicationsEndpointsHandlers = [
             avgResponseTime: 45,
             __debug: 'THIS_IS_STATS_DATA'
         };
-        console.log('📊 Stats data being returned:', statsData);
+        // console.log('📊 Stats data being returned:', statsData);
         return HttpResponse.json(statsData);
     }),
 
     http.get('/api/communications/conversations', () => {
-        console.log('Debug 3');
-        console.log('🔥 CONVERSATIONS ENDPOINT CALLED - returning conversations array');
+        // console.log('Debug 3');
+        // console.log('🔥 CONVERSATIONS ENDPOINT CALLED - returning conversations array');
         return HttpResponse.json([
         {
             id: 'conv-1',
@@ -170,8 +170,8 @@ export const communicationsEndpointsHandlers = [
     }),
 
     http.get('/api/communications/conversations/:id', ({ params }) => {
-        console.log('Debug 4');
-        console.log('🔥 INDIVIDUAL CONVERSATION ENDPOINT CALLED with ID:', params.id);
+        // console.log('Debug 4');
+        // console.log('🔥 INDIVIDUAL CONVERSATION ENDPOINT CALLED with ID:', params.id);
         // Mock conversations data - should match the list above
         const mockConversations = [
         {
@@ -316,16 +316,16 @@ export const communicationsEndpointsHandlers = [
 
         const conversation = mockConversations.find(conv => conv.id === params.id);
         if (!conversation) {
-        console.log('🚫 Conversation not found for ID:', params.id);
+        // console.log('🚫 Conversation not found for ID:', params.id);
         return new HttpResponse(null, { status: 404 });
         }
         
-        console.log('✅ Returning conversation:', conversation.id);
+        // console.log('✅ Returning conversation:', conversation.id);
         return HttpResponse.json(conversation);
     }),
 
     http.post('/api/communications/conversations/:id/messages', async ({ request, params }) => {
-        console.log('Debug 5');
+        // console.log('Debug 5');
         const body = await request.json() as any;
         return HttpResponse.json({
         id: `msg-${Date.now()}`,
@@ -339,7 +339,7 @@ export const communicationsEndpointsHandlers = [
     }),
 
     http.post('/api/communications/conversations/:id/takeover', ({ params }) => {
-        console.log('Debug 6');
+        // console.log('Debug 6');
         return HttpResponse.json({
         success: true,
         conversation: {
