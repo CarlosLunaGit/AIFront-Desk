@@ -137,12 +137,26 @@ The Reservations page now includes a professional calendar view with:
 - **Mobile Responsive**: Works perfectly on all device sizes
 - **Scalable Design**: Adapts to any hotel size (5 rooms to 50+ rooms)
 
+### Intelligent Calendar Search System
+
+Advanced search functionality that enhances the calendar experience:
+
+- **Multi-Field Search**: Search by guest names, room numbers, reservation IDs, confirmation numbers, notes, and special requests
+- **Intelligent Navigation**: Automatically navigates to matching reservations across different months and years
+- **Search Result Navigation**: Browse between multiple results with "Result 1 of 3" navigation buttons
+- **Dynamic Filtering**: Calendar shows only matching reservations when searching
+- **View Preservation**: Maintains user's preferred month/week view during search operations
+- **Visual Highlighting**: Search results highlighted with special borders and glow effects
+- **Real-time Results**: Instant search with live result counts and navigation
+
 ### Technical Implementation
 
 - **Smart Color System**: Uses luminance calculation to determine optimal text color
 - **Memoized Performance**: Efficient calculations with proper dependency management
 - **Material-UI Integration**: Consistent design system throughout
 - **TypeScript Safety**: Full type checking and interfaces
+- **Search State Management**: Sophisticated search index tracking for multi-result navigation
+- **Date Navigation Logic**: Handles year and month transitions automatically
 
 ## Troubleshooting
 

@@ -8,6 +8,61 @@ This guide ensures MSW (Mock Service Worker) handlers stay synchronized with rea
 **Last Updated:** December 30, 2024  
 **Status:** 🟢 **Fully Stable & Ready for Backend Integration**
 
+### ✅ **Latest Updates (December 30, 2024 - Advanced Calendar Search System)**
+
+#### **🔍 MAJOR ENHANCEMENT: Intelligent Calendar Search Functionality**
+- **✅ IMPLEMENTED**: Multi-field search across guest names, room numbers, reservation IDs, confirmation numbers, notes, and special requests
+- **✅ ENHANCED**: Automatic navigation to matching reservations across different months and years
+- **✅ IMPROVED**: Search result navigation with "Result 1 of 3" browsing capability
+- **✅ FIXED**: Calendar filtering to show only matching reservations during search
+- **✅ OPTIMIZED**: View preservation maintaining user's month/week preference during search operations
+- **✅ ADDED**: Visual highlighting with special borders and glow effects for search results
+
+#### **🎯 Key Calendar Search Features**
+1. **Intelligent Multi-Field Search**: Searches across all reservation data fields including guest information
+2. **Cross-Year Navigation**: Automatically navigates to reservations in different years (e.g., 2025 bookings)
+3. **Search Result Management**: Browse between multiple search results with navigation buttons
+4. **Dynamic Calendar Filtering**: Shows only matching reservations when searching
+5. **Visual Search Indicators**: Highlighted search results with enhanced styling
+6. **Search State Persistence**: Maintains search context during navigation
+
+#### **🧪 Search Test Scenarios Now Supported**
+- ✅ **Guest Name Search**: "Ian" finds Ian Thompson's reservation and navigates to August 2024
+- ✅ **Room Number Search**: "101" finds multiple reservations for room 101 across different dates
+- ✅ **Cross-Year Search**: "Carlos Luna" finds 2025 reservation and navigates to correct year
+- ✅ **Multi-Result Navigation**: Browse between search results with prev/next buttons
+- ✅ **Partial Match Search**: "Liam" matches "Liam (Room 101)" in guest names
+- ✅ **Confirmation Number Search**: Search by reservation confirmation numbers
+
+#### **🔧 Technical Implementation**
+```typescript
+// Enhanced search filtering with multi-field support
+const filteredReservations = useMemo(() => {
+  if (!searchTerm) return reservations;
+  
+  return reservations.filter(res => {
+    // Search across multiple fields
+    return searchByReservationId(res) ||
+           searchByConfirmationNumber(res) ||
+           searchByGuestNames(res) ||
+           searchByRoomNumber(res) ||
+           searchByNotes(res) ||
+           searchBySpecialRequests(res);
+  });
+}, [searchTerm, reservations, guests, rooms]);
+
+// Intelligent navigation with year/month handling
+const navigateToSearchResult = (index: number) => {
+  const targetReservation = searchResults[index];
+  const checkInDate = dayjs(targetReservation.checkInDate);
+  
+  // Navigate across years if necessary
+  if (!checkInDate.isSame(currentDate, viewMode === 'week' ? 'week' : 'month')) {
+    setCurrentDate(checkInDate);
+  }
+};
+```
+
 ### ✅ **Latest Updates (December 30, 2024 - Sophisticated Availability Engine)**
 
 #### **🚀 MAJOR ENHANCEMENT: Sophisticated Room Availability System**

@@ -46,13 +46,14 @@ const ReservationsPage: React.FC = () => {
   const { data: rooms = [], isLoading: loadingRooms } = useRooms();
 
   // Only show reservations for rooms in the current hotel
-  const roomIdsForHotel = rooms.filter((r: any) => r.hotelId === hotelId).map((r: any) => r.id);
+  const roomIdsForHotel = rooms.filter((r: any) => r.hotelId === hotelId).map((r: any) => r._id || r.id);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('dates');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = useState(0); // 0 = Active, 1 = Inactive
   const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table'); // View toggle state
+  const [calendarSearchResults, setCalendarSearchResults] = useState<{ hasResults: boolean; resultCount: number }>({ hasResults: false, resultCount: 0 });
 
   // Business action states (replacing delete dialog)
   const [actionMenuAnchor, setActionMenuAnchor] = useState<null | HTMLElement>(null);
@@ -65,20 +66,21 @@ const ReservationsPage: React.FC = () => {
   }>({ open: false, action: null, reservation: null });
   const [actionReason, setActionReason] = useState('');
 
-  // Filter reservations by hotel and categorize by active/inactive status
-  const hotelReservations = reservations.filter((res: any) => roomIdsForHotel.includes(res.rooms));
-  
-  // Debug logging to understand why reservations aren't showing
-  console.log('🔍 Reservations Debug:', {
-    totalReservations: reservations.length,
-    roomIdsForHotel,
-    hotelReservations: hotelReservations.length,
-    sampleReservation: reservations[0],
-    sampleRoom: rooms[0]
-  });
+  // Handle search results from calendar
+  const handleCalendarSearchResult = (hasResults: boolean, resultCount: number) => {
+    setCalendarSearchResults({ hasResults, resultCount });
+  };
 
+  // Filter reservations by hotel and categorize by active/inactive status
+  const hotelReservations = reservations.filter((res: any) => {
+    // Check both roomId (new format) and rooms (legacy format)
+    return res.hotelId === hotelId || 
+           roomIdsForHotel.includes(res.roomId) || 
+           roomIdsForHotel.includes(res.rooms);
+  });
+  
   const categorizedReservations = hotelReservations.map((res: any) => {
-    const room = rooms.find((r: any) => r.id === res.rooms);
+    const room = rooms.find((r: any) => r._id === res.roomId || r.id === res.rooms || r._id === res.rooms);
     const resGuests = guests.filter((g: any) => res.guestIds?.includes(g._id));
     
     if (room && resGuests.length > 0) {
@@ -99,8 +101,6 @@ const ReservationsPage: React.FC = () => {
 
   // Filter based on business status instead of just guest/room status
   const activeReservations = categorizedReservations.filter((res: any) => {
-    // Debug logging to understand the filtering issue
-    console.log('🔍 Filtering reservation:', res._id, 'reservationStatus:', res.reservationStatus, 'status:', res.status);
     
     // A reservation is active if:
     // 1. It has no reservationStatus (default active)
@@ -124,7 +124,6 @@ const ReservationsPage: React.FC = () => {
       isActive = res.status === 'booked' || res.status === 'active';
     }
     
-    console.log('📊 Reservation', res._id, 'is active:', isActive);
     return isActive;
   });
   
@@ -140,7 +139,6 @@ const ReservationsPage: React.FC = () => {
       isInactive = res.reservationStatus.isActive === false;
     }
     
-    console.log('📊 Reservation', res._id, 'is inactive:', isInactive);
     return isInactive;
   });
 
@@ -149,14 +147,57 @@ const ReservationsPage: React.FC = () => {
   // Apply search filter to current reservations
   const filteredReservations = currentReservations.filter((res: any) => {
       if (!search) return true;
-      return (
-        res._id.toLowerCase().includes(search.toLowerCase()) ||
-        (res.guestIds && res.guestIds.some((gid: string) => {
-        const g = guests.find((gg: any) => gg._id === gid);
-          return g && g.name.toLowerCase().includes(search.toLowerCase());
-        })) ||
-        res.rooms.toLowerCase().includes(search.toLowerCase())
-      );
+      
+      const searchLower = search.toLowerCase();
+      
+      // Search by reservation ID
+      if (res._id && res._id.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      
+      // Search by confirmation number
+      if (res.confirmationNumber && res.confirmationNumber.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      
+      // Search by guest names
+      if (res.guestIds && Array.isArray(res.guestIds)) {
+        const hasMatchingGuest = res.guestIds.some((gid: string) => {
+          const guest = guests.find((g: any) => g._id === gid);
+          return guest && guest.name && guest.name.toLowerCase().includes(searchLower);
+        });
+        if (hasMatchingGuest) return true;
+      }
+      
+      // Search by room number (using roomId to find the room)
+      if (res.roomId) {
+        const room = rooms.find((r: any) => r._id === res.roomId);
+        if (room && room.number && room.number.toString().toLowerCase().includes(searchLower)) {
+          return true;
+        }
+      }
+      
+      // Search by legacy rooms field (if it exists)
+      if (res.rooms && res.rooms.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      
+      // Search by notes
+      if (res.notes && res.notes.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      
+      // Search by special requests
+      if (res.specialRequests) {
+        const requests = Array.isArray(res.specialRequests) 
+          ? res.specialRequests.join(' ') 
+          : res.specialRequests;
+        if (requests.toLowerCase().includes(searchLower)) {
+          return true;
+        }
+      }
+      
+      return false;
     });
 
   // Only show available rooms for new reservations
@@ -211,8 +252,26 @@ const ReservationsPage: React.FC = () => {
   };
 
   const handleEdit = (res: any) => {
-    const [start, end] = res.dates.split(' to ').map((d: string) => dayjs(d));
-    setForm({ guestIds: res.guestIds, rooms: res.rooms, notes: res.notes || '', price: String(res.price || ''), start, end });
+    // Handle both new format (checkInDate/checkOutDate) and legacy format (dates)
+    let start, end;
+    if (res.checkInDate && res.checkOutDate) {
+      start = dayjs(res.checkInDate);
+      end = dayjs(res.checkOutDate);
+    } else if (res.dates) {
+      [start, end] = res.dates.split(' to ').map((d: string) => dayjs(d));
+    } else {
+      start = dayjs();
+      end = dayjs().add(1, 'day');
+    }
+    
+    setForm({ 
+      guestIds: res.guestIds || [], 
+      rooms: res.roomId || res.rooms || '', 
+      notes: res.notes || '', 
+      price: String(res.totalAmount || res.price || ''), 
+      start, 
+      end 
+    });
     setEditId(res._id);
     setOpen(true);
   };
@@ -220,26 +279,34 @@ const ReservationsPage: React.FC = () => {
   // New business action handlers
   const handleBusinessActionClick = (event: React.MouseEvent<HTMLElement>, reservation: any) => {
     setActionMenuAnchor(event.currentTarget);
-    setSelectedReservationId(reservation.id);
+    setSelectedReservationId(reservation._id || reservation.id);
   };
 
-  const handleBusinessAction = (action: string) => {
-    const reservation = filteredReservations.find((r: any) => r.id === selectedReservationId);
-    if (!reservation) return;
+  const handleBusinessAction = async (reservationId: string, action: string, reason?: string) => {
+    try {
+      const response = await fetch(`/api/reservations/${reservationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reservationStatus: action,
+          reason: reason || actionReason,
+          performedBy: 'hotel-staff',
+          timestamp: new Date().toISOString()
+        })
+      });
 
-    // Calculate cancellation fee for cancel action
-    let cancellationFee = 0;
-    if (action === 'cancel') {
-      cancellationFee = calculateCancellationFee(reservation);
+      if (response.ok) {
+        // Refresh the reservations data
+        // queryClient.invalidateQueries({ queryKey: ['reservations'] }); // This line was removed as per the edit hint
+        
+        // Close the action menu
+        setActionMenuAnchor(null);
+        setSelectedReservationId(null);
+        setActionReason('');
+      }
+    } catch (error) {
+      console.error('Error performing business action:', error);
     }
-
-    setBusinessActionDialog({
-      open: true,
-      action,
-      reservation,
-      cancellationFee
-    });
-    setActionMenuAnchor(null);
   };
 
   const handleConfirmBusinessAction = async () => {
@@ -291,7 +358,7 @@ const ReservationsPage: React.FC = () => {
 
   // Administrative delete handler (for removing from active management)
   const handleRequestDelete = (id: string) => {
-    const reservation = filteredReservations.find((r: any) => r.id === id);
+    const reservation = filteredReservations.find((r: any) => r._id === id || r.id === id);
     if (reservation) {
       setBusinessActionDialog({
         open: true,
@@ -311,8 +378,9 @@ const ReservationsPage: React.FC = () => {
     let aVal = a[sortBy];
     let bVal = b[sortBy];
     if (sortBy === 'dates') {
-      aVal = a.dates?.split(' to ')[0] || '';
-      bVal = b.dates?.split(' to ')[0] || '';
+      // Use checkInDate for sorting, fallback to legacy dates field
+      aVal = a.checkInDate || a.dates?.split(' to ')[0] || '';
+      bVal = b.checkInDate || b.dates?.split(' to ')[0] || '';
     }
     if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
     if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
@@ -321,34 +389,29 @@ const ReservationsPage: React.FC = () => {
 
   // Check business rules for actions
   const getAvailableActions = (reservation: any) => {
-    console.log('🎯 getAvailableActions called for reservation:', reservation.id, 'status:', reservation.status, 'reservationStatus:', reservation.reservationStatus);
+    const resId = reservation._id || reservation.id;
     const actions = [];
     
     // For active reservations (most common case)
     if (reservation.status === 'booked' || reservation.status === 'active' || !reservation.status || reservation.reservationStatus === 'active') {
-      console.log('✅ Reservation qualifies for active actions');
       
       // Cancel option - always available for active reservations
       actions.push({ action: 'cancel', label: 'Cancel Reservation', icon: <CancelIcon /> });
 
       // No-show option - available for future reservations
-      const reservationStart = new Date(reservation.dates?.split(' to ')[0] || '');
+      const reservationStart = new Date(reservation.checkInDate || reservation.dates?.split(' to ')[0] || '');
       const now = new Date();
-      console.log('📅 Reservation start:', reservationStart, 'Now:', now, 'Is past?:', reservationStart <= now);
       if (reservationStart <= now) {
         actions.push({ action: 'no-show', label: 'Mark No-Show', icon: <PersonOffIcon /> });
       }
 
       // Terminate option - always available for active reservations
       actions.push({ action: 'terminate', label: 'Terminate Early', icon: <StopIcon /> });
-    } else {
-      console.log('❌ Reservation does not qualify for active actions');
     }
 
     // Complete option - for checked-in guests
     const associatedGuests = guests.filter((g: any) => reservation.guestIds?.includes(g._id));
     const hasCheckedInGuests = associatedGuests.some((g: any) => g.status === 'checked-in');
-    console.log('👥 Associated guests:', associatedGuests.length, 'Has checked-in guests:', hasCheckedInGuests);
     if (hasCheckedInGuests) {
       actions.push({ action: 'complete', label: 'Complete Reservation', icon: <EditIcon /> });
     }
@@ -356,7 +419,6 @@ const ReservationsPage: React.FC = () => {
     // Administrative delete option (always available)
     actions.push({ action: 'delete', label: 'Remove from System', icon: <DeleteIcon /> });
 
-    console.log('🎬 Final actions for reservation', reservation.id, ':', actions.map(a => a.label));
     return actions;
   };
 
@@ -404,10 +466,32 @@ const ReservationsPage: React.FC = () => {
           <TextField
             variant="outlined"
             size="small"
-            placeholder="Search reservations..."
+            placeholder={viewMode === 'calendar' ? "Search reservations in calendar..." : "Search reservations..."}
             value={search}
             onChange={e => setSearch(e.target.value)}
-            InputProps={{ startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1 }} /> }}
+            InputProps={{ 
+              startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1 }} />,
+              endAdornment: search && (
+                <Box display="flex" alignItems="center" gap={1}>
+                  {viewMode === 'calendar' && calendarSearchResults.hasResults && (
+                    <Chip
+                      label={`${calendarSearchResults.resultCount} found`}
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                    />
+                  )}
+                  {viewMode === 'table' && filteredReservations.length !== currentReservations.length && (
+                    <Chip
+                      label={`${filteredReservations.length} found`}
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                    />
+                  )}
+                </Box>
+              )
+            }}
             sx={{ width: 300 }}
           />
           <Button
@@ -424,7 +508,7 @@ const ReservationsPage: React.FC = () => {
             startIcon={<EditIcon />}
             disabled={!selectedReservationId}
             onClick={() => {
-              const res = sortedReservations.find((r: any) => r.id === selectedReservationId);
+              const res = sortedReservations.find((r: any) => r._id === selectedReservationId || r.id === selectedReservationId);
               if (res) handleEdit(res);
             }}
           >
@@ -436,7 +520,7 @@ const ReservationsPage: React.FC = () => {
             startIcon={<MoreVertIcon />}
             disabled={!selectedReservationId}
             onClick={(e) => {
-              const res = sortedReservations.find((r: any) => r.id === selectedReservationId);
+              const res = sortedReservations.find((r: any) => r._id === selectedReservationId || r.id === selectedReservationId);
               if (res) handleBusinessActionClick(e, res);
             }}
           >
@@ -463,7 +547,7 @@ const ReservationsPage: React.FC = () => {
                   handleRequestDelete(selectedReservationId!);
                   setActionMenuAnchor(null);
                 } else {
-                  handleBusinessAction(actionItem.action as string);
+                  handleBusinessAction(selectedReservationId!, actionItem.action as string);
                 }
               }}
               sx={{ 
@@ -516,12 +600,6 @@ const ReservationsPage: React.FC = () => {
               const specialRequests = Array.isArray(res.specialRequests) 
                 ? res.specialRequests 
                 : (res.specialRequests ? [res.specialRequests] : []);
-              console.log('🔍 Special Requests Debug:', {
-                reservationId: res._id,
-                specialRequests,
-                isArray: Array.isArray(specialRequests),
-                type: typeof specialRequests
-              });
               const hasMultipleSpecialRequests = specialRequests.length > 1;
               const hasMultipleGuests = moreCount > 0;
               const shouldShowExpandedRow = hasMultipleGuests || hasMultipleSpecialRequests;
@@ -639,6 +717,8 @@ const ReservationsPage: React.FC = () => {
           reservations={hotelReservations}
           rooms={rooms.filter((r: any) => r.hotelId === hotelId)}
           guests={guests}
+          searchTerm={search}
+          onSearchResult={handleCalendarSearchResult}
         />
       )}
 

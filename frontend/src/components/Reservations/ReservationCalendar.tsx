@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Box, Paper, Typography, Tooltip, IconButton, Button, Card, CardContent,
-  Chip, useTheme, alpha, ToggleButtonGroup, ToggleButton, Dialog,
-  DialogTitle, DialogContent, DialogActions, Divider, Stack
+  Chip, useTheme, alpha, ToggleButtonGroup, ToggleButton,
+  Dialog, DialogTitle, DialogContent, DialogActions, Divider, Stack
 } from '@mui/material';
 import {
   ChevronLeft as ChevronLeftIcon,
@@ -12,6 +12,7 @@ import {
   CalendarViewWeek as CalendarViewWeekIcon,
   Login as CheckInIcon,
   Logout as CheckOutIcon,
+  Search as SearchIcon,
   Info as InfoIcon
 } from '@mui/icons-material';
 import dayjs, { Dayjs } from 'dayjs';
@@ -20,6 +21,8 @@ interface ReservationCalendarProps {
   reservations: any[];
   rooms: any[];
   guests: any[];
+  searchTerm?: string;
+  onSearchResult?: (hasResults: boolean, resultCount: number) => void;
 }
 
 // Improved room color palette - darker colors for better contrast with white text
@@ -71,13 +74,136 @@ const getTextColor = (backgroundColor: string): string => {
 const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
   reservations,
   rooms,
-  guests
+  guests,
+  searchTerm,
+  onSearchResult
 }) => {
   const theme = useTheme();
-  const [currentDate, setCurrentDate] = useState<Dayjs>(dayjs());
-  const [viewType, setViewType] = useState<'month' | 'week'>('month');
+  const [currentDate, setCurrentDate] = useState(dayjs());
+  const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [selectedReservation, setSelectedReservation] = useState<any>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  
+  // Search functionality
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
+
+  // Filter reservations based on search term
+  const filteredReservations = useMemo(() => {
+    if (!searchTerm) {
+      setSearchResults([]);
+      return reservations;
+    }
+    
+    const searchLower = searchTerm.toLowerCase();
+    const matchingReservations = reservations.filter((res: any) => {
+      // Search by reservation ID
+      if (res._id && res._id.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      
+      // Search by confirmation number
+      if (res.confirmationNumber && res.confirmationNumber.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      
+      // Search by guest names
+      if (res.guestIds && Array.isArray(res.guestIds)) {
+        const hasMatchingGuest = res.guestIds.some((gid: string) => {
+          const guest = guests.find(g => g._id === gid);
+          if (guest && guest.name) {
+            const guestName = guest.name.toLowerCase();
+            const isMatch = guestName.includes(searchLower);
+            return isMatch;
+          }
+          return false;
+        });
+        if (hasMatchingGuest) return true;
+      }
+      
+      // Search by room number
+      const room = rooms.find(r => r._id === res.roomId || r._id === res.rooms);
+      if (room && room.number && room.number.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      
+      // Search by notes and special requests
+      if (res.notes && res.notes.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      if (res.specialRequests && res.specialRequests.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      
+      return false;
+    });
+    
+    setSearchResults(matchingReservations);
+    onSearchResult && onSearchResult(matchingReservations.length > 0, matchingReservations.length);
+    
+    return matchingReservations;
+  }, [searchTerm, reservations, guests, rooms, onSearchResult]);
+
+  // Reset search index when search term changes
+  useEffect(() => {
+    setCurrentSearchIndex(0);
+  }, [searchTerm]);
+
+  // Navigate to search results
+  useEffect(() => {
+    if (searchTerm && searchResults.length > 0) {
+      // Use the current search index instead of always using the first result
+      const currentResult = searchResults[currentSearchIndex] || searchResults[0];
+      const checkInDate = dayjs(currentResult.checkInDate || currentResult.reservationStart);
+      
+      // More detailed logging for debugging
+      const currentWeekStart = currentDate.startOf('week').add(1, 'day'); // Monday
+      const currentWeekEnd = currentDate.endOf('week').add(1, 'day'); // Sunday
+      const currentMonthStart = currentDate.startOf('month');
+      const currentMonthEnd = currentDate.endOf('month');
+      
+      // Fix: Use proper date comparison that handles year differences
+      const isInCurrentWeek = checkInDate.isSame(currentDate, 'week');
+      const isInCurrentMonth = checkInDate.isSame(currentDate, 'month') && checkInDate.isSame(currentDate, 'year');
+      
+      // Check if navigation is needed based on current view
+      const needsNavigation = viewMode === 'week' ? !isInCurrentWeek : !isInCurrentMonth;
+      
+      if (needsNavigation) {
+        setCurrentDate(checkInDate);
+      }
+    }
+  }, [searchTerm, searchResults, currentSearchIndex, currentDate, viewMode]);
+
+  // Notify parent about search results
+  useEffect(() => {
+    if (onSearchResult) {
+      onSearchResult(searchResults.length > 0, searchResults.length);
+    }
+  }, [searchResults, onSearchResult]);
+
+  // Navigate between search results
+  const navigateSearchResults = (direction: 'prev' | 'next') => {
+    if (searchResults.length === 0) return;
+    
+    let newIndex;
+    if (direction === 'next') {
+      newIndex = (currentSearchIndex + 1) % searchResults.length;
+    } else {
+      newIndex = currentSearchIndex === 0 ? searchResults.length - 1 : currentSearchIndex - 1;
+    }
+    
+    setCurrentSearchIndex(newIndex);
+    const targetReservation = searchResults[newIndex];
+    const targetDate = dayjs(targetReservation.checkInDate || targetReservation.reservationStart);
+    setCurrentDate(targetDate);
+  };
+
+  // Check if a reservation is highlighted by search
+  const isSearchHighlighted = (reservation: any) => {
+    const isHighlighted = searchTerm && searchResults.some(sr => sr._id === reservation._id);
+    return isHighlighted;
+  };
 
   // Generate room color mapping based on room number for consistency
   const roomColorMap = useMemo(() => {
@@ -92,7 +218,7 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
 
   // Generate calendar days based on view type
   const calendarDays = useMemo(() => {
-    if (viewType === 'week') {
+    if (viewMode === 'week') {
       const startOfWeek = currentDate.startOf('week');
       const endOfWeek = currentDate.endOf('week');
       const days = [];
@@ -119,7 +245,7 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
       }
       return days;
     }
-  }, [currentDate, viewType]);
+  }, [currentDate, viewMode]);
 
   // Group days into weeks for proper calendar layout
   const calendarWeeks = useMemo(() => {
@@ -133,7 +259,22 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
   // Get reservations for a specific date with enhanced info
   const getReservationsForDate = (date: Dayjs) => {
     const dateStr = date.format('YYYY-MM-DD');
-    return reservations.filter(res => {
+    
+    // Determine which reservations to use based on search state
+    let reservationsToUse;
+    if (searchTerm && searchResults.length > 1 && currentSearchIndex >= 0) {
+      // When navigating between multiple search results, show only the current one
+      const currentResult = searchResults[currentSearchIndex];
+      reservationsToUse = currentResult ? [currentResult] : filteredReservations;
+    } else if (searchTerm) {
+      // When searching but not navigating, show all matching results
+      reservationsToUse = filteredReservations;
+    } else {
+      // No search, show all reservations
+      reservationsToUse = reservations;
+    }
+    
+    return reservationsToUse.filter(res => {
       const startDate = dayjs(res.reservationStart || res.checkInDate).format('YYYY-MM-DD');
       const endDate = dayjs(res.reservationEnd || res.checkOutDate).format('YYYY-MM-DD');
       return dateStr >= startDate && dateStr <= endDate;
@@ -161,14 +302,12 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
       index === self.findIndex(r => r._id === res._id)
     );
     return uniqueReservations;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [calendarDays, reservations]);
+  }, [calendarDays, searchTerm]); // Only include what actually affects the calculation
 
   // Get rooms that have reservations in current view for dynamic legend
   const roomsWithReservations = useMemo(() => {
     const roomIds = new Set(visibleReservations.map(res => res.roomId || res.rooms));
-    const roomsInView = rooms.filter(room => roomIds.has(room._id));
-    return roomsInView.sort((a, b) => a.number.localeCompare(b.number));
+    return rooms.filter(room => roomIds.has(room._id));
   }, [visibleReservations, rooms]);
 
   // Get guest name for a reservation
@@ -192,7 +331,7 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
 
   // Navigation functions
   const navigateMonth = (direction: 'prev' | 'next') => {
-    const unit = viewType === 'week' ? 'week' : 'month';
+    const unit = viewMode === 'week' ? 'week' : 'month';
     setCurrentDate(prev => prev.add(direction === 'next' ? 1 : -1, unit));
   };
 
@@ -214,7 +353,7 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
               <ChevronLeftIcon />
             </IconButton>
             <Typography variant="h6" sx={{ minWidth: 200, textAlign: 'center' }}>
-              {viewType === 'week' 
+              {viewMode === 'week' 
                 ? `Week of ${currentDate.startOf('week').add(1, 'day').format('MMM D')} - ${currentDate.endOf('week').add(1, 'day').format('MMM D, YYYY')}`
                 : currentDate.format('MMMM YYYY')
               }
@@ -225,11 +364,50 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
           </Box>
           
           <Box display="flex" alignItems="center" gap={2}>
+            {/* Search Navigation - only show when there are search results */}
+            {searchTerm && searchResults.length > 0 && (
+              <Box display="flex" alignItems="center" gap={1} sx={{ 
+                px: 1, 
+                py: 0.5, 
+                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                borderRadius: 1,
+                border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`
+              }}>
+                <SearchIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                <Typography variant="caption" color="primary.main">
+                  {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
+                </Typography>
+                {searchResults.length > 1 && (
+                  <>
+                    <Typography variant="caption" color="text.secondary">
+                      ({currentSearchIndex + 1}/{searchResults.length})
+                    </Typography>
+                    <Box display="flex" gap={0.5}>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => navigateSearchResults('prev')}
+                        disabled={searchResults.length <= 1}
+                      >
+                        <ChevronLeftIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => navigateSearchResults('next')}
+                        disabled={searchResults.length <= 1}
+                      >
+                        <ChevronRightIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Box>
+                  </>
+                )}
+              </Box>
+            )}
+            
             {/* View Toggle */}
             <ToggleButtonGroup
-              value={viewType}
+              value={viewMode}
               exclusive
-              onChange={(_, newView) => newView && setViewType(newView)}
+              onChange={(_, newView) => newView && setViewMode(newView)}
               size="small"
             >
               <ToggleButton value="month" aria-label="month view">
@@ -281,7 +459,13 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
       {roomsWithReservations.length > 0 && (
         <Paper sx={{ p: 2, mb: 2 }}>
           <Typography variant="subtitle2" gutterBottom>
-            Room Legend ({roomsWithReservations.length} rooms with reservations in {viewType} view)
+            {searchTerm ? (
+              searchResults.length > 1 && currentSearchIndex >= 0 ? 
+                `Search Result ${currentSearchIndex + 1} of ${searchResults.length}: ${roomsWithReservations.length} room${roomsWithReservations.length !== 1 ? 's' : ''}` :
+                `Search Results: ${roomsWithReservations.length} rooms with matching reservations`
+            ) : (
+              `Room Legend (${roomsWithReservations.length} rooms with reservations in ${viewMode} view)`
+            )}
           </Typography>
           <Box display="flex" flexWrap="wrap" gap={1}>
             {roomsWithReservations.map(room => {
@@ -379,14 +563,14 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
             <Box key={weekIndex} display="flex" gap={1}>
               {week.map(date => {
                 const dayReservations = getReservationsForDate(date);
-                const isCurrentMonthDay = viewType === 'week' || isCurrentMonth(date);
+                const isCurrentMonthDay = viewMode === 'week' || isCurrentMonth(date);
                 const isTodayDate = isToday(date);
 
                 return (
                   <Box key={date.format('YYYY-MM-DD')} flex={1}>
                     <Card
                       sx={{
-                        minHeight: viewType === 'week' ? 150 : 120,
+                        minHeight: viewMode === 'week' ? 150 : 120,
                         backgroundColor: isTodayDate 
                           ? alpha(theme.palette.primary.main, 0.1)
                           : isCurrentMonthDay 
@@ -411,11 +595,12 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
 
                         {/* Enhanced Reservations Display */}
                         <Box display="flex" flexDirection="column" gap={0.5}>
-                          {dayReservations.slice(0, viewType === 'week' ? 6 : 4).map((reservation, index) => {
+                          {dayReservations.slice(0, viewMode === 'week' ? 6 : 4).map((reservation, index) => {
                             const roomNumber = getRoomNumber(reservation);
                             const guestName = getGuestName(reservation);
                             const roomColor = roomColorMap[reservation.roomId] || roomColorMap[reservation.rooms] || '#999';
                             const textColor = getTextColor(roomColor);
+                            const isHighlighted = isSearchHighlighted(reservation);
 
                             return (
                               <Tooltip
@@ -441,6 +626,11 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
                                         🚪 Check-out Day
                                       </Typography>
                                     )}
+                                    {isHighlighted && (
+                                      <Typography variant="body2" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                                        🔍 Search Result
+                                      </Typography>
+                                    )}
                                     <Typography variant="caption" sx={{ fontStyle: 'italic' }}>
                                       Click for details
                                     </Typography>
@@ -463,25 +653,31 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
                                     cursor: 'pointer',
                                     position: 'relative',
                                     // Enhanced borders for better visibility
-                                    border: reservation.isCheckIn 
-                                      ? '3px dotted #2E7D32' 
-                                      : reservation.isCheckOut 
-                                        ? '3px dotted #F57C00' 
-                                        : '1px solid transparent',
-                                    boxShadow: reservation.isCheckIn 
-                                      ? `0 0 8px ${alpha('#4CAF50', 0.6)}` 
-                                      : reservation.isCheckOut 
-                                        ? `0 0 8px ${alpha('#FF9800', 0.6)}` 
-                                        : 'none',
+                                    border: isHighlighted
+                                      ? `3px solid ${theme.palette.primary.main}`
+                                      : reservation.isCheckIn 
+                                        ? '3px dotted #2E7D32' 
+                                        : reservation.isCheckOut 
+                                          ? '3px dotted #F57C00' 
+                                          : '1px solid transparent',
+                                    boxShadow: isHighlighted
+                                      ? `0 0 12px ${alpha(theme.palette.primary.main, 0.8)}`
+                                      : reservation.isCheckIn 
+                                        ? `0 0 8px ${alpha('#4CAF50', 0.6)}` 
+                                        : reservation.isCheckOut 
+                                          ? `0 0 8px ${alpha('#FF9800', 0.6)}` 
+                                          : 'none',
                                     '&:hover': {
                                       opacity: 0.9,
                                       transform: 'scale(1.03)',
                                       filter: 'brightness(1.1)',
-                                      boxShadow: reservation.isCheckIn 
-                                        ? `0 0 12px ${alpha('#4CAF50', 0.8)}` 
-                                        : reservation.isCheckOut 
-                                          ? `0 0 12px ${alpha('#FF9800', 0.8)}` 
-                                          : `0 2px 8px ${alpha(roomColor, 0.6)}`
+                                      boxShadow: isHighlighted
+                                        ? `0 0 16px ${alpha(theme.palette.primary.main, 0.9)}`
+                                        : reservation.isCheckIn 
+                                          ? `0 0 12px ${alpha('#4CAF50', 0.8)}` 
+                                          : reservation.isCheckOut 
+                                            ? `0 0 12px ${alpha('#FF9800', 0.8)}` 
+                                            : `0 2px 8px ${alpha(roomColor, 0.6)}`
                                     },
                                     transition: 'all 0.2s ease'
                                   }}
@@ -513,9 +709,9 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
                           })}
                           
                           {/* Show count if more reservations */}
-                          {dayReservations.length > (viewType === 'week' ? 6 : 4) && (
+                          {dayReservations.length > (viewMode === 'week' ? 6 : 4) && (
                             <Chip
-                              label={`+${dayReservations.length - (viewType === 'week' ? 6 : 4)} more`}
+                              label={`+${dayReservations.length - (viewMode === 'week' ? 6 : 4)} more`}
                               size="small"
                               variant="outlined"
                               sx={{
