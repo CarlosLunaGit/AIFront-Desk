@@ -28,41 +28,14 @@ import { useQuery } from '@tanstack/react-query';
 import InfoIcon from '@mui/icons-material/Info';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { format } from 'date-fns';
-import { HotelConfigContext } from '../components/Layout/Layout';
-import { useContext } from 'react';
+import { useCurrentHotel } from '../services/hooks/useHotel';
 import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import { ReservationHistoryEntry } from '../mocks/data/reservationHistory';
 
-interface ReservationHistoryEntry {
-  id: string;
-  roomId: string;
-  timestamp: string;
-  action:
-    | 'status_change'
-    | 'guest_assigned'
-    | 'guest_removed'
-    | 'guest_status_change'
-    | 'reservation_created'
-    | 'reservation_edited'
-    | 'reservation_deleted';
-  previousState: {
-    roomStatus?: string;
-    guestStatus?: string;
-    guestId?: string;
-    guestIds?: string[];
-  };
-  newState: {
-    roomStatus?: string;
-    guestStatus?: string;
-    guestId?: string;
-    guestIds?: string[];
-  };
-  performedBy: string;
-  notes?: string;
-}
-
-const fetchAllHistory = async () => {
-  const res = await fetch('/api/reservation-history');
+const fetchAllHistory = async (hotelId?: string) => {
+  const url = hotelId ? `/api/reservation-history?hotelId=${hotelId}` : '/api/reservation-history';
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch reservation history');
   return res.json() as Promise<ReservationHistoryEntry[]>;
 };
@@ -110,7 +83,10 @@ const formatAction = (entry: ReservationHistoryEntry) => {
 };
 
 const ReservationHistoryPage: React.FC = () => {
-  const { currentConfig } = useContext(HotelConfigContext);
+  // Use the new hotel entities instead of hotel configuration
+  const { data: currentHotel, isLoading: hotelLoading } = useCurrentHotel();
+  const hotelId = currentHotel?._id;
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
@@ -120,10 +96,10 @@ const ReservationHistoryPage: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  const { data: history, isLoading, error } = useQuery({
-    queryKey: ['reservationHistory', (currentConfig as any)?._id],
-    queryFn: fetchAllHistory,
-    enabled: !!currentConfig,
+  const { data: history, isLoading, error } = useQuery<ReservationHistoryEntry[]>({
+    queryKey: ['reservationHistory', hotelId],
+    queryFn: () => fetchAllHistory(hotelId),
+    enabled: !!hotelId,
   });
 
   const { data: rooms = [] } = useQuery({ queryKey: ['rooms'], queryFn: async () => (await fetch('/api/rooms')).json() });
@@ -152,7 +128,7 @@ const ReservationHistoryPage: React.FC = () => {
     (r.notes?.toLowerCase().includes(search.toLowerCase()) ?? false)
   ) || [];
 
-  if (isLoading) {
+  if (hotelLoading || isLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" p={3}>
         <CircularProgress />
@@ -187,8 +163,8 @@ const ReservationHistoryPage: React.FC = () => {
     <Box p={3}>
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h5" gutterBottom>
-          {currentConfig ? (
-            <>Reservation History for <b>{currentConfig.name}</b>
+          {currentHotel ? (
+            <>Reservation History for <b>{currentHotel.name}</b>
               <Tooltip title="View and filter the complete history of room status changes, guest assignments, and check-ins/outs.">
                 <InfoOutlinedIcon sx={{ ml: 1, fontSize: 20, verticalAlign: 'middle', color: 'text.secondary', cursor: 'pointer' }} />
               </Tooltip>

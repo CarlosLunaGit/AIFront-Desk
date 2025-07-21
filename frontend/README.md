@@ -67,6 +67,9 @@ Mock endpoints are defined in `src/mocks/handlers.ts` and include:
 - Dashboard statistics (`/api/dashboard/*`)
 - Room management (`/api/rooms/*`)
 - Subscription management (`/api/subscriptions/*`)
+- **Reservation Management** (`/api/reservations/*`) - Complete CRUD operations
+- **Reservation History** (`/api/reservation-history`) - Comprehensive audit trails
+- **Activity History** (`/api/activity-history`) - System-wide activity tracking
 
 To modify mock data or add new endpoints:
 1. Edit `src/mocks/handlers.ts`
@@ -123,6 +126,29 @@ MIT License - see LICENSE file for details
 
 ## Recent Features
 
+### ✅ **Complete Reservation History System (December 2024)**
+
+The Reservations History page now includes comprehensive audit trail functionality:
+
+#### **Core Features:**
+- **Accurate Change Detection**: Only tracks fields that were actually modified
+- **Guest Information Display**: Shows proper guest names in history table
+- **Detailed Change Modal**: View before/after states for any reservation edit
+- **Date Normalization**: Consistent date format handling (YYYY-MM-DD)
+- **History Actions**: Tracks creation, edits, status changes, and deletions
+
+#### **Technical Implementation:**
+- **Modular MSW Handlers**: Organized in `src/mocks/handlers/reservations/endpoints.ts`
+- **Type-Safe Interfaces**: Full TypeScript support for history data structures
+- **Real-time Updates**: History updates instantly when reservations are modified
+- **Data Consistency**: Proper field mapping between reservation data and history records
+
+#### **Bug Fixes Completed:**
+- ✅ **Modal Field Highlighting**: Fixed false "changed" indicators for unchanged fields
+- ✅ **Guest Names Display**: Resolved missing guest information in history table
+- ✅ **Date Format Issues**: Normalized timestamp vs date-only format comparisons
+- ✅ **Notes Accuracy**: Eliminated false change notifications in history notes
+
 ### Advanced Reservation Calendar
 
 The Reservations page now includes a professional calendar view with:
@@ -165,6 +191,40 @@ Advanced search functionality that enhances the calendar experience:
 
 ## Troubleshooting
 
+### Reservation History Issues
+
+#### **✅ RESOLVED: Notes Showing Incorrect Changes**
+- **Issue**: History notes showed false change notifications (e.g., dates changed when only price was modified)
+- **Solution**: Implemented proper date normalization and field comparison logic
+- **Status**: Fixed in latest version
+
+#### **✅ RESOLVED: Guest Names Missing**
+- **Issue**: Guest(s) column in history table was empty
+- **Solution**: Added `guestIds` to both `previousState` and `newState` in history records
+- **Status**: Fixed in latest version
+
+#### **✅ RESOLVED: Modal Field Highlighting**
+- **Issue**: All fields showed as "changed" (blue) even when only one field was modified
+- **Solution**: Fixed data type consistency between history states and comparison logic
+- **Status**: Fixed in latest version
+
 ### Reservation Notes Not Appearing
 
 If you create a reservation and the notes do not appear in the Reservations table, this may be due to a bug in the reservation creation handler (mock or backend). The notes field should be saved and displayed for each reservation. Check the handler logic to ensure the notes are copied from the request to the reservation object.
+
+## Next Development Phases
+
+### **Phase 1: Stripe Integration (Frontend-Only with MSW)**
+- Mock Stripe API endpoints for subscription management
+- Payment processing simulation
+- Subscription tier management
+- Test credit card workflows
+- No backend required - continue with MSW approach
+
+### **Phase 2: Backend Integration**
+- Real Stripe API integration
+- Database persistence
+- Authentication system
+- Production deployment
+
+The MSW approach allows complete frontend development and testing without backend dependencies, making it ideal for rapid prototyping and demonstration.

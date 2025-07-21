@@ -8,6 +8,8 @@ import { Guest, GuestStatus } from '../../../types/guest';
 import { Room, RoomType } from '../../../types/room';
 import { recalculateRoomStatus } from '../../../utils/roomStatus';
 import { recalculateReservationsForRoom, recalculateReservationStatus } from '../../data/reservations';
+import { mockReservationHistory, ReservationHistoryEntry } from '../../data/reservationHistory';
+// Note: Activity history import will be handled dynamically to avoid circular dependencies
 
 // Sophisticated availability engine
 const checkRoomAvailabilityForDates = (room: Room, checkInDate: string, checkOutDate: string): { isAvailable: boolean, conflictingReservations: string[] } => {
@@ -141,8 +143,8 @@ const calculateNights = (checkIn: string, checkOut: string): number => {
   return diffDays;
 };
 
-// Reservation history for audit trail
-const reservationHistory: any[] = [];
+// Use dynamic reservation history that gets updated with new actions
+let reservationHistory: ReservationHistoryEntry[] = [...mockReservationHistory];
 
 export const enhancedReservationHandlers = [
   // Room Availability Endpoint
@@ -228,7 +230,7 @@ export const enhancedReservationHandlers = [
         //   finalAvailable: isAvailable
         // });
       }
-
+      
       // Calculate base pricing
       const nights = checkInDate && checkOutDate ? 
         Math.ceil((new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60 * 24)) : 1;
@@ -316,9 +318,9 @@ export const enhancedReservationHandlers = [
     // Enhanced unavailable room logging
     if (unavailableRooms.length > 0) {
       // console.log('🚫 Unavailable Rooms Details:');
-      unavailableRooms.forEach((room: any) => {
+    unavailableRooms.forEach((room: any) => {
         // console.log(`   Room ${room.room.number}: ${room.reasonsUnavailable.join(', ')}`);
-      });
+    });
     }
 
     return HttpResponse.json({
@@ -436,7 +438,7 @@ export const enhancedReservationHandlers = [
 
     // 🎯 CRITICAL FIX: Create actual reservation records for date-based availability
     const createdReservations: string[] = [];
-    
+
     // 🎯 CRITICAL FIX: Assign guests to rooms and update room status
     if (reservationData.roomAssignments && Array.isArray(reservationData.roomAssignments)) {
       for (const assignment of reservationData.roomAssignments) {
@@ -451,20 +453,20 @@ export const enhancedReservationHandlers = [
           for (let i = 0; i < assignment.guests.length; i++) {
             let guest = assignment.guests[i];
             if (!guest._id) {
-              guest = addMockGuest({
-                name: guest.name,
-                email: guest.email,
-                phone: guest.phone,
-                address: guest.address,
-                hotelId: reservationData.hotelId,
-                roomId: roomId, // Assign guest to the room!
-                status: 'booked',
-                keepOpen: false, // 🎯 CRITICAL: All reservation guests should close the room
-                reservationStart: reservationData.checkInDate,
-                reservationEnd: reservationData.checkOutDate,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              });
+                        guest = addMockGuest({
+            name: guest.name,
+            email: guest.email,
+            phone: guest.phone,
+            address: guest.address,
+            hotelId: reservationData.hotelId,
+            roomId: roomId, // Assign guest to the room!
+            status: 'booked',
+            keepOpen: false, // 🎯 CRITICAL: All reservation guests should close the room
+            reservationStart: reservationData.checkInDate,
+            reservationEnd: reservationData.checkOutDate,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
               assignment.guests[i] = guest;
             }
             guestIds.push(guest._id);
@@ -664,6 +666,8 @@ export const reservationEndpointsHandlers = [
     reservationHistory.push({
       id: `HIST-${Date.now()}`,
       roomId: newReservation.roomId,
+      hotelId: newReservation.hotelId,
+      reservationId: newReservation._id,
       timestamp: new Date().toISOString(),
       action: 'reservation_created',
       previousState: {},
@@ -678,15 +682,15 @@ export const reservationEndpointsHandlers = [
   http.post('/api/reservations/multi-room', async ({ request }) => {
     // console.log('🚨🚨🚨 MULTI-ROOM RESERVATION ENDPOINT HIT! 🚨🚨🚨');
     
-      const {
-    roomAssignments,
-    checkInDate,
-    checkOutDate,
-    notes,
-    specialRequests,
-    hotelId,
-    createdBy
-  } = await request.json() as any;
+    const {
+      roomAssignments,
+      checkInDate,
+      checkOutDate,
+      notes,
+      specialRequests,
+      hotelId,
+      createdBy
+    } = await request.json() as any;
   
     // console.log('📋 Multi-room reservation request:', {
     //   primaryGuest: primaryGuest?.name,
@@ -844,6 +848,16 @@ export const reservationEndpointsHandlers = [
     const safeData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
     const now = new Date().toISOString();
     
+    // Store original values for history tracking
+    const originalValues = {
+      price: reservation.totalAmount,
+      rooms: reservation.roomId,
+      dates: [`${reservation.checkInDate}`, `${reservation.checkOutDate}`],
+      notes: reservation.notes || '',
+      specialRequests: reservation.specialRequests || '',
+      status: reservation.reservationStatus || reservation.status
+    };
+
     // Handle business actions
     if (safeData.reservationStatus && safeData.reservationStatus !== reservation.reservationStatus) {
       // Update audit trail
@@ -903,8 +917,83 @@ export const reservationEndpointsHandlers = [
         }
       });
     }
+
+    // 🎯 CREATE COMPREHENSIVE HISTORY RECORDS FOR ALL CHANGES
+    const changes: string[] = [];
+    const changeDetails: any = {};
+
+    // Check for price changes
+    if (safeData.price !== undefined && safeData.price !== originalValues.price) {
+      changes.push(`Price: $${originalValues.price} → $${safeData.price}`);
+      changeDetails.priceChange = { from: originalValues.price, to: safeData.price };
+      // Update reservation total amount
+      reservation.totalAmount = safeData.price;
+      if (reservation.financials) {
+        reservation.financials.totalAmount = safeData.price;
+      }
+    }
+
+    // Check for room changes
+    if (safeData.rooms && safeData.rooms !== originalValues.rooms) {
+      const oldRoom = mockRooms.find(r => r._id === originalValues.rooms);
+      const newRoom = mockRooms.find(r => r._id === safeData.rooms);
+      changes.push(`Room: ${oldRoom?.number || originalValues.rooms} → ${newRoom?.number || safeData.rooms}`);
+      changeDetails.roomChange = { from: originalValues.rooms, to: safeData.rooms };
+    }
+
+    // Check for date changes (normalize both to date-only strings for accurate comparison)
+    const originalDatesStr = `${originalValues.dates[0].split('T')[0]} to ${originalValues.dates[1].split('T')[0]}`;
+    if (safeData.dates && safeData.dates !== originalDatesStr) {
+      changes.push(`Dates: ${originalDatesStr} → ${safeData.dates}`);
+      changeDetails.dateChange = { from: originalDatesStr, to: safeData.dates };
+    }
+
+    // Check for notes changes
+    if (safeData.notes !== undefined && safeData.notes !== originalValues.notes) {
+      changes.push(`Notes updated`);
+      changeDetails.notesChange = { from: originalValues.notes, to: safeData.notes };
+    }
+
+    // Check for special requests changes
+    if (safeData.specialRequests !== undefined && safeData.specialRequests !== originalValues.specialRequests) {
+      changes.push(`Special requests updated`);
+      changeDetails.specialRequestsChange = { from: originalValues.specialRequests, to: safeData.specialRequests };
+    }
+
+    // Add to reservation history if there are changes
+    if (changes.length > 0) {
+      reservationHistory.push({
+        id: `HIST-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        roomId: reservation.roomId,
+        hotelId: reservation.hotelId,
+        reservationId: reservation._id,
+        timestamp: now,
+        action: 'reservation_edited',
+        previousState: {
+          price: originalValues.price,
+          rooms: originalValues.rooms,
+          dates: `${originalValues.dates[0].split('T')[0]} to ${originalValues.dates[1].split('T')[0]}`,
+          notes: originalValues.notes,
+          specialRequests: originalValues.specialRequests,
+          status: originalValues.status,
+          guestIds: reservation.guestIds || []
+        },
+        newState: {
+          price: reservation.totalAmount,
+          rooms: reservation.roomId,
+          dates: `${reservation.checkInDate.split('T')[0]} to ${reservation.checkOutDate.split('T')[0]}`,
+          notes: reservation.notes || '',
+          specialRequests: Array.isArray(reservation.specialRequests) ? reservation.specialRequests.join(', ') : (reservation.specialRequests || ''),
+          status: reservation.reservationStatus || reservation.status,
+          guestIds: reservation.guestIds || []
+        },
+        performedBy: safeData.performedBy || 'front-desk-staff',
+        notes: `Reservation updated: ${changes.join(', ')}`,
+      });
+
+ 
+    }
     
-    // console.log('✅ Updated reservation:', reservation._id, 'new status:', reservation.reservationStatus);
     return HttpResponse.json(reservation);
   }),
 
@@ -939,12 +1028,13 @@ export const reservationEndpointsHandlers = [
     reservationHistory.push({
       id: `HIST-${Date.now()}`,
       roomId: reservation.roomId,
+      hotelId: reservation.hotelId,
+      reservationId: reservation._id,
       timestamp: new Date().toISOString(),
       action: 'reservation_deleted',
       previousState: { 
         guestIds: reservation.guestIds,
-        status: reservation.status,
-        reservationStatus: reservation.reservationStatus
+        status: reservation.status
       },
       newState: {},
       performedBy: 'system',
@@ -965,14 +1055,11 @@ export const reservationEndpointsHandlers = [
     
     let filteredHistory = reservationHistory;
     
-    // Filter by hotel if specified
+    // Filter by hotel if specified - now using direct hotelId field
     if (hotelId) {
       filteredHistory = filteredHistory.filter(entry => {
-        // Find the reservation this history entry refers to
-        const reservation = mockReservations.find(r => 
-          r._id === entry.id || r.roomId === entry.roomId
-        );
-        return reservation && reservation.hotelId === hotelId;
+        // Direct filtering using hotelId field in history entry
+        return entry.hotelId === hotelId;
       });
     }
     

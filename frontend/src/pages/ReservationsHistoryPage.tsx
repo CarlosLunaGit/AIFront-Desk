@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, TextField, Button, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Tooltip, CircularProgress, Alert, IconButton, Collapse
 } from '@mui/material';
@@ -8,36 +8,13 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useQuery } from '@tanstack/react-query';
-import { HotelConfigContext } from '../components/Layout/Layout';
+import { useCurrentHotel } from '../services/hooks/useHotel';
 import { format } from 'date-fns';
+import { ReservationHistoryEntry } from '../mocks/data/reservationHistory';
 
-interface ReservationHistoryEntry {
-  id: string;
-  roomId: string;
-  timestamp: string;
-  action: 'reservation_created' | 'reservation_edited' | 'reservation_deleted';
-  previousState: {
-    guestIds?: string[];
-    dates?: string[];
-    rooms?: string[];
-    status?: string;
-    price?: number;
-    notes?: string;
-  };
-  newState: {
-    guestIds?: string[];
-    dates?: string[];
-    rooms?: string[];
-    status?: string;
-    price?: number;
-    notes?: string;
-  };
-  performedBy: string;
-  notes?: string; // Top-level notes field for deletion reasons, etc.
-}
-
-const fetchAllHistory = async () => {
-  const res = await fetch('/api/reservation-history');
+const fetchAllHistory = async (hotelId?: string) => {
+  const url = hotelId ? `/api/reservation-history?hotelId=${hotelId}` : '/api/reservation-history';
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch reservation history');
   return res.json() as Promise<ReservationHistoryEntry[]>;
 };
@@ -58,7 +35,10 @@ const getActionColor = (action: ReservationHistoryEntry['action']) => {
 // Removed unused formatAction function
 
 const ReservationsHistoryPage: React.FC = () => {
-  const { selectedConfigId } = useContext(HotelConfigContext);
+  // Use the new hotel entities instead of hotel configuration
+  const { data: currentHotel, isLoading: hotelLoading } = useCurrentHotel();
+  const hotelId = currentHotel?._id;
+  
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState('timestamp');
@@ -67,10 +47,10 @@ const ReservationsHistoryPage: React.FC = () => {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<ReservationHistoryEntry | null>(null);
 
-  const { data: history = [], isLoading, error } = useQuery({
-    queryKey: ['reservationHistory', selectedConfigId],
-    queryFn: fetchAllHistory,
-    enabled: !!selectedConfigId,
+  const { data: history = [], isLoading, error } = useQuery<ReservationHistoryEntry[]>({
+    queryKey: ['reservationHistory', hotelId],
+    queryFn: () => fetchAllHistory(hotelId),
+    enabled: !!hotelId,
   });
   const { data: guests = [] } = useQuery({ queryKey: ['guests'], queryFn: async () => (await fetch('/api/guests')).json() });
   const { data: rooms = [] } = useQuery({ queryKey: ['rooms'], queryFn: async () => (await fetch('/api/rooms')).json() });
@@ -129,7 +109,7 @@ const ReservationsHistoryPage: React.FC = () => {
     return 0;
   });
 
-  if (isLoading) return <Box display="flex" justifyContent="center" alignItems="center" p={3}><CircularProgress /></Box>;
+  if (hotelLoading || isLoading) return <Box display="flex" justifyContent="center" alignItems="center" p={3}><CircularProgress /></Box>;
   if (error) return <Box p={3}><Alert severity="error">{(error as Error).message}</Alert></Box>;
 
   return (

@@ -4,48 +4,48 @@ import { mockReservations } from '../mocks/data/reservations';
 import { Reservation } from '@/types/reservation';
 
 export function recalculateRoomStatus(room: Room, performedBy: string = 'system', notes: string = 'Room status recalculated') {
-  console.log(`🔄 recalculateRoomStatus called for Room ${room.number}:`, {
-    roomId: room._id,
-    currentStatus: room.status,
-    capacity: room.capacity,
-    assignedGuests: room.assignedGuests,
-    performedBy,
-    notes
-  });
+  // console.log(`🔄 recalculateRoomStatus called for Room ${room.number}:`, {
+  //   roomId: room._id,
+  //   currentStatus: room.status,
+  //   capacity: room.capacity,
+  //   assignedGuests: room.assignedGuests,
+  //   performedBy,
+  //   notes
+  // });
   
   if (!room) {
-    console.log('❌ recalculateRoomStatus: No room provided');
+    // console.log('❌ recalculateRoomStatus: No room provided');
     return;
   }
 
   // Find guests assigned to this room
   const roomGuests = mockGuests.filter(g => g.roomId === room._id && g.hotelId === room.hotelId);
-  console.log(`👥 Room ${room.number} guests found:`, roomGuests.map(g => ({ id: g._id, name: g.name, status: g.status, keepOpen: g.keepOpen })));
+  // console.log(`👥 Room ${room.number} guests found:`, roomGuests.map(g => ({ id: g._id, name: g.name, status: g.status, keepOpen: g.keepOpen })));
   
   // 🎯 CRITICAL FIX: Sync assignedGuests array with actual guests
   room.assignedGuests = roomGuests.map(g => g._id);
-  console.log(`🔄 Room ${room.number} assignedGuests synced:`, room.assignedGuests);
+  // console.log(`🔄 Room ${room.number} assignedGuests synced:`, room.assignedGuests);
 
   if (roomGuests.length === 0) {
-    console.log(`✅ Room ${room.number}: No guests assigned, setting status to 'available'`);
+    // console.log(`✅ Room ${room.number}: No guests assigned, setting status to 'available'`);
     room.status = 'available' as RoomStatus;
     return;
   }
 
   const capacity = room.capacity || 1;
-  console.log(`📊 Room ${room.number} capacity: ${capacity}, guests: ${roomGuests.length}`);
+  // console.log(`📊 Room ${room.number} capacity: ${capacity}, guests: ${roomGuests.length}`);
   
   // Separate guests by status
   const bookedGuests = roomGuests.filter(g => g.status === 'booked');
   const checkedInGuests = roomGuests.filter(g => g.status === 'checked-in');
   const checkedOutGuests = roomGuests.filter(g => g.status === 'checked-out');
   
-  console.log(`📋 Room ${room.number} guest breakdown:`, {
-    booked: bookedGuests.length,
-    checkedIn: checkedInGuests.length,
-    checkedOut: checkedOutGuests.length,
-    total: roomGuests.length
-  });
+  // console.log(`📋 Room ${room.number} guest breakdown:`, {
+  //   booked: bookedGuests.length,
+  //   checkedIn: checkedInGuests.length,
+  //   checkedOut: checkedOutGuests.length,
+  //   total: roomGuests.length
+  // });
 
   // Room status logic based on real hotel scenarios
   const allCheckedOut = roomGuests.every(g => g.status === 'checked-out');
@@ -55,14 +55,14 @@ export function recalculateRoomStatus(room: Room, performedBy: string = 'system'
   const hasCheckedIn = checkedInGuests.length > 0;
   const hasBooked = bookedGuests.length > 0;
 
-  console.log(`🔍 Room ${room.number} status conditions:`, {
-    allCheckedOut,
-    allCheckedIn,
-    allBooked,
-    hasCheckedOut,
-    hasCheckedIn,
-    hasBooked
-  });
+  // console.log(`🔍 Room ${room.number} status conditions:`, {
+  //   allCheckedOut,
+  //   allCheckedIn,
+  //   allBooked,
+  //   hasCheckedOut,
+  //   hasCheckedIn,
+  //   hasBooked
+  // });
 
   let newStatus: RoomStatus;
 
@@ -71,64 +71,64 @@ export function recalculateRoomStatus(room: Room, performedBy: string = 'system'
   // 1. All guests checked out → needs cleaning
   if (allCheckedOut) {
     newStatus = 'cleaning' as RoomStatus;
-    console.log(`🧹 Room ${room.number}: All guests checked out → cleaning`);
+    // console.log(`🧹 Room ${room.number}: All guests checked out → cleaning`);
   }
   // 2. Mixed checkout scenario → deoccupied states
   else if (hasCheckedOut && (hasCheckedIn || hasBooked)) {
     newStatus = 'partially-deoccupied' as RoomStatus;
-    console.log(`🔄 Room ${room.number}: Mixed checkout scenario → partially-deoccupied`);
+    // console.log(`🔄 Room ${room.number}: Mixed checkout scenario → partially-deoccupied`);
   }
   // 3. Some guests checked out, none remaining → deoccupied (needs cleaning)
   else if (hasCheckedOut && !hasCheckedIn && !hasBooked) {
     newStatus = 'deoccupied' as RoomStatus;
-    console.log(`🧹 Room ${room.number}: Some checked out, none remaining → deoccupied`);
+    // console.log(`🧹 Room ${room.number}: Some checked out, none remaining → deoccupied`);
   }
   // 4. All checked in scenarios
   else if (allCheckedIn) {
     const anyNoKeepOpen = checkedInGuests.some(g => g.keepOpen === false);
     if (roomGuests.length === capacity || anyNoKeepOpen) {
       newStatus = 'occupied' as RoomStatus;
-      console.log(`🏠 Room ${room.number}: All checked in, at capacity or no keep open → occupied`);
+      // console.log(`🏠 Room ${room.number}: All checked in, at capacity or no keep open → occupied`);
     } else {
       newStatus = 'partially-occupied' as RoomStatus;
-      console.log(`🏠 Room ${room.number}: All checked in, under capacity → partially-occupied`);
+      // console.log(`🏠 Room ${room.number}: All checked in, under capacity → partially-occupied`);
     }
   }
   // 5. Mixed checked-in and booked
   else if (hasCheckedIn && hasBooked) {
     newStatus = 'partially-occupied' as RoomStatus;
-    console.log(`🏠 Room ${room.number}: Mixed checked-in and booked → partially-occupied`);
+    // console.log(`🏠 Room ${room.number}: Mixed checked-in and booked → partially-occupied`);
   }
   // 6. All booked scenarios
   else if (allBooked) {
     const anyNoKeepOpen = bookedGuests.some(g => g.keepOpen === false);
     if (roomGuests.length === capacity || anyNoKeepOpen) {
       newStatus = 'reserved' as RoomStatus;
-      console.log(`📅 Room ${room.number}: All booked, at capacity or no keep open → reserved`);
+      // console.log(`📅 Room ${room.number}: All booked, at capacity or no keep open → reserved`);
     } else {
       newStatus = 'partially-reserved' as RoomStatus;
-      console.log(`📅 Room ${room.number}: All booked, under capacity → partially-reserved`);
+      // console.log(`📅 Room ${room.number}: All booked, under capacity → partially-reserved`);
     }
   }
   // 7. Only checked-in guests
   else if (hasCheckedIn && !hasBooked) {
     if (checkedInGuests.length === capacity) {
       newStatus = 'occupied' as RoomStatus;
-      console.log(`🏠 Room ${room.number}: Only checked-in, at capacity → occupied`);
+      // console.log(`🏠 Room ${room.number}: Only checked-in, at capacity → occupied`);
     } else {
       newStatus = 'partially-occupied' as RoomStatus;
-      console.log(`🏠 Room ${room.number}: Only checked-in, under capacity → partially-occupied`);
+      // console.log(`🏠 Room ${room.number}: Only checked-in, under capacity → partially-occupied`);
     }
   }
   // 8. Default fallback
   else {
     newStatus = 'available' as RoomStatus;
-    console.log(`✅ Room ${room.number}: Default fallback → available`);
+    // console.log(`✅ Room ${room.number}: Default fallback → available`);
   }
 
-  console.log(`🎯 Room ${room.number} status change: ${room.status} → ${newStatus}`);
+  // console.log(`🎯 Room ${room.number} status change: ${room.status} → ${newStatus}`);
   room.status = newStatus;
-  // console.log(`🔄 Room ${room.number}: ${newStatus} | Guests: ${roomGuests.map(g => `${g.name}(${g.status},keepOpen:${g.keepOpen})`).join(', ')}`);
+  // // console.log(`🔄 Room ${room.number}: ${newStatus} | Guests: ${roomGuests.map(g => `${g.name}(${g.status},keepOpen:${g.keepOpen})`).join(', ')}`);
 }
 
 /**
@@ -141,17 +141,17 @@ export function calculateRoomStatusForDate(
   performedBy: string = 'system', 
   notes: string = 'Room status calculated for specific date'
 ): { status: RoomStatus, keepOpen: boolean, guestsOnDate: any[], reservationsOnDate: any[] } {
-  console.log(`📅 calculateRoomStatusForDate called for Room ${room.number} on ${targetDate.toISOString().split('T')[0]}:`, {
-    roomId: room._id,
-    currentStatus: room.status,
-    capacity: room.capacity,
-    targetDate: targetDate.toISOString().split('T')[0],
-    performedBy,
-    notes
-  });
+  // console.log(`📅 calculateRoomStatusForDate called for Room ${room.number} on ${targetDate.toISOString().split('T')[0]}:`, {
+  //   roomId: room._id,
+  //   currentStatus: room.status,
+  //   capacity: room.capacity,
+  //   targetDate: targetDate.toISOString().split('T')[0],
+  //   performedBy,
+  //   notes
+  // });
   
   if (!room) {
-    console.log('❌ calculateRoomStatusForDate: No room provided');
+    // console.log('❌ calculateRoomStatusForDate: No room provided');
     return { status: 'available' as RoomStatus, keepOpen: false, guestsOnDate: [], reservationsOnDate: [] };
   }
 
@@ -189,16 +189,16 @@ export function calculateRoomStatusForDate(
     return targetDateOnly >= guestStartDate && targetDateOnly <= guestEndDate;
   });
 
-  console.log(`📊 Room ${room.number} on ${targetDateStr}:`, {
-    reservationsOnDate: reservationsOnDate.length,
-    guestsOnDate: guestsOnDate.length,
-    reservationIds: reservationsOnDate.map(r => r._id),
-    guestNames: guestsOnDate.map(g => g.name)
-  });
+  // console.log(`📊 Room ${room.number} on ${targetDateStr}:`, {
+  //   reservationsOnDate: reservationsOnDate.length,
+  //   guestsOnDate: guestsOnDate.length,
+  //   reservationIds: reservationsOnDate.map(r => r._id),
+  //   guestNames: guestsOnDate.map(g => g.name)
+  // });
 
   // If no reservations or guests for this date, room is available
   if (reservationsOnDate.length === 0 && guestsOnDate.length === 0) {
-    console.log(`✅ Room ${room.number} on ${targetDateStr}: No reservations or guests → available`);
+    // console.log(`✅ Room ${room.number} on ${targetDateStr}: No reservations or guests → available`);
     return { 
       status: 'available' as RoomStatus, 
       keepOpen: false, 
@@ -208,19 +208,19 @@ export function calculateRoomStatusForDate(
   }
 
   const capacity = room.capacity || 1;
-  console.log(`📊 Room ${room.number} capacity: ${capacity}, guests on date: ${guestsOnDate.length}`);
+  // console.log(`📊 Room ${room.number} capacity: ${capacity}, guests on date: ${guestsOnDate.length}`);
   
   // Determine guest statuses for this specific date
   const bookedGuests = guestsOnDate.filter(g => g.status === 'booked');
   const checkedInGuests = guestsOnDate.filter(g => g.status === 'checked-in');
   const checkedOutGuests = guestsOnDate.filter(g => g.status === 'checked-out');
   
-  console.log(`📋 Room ${room.number} guest breakdown on ${targetDateStr}:`, {
-    booked: bookedGuests.length,
-    checkedIn: checkedInGuests.length,
-    checkedOut: checkedOutGuests.length,
-    total: guestsOnDate.length
-  });
+  // console.log(`📋 Room ${room.number} guest breakdown on ${targetDateStr}:`, {
+  //   booked: bookedGuests.length,
+  //   checkedIn: checkedInGuests.length,
+  //   checkedOut: checkedOutGuests.length,
+  //   total: guestsOnDate.length
+  // });
 
   // Room status logic for specific date
   const allCheckedOut = guestsOnDate.length > 0 && guestsOnDate.every(g => g.status === 'checked-out');
@@ -233,15 +233,15 @@ export function calculateRoomStatusForDate(
   // Calculate keepOpen based on guests on this date
   const keepOpen = guestsOnDate.length > 0 && guestsOnDate.every(g => g.keepOpen === true);
 
-  console.log(`🔍 Room ${room.number} status conditions on ${targetDateStr}:`, {
-    allCheckedOut,
-    allCheckedIn,
-    allBooked,
-    hasCheckedOut,
-    hasCheckedIn,
-    hasBooked,
-    keepOpen
-  });
+  // console.log(`🔍 Room ${room.number} status conditions on ${targetDateStr}:`, {
+  //   allCheckedOut,
+  //   allCheckedIn,
+  //   allBooked,
+  //   hasCheckedOut,
+  //   hasCheckedIn,
+  //   hasBooked,
+  //   keepOpen
+  // });
 
   let newStatus: RoomStatus;
 
@@ -250,62 +250,62 @@ export function calculateRoomStatusForDate(
   // 1. All guests checked out on this date → needs cleaning
   if (allCheckedOut) {
     newStatus = 'cleaning' as RoomStatus;
-    console.log(`🧹 Room ${room.number} on ${targetDateStr}: All guests checked out → cleaning`);
+    // console.log(`🧹 Room ${room.number} on ${targetDateStr}: All guests checked out → cleaning`);
   }
   // 2. Mixed checkout scenario → deoccupied states
   else if (hasCheckedOut && (hasCheckedIn || hasBooked)) {
     newStatus = 'partially-deoccupied' as RoomStatus;
-    console.log(`🔄 Room ${room.number} on ${targetDateStr}: Mixed checkout scenario → partially-deoccupied`);
+    // console.log(`🔄 Room ${room.number} on ${targetDateStr}: Mixed checkout scenario → partially-deoccupied`);
   }
   // 3. Some guests checked out, none remaining → deoccupied (needs cleaning)
   else if (hasCheckedOut && !hasCheckedIn && !hasBooked) {
     newStatus = 'deoccupied' as RoomStatus;
-    console.log(`🧹 Room ${room.number} on ${targetDateStr}: Some checked out, none remaining → deoccupied`);
+    // console.log(`🧹 Room ${room.number} on ${targetDateStr}: Some checked out, none remaining → deoccupied`);
   }
   // 4. All checked in scenarios
   else if (allCheckedIn) {
     const anyNoKeepOpen = checkedInGuests.some(g => g.keepOpen === false);
     if (guestsOnDate.length === capacity || anyNoKeepOpen) {
       newStatus = 'occupied' as RoomStatus;
-      console.log(`🏠 Room ${room.number} on ${targetDateStr}: All checked in, at capacity or no keep open → occupied`);
+      // console.log(`🏠 Room ${room.number} on ${targetDateStr}: All checked in, at capacity or no keep open → occupied`);
     } else {
       newStatus = 'partially-occupied' as RoomStatus;
-      console.log(`🏠 Room ${room.number} on ${targetDateStr}: All checked in, under capacity → partially-occupied`);
+      // console.log(`🏠 Room ${room.number} on ${targetDateStr}: All checked in, under capacity → partially-occupied`);
     }
   }
   // 5. Mixed checked-in and booked
   else if (hasCheckedIn && hasBooked) {
     newStatus = 'partially-occupied' as RoomStatus;
-    console.log(`🏠 Room ${room.number} on ${targetDateStr}: Mixed checked-in and booked → partially-occupied`);
+    // console.log(`🏠 Room ${room.number} on ${targetDateStr}: Mixed checked-in and booked → partially-occupied`);
   }
   // 6. All booked scenarios
   else if (allBooked) {
     const anyNoKeepOpen = bookedGuests.some(g => g.keepOpen === false);
     if (guestsOnDate.length === capacity || anyNoKeepOpen) {
       newStatus = 'reserved' as RoomStatus;
-      console.log(`📅 Room ${room.number} on ${targetDateStr}: All booked, at capacity or no keep open → reserved`);
+      // console.log(`📅 Room ${room.number} on ${targetDateStr}: All booked, at capacity or no keep open → reserved`);
     } else {
       newStatus = 'partially-reserved' as RoomStatus;
-      console.log(`📅 Room ${room.number} on ${targetDateStr}: All booked, under capacity → partially-reserved`);
+      // console.log(`📅 Room ${room.number} on ${targetDateStr}: All booked, under capacity → partially-reserved`);
     }
   }
   // 7. Only checked-in guests
   else if (hasCheckedIn && !hasBooked) {
     if (checkedInGuests.length === capacity) {
       newStatus = 'occupied' as RoomStatus;
-      console.log(`🏠 Room ${room.number} on ${targetDateStr}: Only checked-in, at capacity → occupied`);
+      // console.log(`🏠 Room ${room.number} on ${targetDateStr}: Only checked-in, at capacity → occupied`);
     } else {
       newStatus = 'partially-occupied' as RoomStatus;
-      console.log(`🏠 Room ${room.number} on ${targetDateStr}: Only checked-in, under capacity → partially-occupied`);
+      // console.log(`🏠 Room ${room.number} on ${targetDateStr}: Only checked-in, under capacity → partially-occupied`);
     }
   }
   // 8. Default fallback
   else {
     newStatus = 'available' as RoomStatus;
-    console.log(`✅ Room ${room.number} on ${targetDateStr}: Default fallback → available`);
+    // console.log(`✅ Room ${room.number} on ${targetDateStr}: Default fallback → available`);
   }
 
-  console.log(`🎯 Room ${room.number} status for ${targetDateStr}: ${newStatus} (keepOpen: ${keepOpen})`);
+  // console.log(`🎯 Room ${room.number} status for ${targetDateStr}: ${newStatus} (keepOpen: ${keepOpen})`);
   
   return { 
     status: newStatus, 
